@@ -535,3 +535,45 @@ export async function listReturnPrompts(db: Db): Promise<ReturnPrompt[]> {
 export async function answerReturn(db: Db, id: number, answer: 'deleted' | 'kept'): Promise<void> {
   await db.runAsync('UPDATE returns SET state = ? WHERE id = ?', [answer, id]);
 }
+
+// --- Resolving "Needs your attention" (section 9) ---
+
+// Other items from the same store still missing their length ("Apply to all N items from this store").
+export async function storeItemsMissingLength(db: Db, storeDomain: string, exceptId: number): Promise<number> {
+  const row = await db.getFirstAsync<{ n: number }>(
+    `SELECT COUNT(*) AS n FROM warranties WHERE store_domain = ? AND id != ? AND status = 'needs_input' AND missing_fields LIKE '%warrantyMonths%'`,
+    [storeDomain, exceptId],
+  );
+  return row?.n ?? 0;
+}
+
+// Sets the length on those items; ones missing nothing else become complete.
+export async function applyLengthToStore(db: Db, storeDomain: string, months: number, exceptId: number): Promise<void> {
+  const rows = await db.getAllAsync<{ id: number; missing_fields: string }>(
+    `SELECT id, missing_fields FROM warranties WHERE store_domain = ? AND id != ? AND status = 'needs_input' AND missing_fields LIKE '%warrantyMonths%'`,
+    [storeDomain, exceptId],
+  );
+  for (const r of rows) {
+    const missing = (JSON.parse(r.missing_fields) as string[]).filter((f) => f !== 'warrantyMonths');
+    await db.runAsync(
+      `UPDATE warranties SET warranty_months = ?, length_is_suggested = 0, missing_fields = ?, status = ?, updated_at = ? WHERE id = ?`,
+      [months, JSON.stringify(missing), missing.length ? 'needs_input' : 'complete', new Date().toISOString(), r.id],
+    );
+  }
+}
+
+// The next item to resolve after this one (newest purchase first, like the list).
+export async function nextNeedsInput(db: Db, afterId: number): Promise<number | null> {
+  const rows = await db.getAllAsync<{ id: number }>(`SELECT id FROM warranties WHERE status = 'needs_input' ORDER BY purchase_date DESC, id DESC`, []);
+  const i = rows.findIndex((r) => r.id === afterId);
+  const rest = i >= 0 ? [...rows.slice(i + 1), ...rows.slice(0, i)] : rows;
+  return rest.find((r) => r.id !== afterId)?.id ?? null;
+}
+
+// The mail a warranty came from, to show it next to the form ("source viewer").
+export async function sourceOf(db: Db, warrantyId: number): Promise<{ message_id: string; email: string } | null> {
+  return db.getFirstAsync(
+    `SELECT s.message_id, a.email FROM sources s JOIN accounts a ON a.id = s.account_id WHERE s.warranty_id = ? ORDER BY s.received_at LIMIT 1`,
+    [warrantyId],
+  );
+}

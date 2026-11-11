@@ -60,7 +60,7 @@ export default function Attention() {
         contentContainerStyle={styles.list}
         data={items}
         keyExtractor={(w) => String(w.id)}
-        renderItem={({ item }) => <WarrantyRow warranty={item} />}
+        renderItem={({ item }) => <WarrantyRow warranty={item} to={{ pathname: '/warranty/edit', params: { id: String(item.id) } }} />}
         ListHeaderComponent={header}
         ListEmptyComponent={returns.length ? undefined : <Text style={styles.empty}>{t('attention.empty')}</Text>}
       />

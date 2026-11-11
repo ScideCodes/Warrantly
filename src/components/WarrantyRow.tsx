@@ -1,4 +1,4 @@
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -32,7 +32,8 @@ export function formatDate(ymd: string, language: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-export function WarrantyRow({ warranty: w }: { warranty: Warranty }) {
+// `to` overrides where a tap goes (the attention list opens the resolve form directly).
+export function WarrantyRow({ warranty: w, to }: { warranty: Warranty; to?: Href }) {
   const { t } = useTranslation();
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
@@ -40,7 +41,7 @@ export function WarrantyRow({ warranty: w }: { warranty: Warranty }) {
   const product = displayName(t, w);
 
   return (
-    <Pressable style={styles.row} onPress={() => router.push(`/warranty/${w.id}`)} accessibilityRole="button">
+    <Pressable style={styles.row} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={2}>
           {product}

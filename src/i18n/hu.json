@@ -65,7 +65,11 @@
   },
   "attention": {
     "title": "Figyelmet igényel",
-    "empty": "Minden rendben"
+    "empty": "Minden rendben",
+    "applyTitle_one": "{{months}} hónap legyen {{count}} további tételnél is ({{store}})?",
+    "applyTitle_other": "{{months}} hónap legyen {{count}} további tételnél is ({{store}})?",
+    "applyYes": "Mindegyiknél",
+    "applyNo": "Csak ennél"
   },
   "form": {
     "titleAdd": "Garancia hozzáadása",
@@ -96,7 +100,11 @@
     "scanHint": "Fotózd le a nyugtát vagy a garanciajegyet. A Warrantly ezen a telefonon olvassa be, és kitölti, amit talál.",
     "scanning": "Dokumentum olvasása…",
     "scanned": "Dokumentum csatolva. Ellenőrizd lent az adatokat, a beolvasás tévedhet.",
-    "scanFailed": "A beolvasás nem sikerült: {{detail}}"
+    "scanFailed": "A beolvasás nem sikerült: {{detail}}",
+    "showEmail": "Eredeti levél megjelenítése",
+    "hideEmail": "Levél elrejtése",
+    "noEmail": "Az eredeti levél nem érhető el.",
+    "later": "Később"
   },
   "detail": {
     "edit": "Szerkesztés",

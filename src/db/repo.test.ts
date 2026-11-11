@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addManual, answerReturn, listReturnPrompts, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addManual, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -257,4 +257,26 @@ test('syncStart: last sync, chosen range, all mail, or the 24-month default', ()
   assert.equal(syncStart(null, 14, now)?.toISOString(), '2026-10-28T10:00:00.000Z');
   assert.equal(syncStart(null, 0, now), null);
   assert.equal(syncStart(null, null, now)?.toISOString().slice(0, 7), '2024-11');
+});
+
+test('resolving attention items: apply a length to the store, move to the next, find the source mail', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const second = { ...byId.get('conrad-order-rule')!, id: 'conrad-2', date: '2026-09-01T10:00:00Z', text: '| Jonsbo VC-30 Tartó 1 db [](#) |' };
+  byId.set('conrad-2', second);
+  await syncAccount(db, fakeProvider(['conrad-order-rule', 'conrad-2', 'alza-pickup'], []), 'user@example.com');
+  const pending = await listWarranties(db, 'needs_input');
+  const conrad = pending.filter((w) => w.store_domain === 'conrad.hu');
+  assert.equal(conrad.length, 2);
+
+  assert.equal(await storeItemsMissingLength(db, 'conrad.hu', conrad[0].id), 1);
+  await applyLengthToStore(db, 'conrad.hu', 12, conrad[0].id);
+  const other = (await getWarranty(db, conrad[1].id))!;
+  assert.deepEqual([other.status, other.warranty_months, other.length_is_suggested], ['complete', 12, 0]);
+
+  const order = (await listWarranties(db, 'needs_input')).sort((a, b) => b.purchase_date.localeCompare(a.purchase_date) || b.id - a.id).map((w) => w.id);
+  assert.equal(await nextNeedsInput(db, order[0]), order[1] ?? null);
+  assert.equal(await nextNeedsInput(db, order[order.length - 1]), order.length > 1 ? order[0] : null); // wraps around
+
+  assert.deepEqual({ ...(await sourceOf(db, conrad[0].id)) }, { message_id: 'conrad-order-rule', email: 'user@example.com' });
 });
