@@ -4,14 +4,16 @@ import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, 
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
-import type { BackupInterval } from '@/backup/format.ts';
+import { dumpDb, type BackupInterval } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
-import { listAccounts, type Account } from '@/db/repo.ts';
+import { listAccounts, listWarranties, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
-import { versionLine } from '@/appUpdate';
+import { restartIntoUpdate, versionLine } from '@/appUpdate';
+import { deleteAllData, sharePdf, shareText } from '@/dataTools';
+import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
-import { getRemindersEnabled, getReturnRemindersEnabled, getSetting, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames } from '@/settings';
+import { getRemindersEnabled, getReturnRemindersEnabled, getSetting, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 
@@ -133,6 +135,43 @@ export default function Settings() {
     setBackupError(getSetting('last_backup_error'));
     setBackupAccount(getSetting('backup_account'));
     setBackupBusy(false);
+  }
+
+  // Export (section 13) and the data rights (GDPR): everything leaves only through the share sheet.
+  async function exportList(format: 'csv' | 'pdf') {
+    try {
+      const list = await listWarranties(await getDb(), 'complete');
+      const day = new Date().toISOString().slice(0, 10);
+      if (format === 'csv') await shareText(`warrantly-${day}.csv`, '\ufeff' + toCsv(list, t), 'text/csv'); // BOM: Excel reads UTF-8 (á, ő)
+      else await sharePdf(`warrantly-${day}.pdf`, toHtml(list, t, t('export.title', { date: day })));
+    } catch (e) {
+      Alert.alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function exportEverything() {
+    try {
+      const data = await dumpDb(await getDb(), settingsSnapshot());
+      await shareText(`warrantly-all-data-${data.createdAt.slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json');
+    } catch (e) {
+      Alert.alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  function confirmDeleteAll() {
+    const run = async (drive: boolean) => {
+      try {
+        await deleteAllData(await getDb(), drive);
+        await restartIntoUpdate().catch(() => router.replace('/onboarding')); // starts fresh, like a new install
+      } catch (e) {
+        Alert.alert(e instanceof Error ? e.message : String(e));
+      }
+    };
+    Alert.alert(t('data.deleteTitle'), t('data.deleteBody'), [
+      { text: t('restore.cancel'), style: 'cancel' },
+      { text: t('data.deletePhone'), style: 'destructive', onPress: () => void run(false) },
+      { text: t('data.deleteAll'), style: 'destructive', onPress: () => void run(true) },
+    ]);
   }
 
   // Section 17: which Google account's Drive holds the backups. The next backup goes there in full.
@@ -265,6 +304,24 @@ export default function Settings() {
         </View>
         <Pressable style={styles.row} onPress={() => router.push('/restore')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('backup.restore')}</Text>
+        </Pressable>
+        <Text style={styles.section} accessibilityRole="header">
+          {t('data.section')}
+        </Text>
+        <Pressable style={styles.row} onPress={() => exportList('pdf')} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('data.exportPdf')}</Text>
+        </Pressable>
+        <Pressable style={styles.row} onPress={() => exportList('csv')} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('data.exportCsv')}</Text>
+        </Pressable>
+        <Pressable style={styles.row} onPress={exportEverything} accessibilityRole="button">
+          <View style={styles.rowText}>
+            <Text style={[styles.label, styles.link]}>{t('data.exportAll')}</Text>
+            <Text style={styles.hint}>{t('data.exportAllHint')}</Text>
+          </View>
+        </Pressable>
+        <Pressable style={styles.row} onPress={confirmDeleteAll} accessibilityRole="button">
+          <Text style={styles.danger}>{t('data.delete')}</Text>
         </Pressable>
         <Text style={styles.version} selectable>
           {t('settings.version', { version: versionLine(i18n.language) })}

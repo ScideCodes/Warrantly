@@ -76,6 +76,14 @@ export async function latestBackup(): Promise<{ id: string; createdTime: string 
   return (await drive().list()).find((f) => f.name.startsWith(BACKUP_PREFIX)) ?? null;
 }
 
+// "Delete all my data" with Drive: every file this app put in the backup folder (backups, documents,
+// disconnect copies). drive.file access only ever sees the app's own files.
+export async function deleteDriveBackups(): Promise<void> {
+  if (!(await ensureDriveAccess(false))) return; // never connected to Drive: nothing there
+  const d = drive();
+  for (const f of await d.list()) await d.remove(f.id);
+}
+
 export class PasswordNeededError extends Error {}
 
 // Restore replaces everything on this phone. The password is needed unless this phone made the backup.

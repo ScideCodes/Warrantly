@@ -323,5 +323,38 @@
     "standard": "Standard",
     "store": "Store warranty",
     "extended": "Extended plan"
+  },
+  "export": {
+    "title": "Warranties ({{date}})",
+    "col": {
+      "product_name": "Product",
+      "store_name": "Store",
+      "category": "Category",
+      "coverage": "Type",
+      "purchase_date": "Purchase date",
+      "warranty_start_date": "Warranty start",
+      "warranty_months": "Months",
+      "end_date": "Expires on",
+      "price": "Price",
+      "currency": "Currency",
+      "order_number": "Order number",
+      "serial_number": "Serial number",
+      "contact_email": "Contact email",
+      "contact_phone": "Contact phone",
+      "website_url": "Website",
+      "notes": "Notes"
+    }
+  },
+  "data": {
+    "section": "Your data",
+    "exportPdf": "Export list as PDF",
+    "exportCsv": "Export list as spreadsheet (CSV)",
+    "exportAll": "Export all my data",
+    "exportAllHint": "Every record as a JSON file. Documents stay in your backups.",
+    "delete": "Delete all my data",
+    "deleteTitle": "Delete all your data?",
+    "deleteBody": "Warranties, documents, settings and the PIN are removed from this phone, and Warrantly starts like new. This cannot be undone.",
+    "deletePhone": "Delete from this phone",
+    "deleteAll": "Also delete Drive backups"
   }
 }

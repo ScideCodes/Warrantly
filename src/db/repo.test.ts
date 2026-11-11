@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -323,4 +323,14 @@ test('a product can have several warranties: the others are found by product, st
   await addManual(db, { ...base, product_name: 'Soundbar' }); // same purchase, other product
   const others = await otherCovers(db, (await getWarranty(db, main))!);
   assert.deepEqual(others.map((w) => [w.id, w.coverage, w.end_date]), [[extended, 'extended', '2031-01-01']]);
+});
+
+test('wipeDb empties every table', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  await syncAccount(db, fakeProvider(['merlin-cancel', 'merlin-order', 'pcx-order'], []), 'user@example.com');
+  await saveStoreRule(db, 'pcx.hu', 24);
+  await wipeDb(db);
+  const tables = (db.raw.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
+  for (const t of tables) assert.equal((db.raw.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as { n: number }).n, 0, t);
 });
