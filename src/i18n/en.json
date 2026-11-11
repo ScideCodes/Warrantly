@@ -90,6 +90,7 @@
     "deleteConfirm": "Delete warranty",
     "cancel": "Cancel",
     "serial": "Serial number",
-    "notes": "Notes"
+    "notes": "Notes",
+    "fullName": "Full product name"
   }
 }

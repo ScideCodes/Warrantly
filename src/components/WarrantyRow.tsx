@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { Warranty } from '@/db/repo.ts';
 import { colors } from '@/theme';
-import { ago, daysUntil, todayYmd, urgency } from '@/warranty';
+import { ago, daysUntil, shortName, todayYmd, urgency } from '@/warranty';
 
 export function daysLabel(t: TFunction, daysLeft: number): string {
   if (daysLeft < 0) return t('warranty.expiredAgo', { count: -daysLeft });
@@ -21,6 +21,12 @@ export function agoLabel(t: TFunction, ymd: string, today: string): string {
   return unit === 'days' && count === 0 ? t('warranty.today') : t(`warranty.ago_${unit}`, { count });
 }
 
+// Imported names get shortened for the list; names the user typed are shown as typed.
+export function displayName(t: TFunction, w: Warranty): string {
+  if (!w.product_name) return t('warranty.unknownProduct');
+  return w.origin === 'manual' ? w.product_name : shortName(w.product_name);
+}
+
 export function formatDate(ymd: string, language: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' });
@@ -31,7 +37,7 @@ export function WarrantyRow({ warranty: w }: { warranty: Warranty }) {
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
   const pill = colors[urgency(days)];
-  const product = w.product_name ?? t('warranty.unknownProduct');
+  const product = displayName(t, w);
 
   return (
     <Pressable style={styles.row} onPress={() => router.push(`/warranty/${w.id}`)} accessibilityRole="button">

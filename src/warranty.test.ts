@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, formErrors, isValidYmd, urgency } from './warranty.ts';
+import { ago, daysUntil, endDate, formErrors, isValidYmd, shortName, urgency } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -38,4 +38,15 @@ test('form validation', () => {
   assert.deepEqual(formErrors({ ...ok, warranty_start_date: '2026-10-01' }), ['warranty_start_date']); // before purchase
   assert.deepEqual(formErrors({ ...ok, warranty_months: '12.5' }), ['warranty_months']);
   assert.equal(isValidYmd('2028-02-29'), true);
+});
+
+test('shortName keeps the identifying part of shop product names', () => {
+  assert.equal(shortName('Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)'), 'Jonsbo D300');
+  assert.equal(shortName('Gembird WM-55ST-04 fali tartó konzol (815987) 12+'), 'Gembird WM-55ST-04 fali tartó konzol');
+  assert.equal(shortName('SAMSUNG hálózati töltő Type-C aljzat 25W, PD gyorstöltés, fekete'), 'SAMSUNG hálózati töltő Type-C aljzat 25W');
+  assert.equal(shortName('VXE MAD R 8K optikai USB / vezeték nélküli gaming egér'), 'VXE MAD R 8K optikai USB');
+  assert.equal(shortName('Deepcool SC790 PWM és RGB vezérlő hub (R-SC790)'), 'Deepcool SC790 PWM és RGB vezérlő hub');
+  assert.equal(shortName('Samsung Galaxy S24'), 'Samsung Galaxy S24'); // trailing model number stays
+  assert.equal(shortName('Monitor - 27"'), 'Monitor - 27"'); // one word left: keep the whole name
+  assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse');
 });
