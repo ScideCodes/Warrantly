@@ -109,10 +109,17 @@ const MIGRATIONS = [
   `ALTER TABLE accounts ADD COLUMN first_sync_days INTEGER;`,
   // v10: price paid (and its currency), a category, and the kind of cover when a product has several
   // warranties (coverage: NULL = the standard one, 'store', 'extended'). All optional, entered by the user.
+  // history: repairs, claims and other notes per warranty.
   `ALTER TABLE warranties ADD COLUMN price REAL;
    ALTER TABLE warranties ADD COLUMN currency TEXT;
    ALTER TABLE warranties ADD COLUMN category TEXT;
-   ALTER TABLE warranties ADD COLUMN coverage TEXT;`,
+   ALTER TABLE warranties ADD COLUMN coverage TEXT;
+   CREATE TABLE history (
+     id INTEGER PRIMARY KEY,
+     warranty_id INTEGER NOT NULL REFERENCES warranties(id),
+     date TEXT NOT NULL,
+     note TEXT NOT NULL
+   );`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -344,10 +351,28 @@ export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
     // SQLite reuses ids: a return question left behind would later show up on an unrelated new warranty.
     await db.runAsync('DELETE FROM returns WHERE warranty_id = ?', [id]);
+    await db.runAsync('DELETE FROM history WHERE warranty_id = ?', [id]);
     await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
     await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
   });
   return files;
+}
+
+// --- Repair and claim history (notes per warranty) ---
+
+export interface HistoryEntry {
+  id: number;
+  date: string; // YYYY-MM-DD
+  note: string;
+}
+export async function listHistory(db: Db, warrantyId: number): Promise<HistoryEntry[]> {
+  return db.getAllAsync('SELECT id, date, note FROM history WHERE warranty_id = ? ORDER BY date DESC, id DESC', [warrantyId]);
+}
+export async function addHistory(db: Db, warrantyId: number, date: string, note: string): Promise<void> {
+  await db.runAsync('INSERT INTO history (warranty_id, date, note) VALUES (?, ?, ?)', [warrantyId, date, note]);
+}
+export async function deleteHistory(db: Db, id: number): Promise<void> {
+  await db.runAsync('DELETE FROM history WHERE id = ?', [id]);
 }
 
 export interface Attachment {
@@ -378,6 +403,7 @@ export interface AccountRows {
   warranties: Record<string, unknown>[];
   sources: Record<string, unknown>[];
   attachments?: Record<string, unknown>[]; // missing in disconnect backups made before documents were kept
+  history?: Record<string, unknown>[];
 }
 
 export async function dumpAccount(db: Db, accountId: number): Promise<AccountRows> {
@@ -386,6 +412,7 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
     warranties: await db.getAllAsync('SELECT * FROM warranties WHERE account_id = ?', [accountId]),
     sources: await db.getAllAsync('SELECT * FROM sources WHERE account_id = ?', [accountId]),
     attachments: await db.getAllAsync('SELECT * FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]),
+    history: await db.getAllAsync('SELECT * FROM history WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]),
   };
 }
 
@@ -399,6 +426,7 @@ export async function deleteAccount(db: Db, accountId: number): Promise<string[]
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
     await db.runAsync('DELETE FROM returns WHERE account_id = ?', [accountId]); // see deleteWarranty: ids are reused
+    await db.runAsync('DELETE FROM history WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
     await db.runAsync('DELETE FROM sources WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM warranties WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM accounts WHERE id = ?', [accountId]);
@@ -424,6 +452,10 @@ export async function restoreAccount(db: Db, accountId: number, rows: AccountRow
     for (const { id: _id, source_id: _source, ...a } of rows.attachments ?? []) {
       const warrantyId = ids.get(a.warranty_id);
       if (warrantyId) await insert('attachments', { ...a, warranty_id: warrantyId });
+    }
+    for (const { id: _id, ...h } of rows.history ?? []) {
+      const warrantyId = ids.get(h.warranty_id);
+      if (warrantyId) await insert('history', { ...h, warranty_id: warrantyId });
     }
     await db.runAsync('UPDATE accounts SET last_synced_at = ?, docs_backfilled = 0 WHERE id = ?', [rows.account.last_synced_at as string | null, accountId]);
   });

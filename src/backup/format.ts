@@ -5,7 +5,7 @@ import type { Db } from '../db/repo.ts';
 // from the user's backup password. Google Drive only ever sees the sealed envelope.
 
 // `returns` points at warranty ids, so it must travel with them (old backups without it restore as empty).
-const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments', 'returns'] as const;
+const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments', 'returns', 'history'] as const;
 
 export interface BackupData {
   app: 'warrantly';

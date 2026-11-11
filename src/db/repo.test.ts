@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addManual, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -135,6 +135,7 @@ test('disconnect removes one account only; reconnect restores it under the new a
 
   const [scanned] = await db.getAllAsync<{ id: number }>('SELECT id FROM warranties WHERE account_id = ? ORDER BY id', [work.id]);
   await addAttachment(db, scanned.id, 'Receipt.pdf', 'scan-1.pdf'); // a paper receipt scanned onto a mail warranty
+  await addHistory(db, scanned.id, '2026-03-01', 'Sent for repair');
   const rows = await dumpAccount(db, work.id);
   assert.deepEqual(await deleteAccount(db, work.id), ['scan-1.pdf']);
   assert.deepEqual((await listAccounts(db)).map((a) => a.email), ['home@example.com']);
@@ -150,6 +151,8 @@ test('disconnect removes one account only; reconnect restores it under the new a
   // The scanned document is attached again; mail PDFs are fetched again by the next sync.
   assert.equal(count('SELECT COUNT(*) n FROM attachments a JOIN warranties w ON w.id = a.warranty_id WHERE w.account_id = ? AND a.local_path = ?', again.id, 'scan-1.pdf'), 1);
   assert.equal(count('SELECT docs_backfilled n FROM accounts WHERE id = ?', again.id), 0);
+  assert.equal(count('SELECT COUNT(*) n FROM history h JOIN warranties w ON w.id = h.warranty_id WHERE w.account_id = ?', again.id), 1); // notes come back
+  assert.equal((await listHistory(db, (await db.getAllAsync<{ id: number }>('SELECT id FROM warranties WHERE account_id = ? ORDER BY id', [again.id]))[0].id))[0].note, 'Sent for repair');
   // The mails are known again, so the next sync does not import them twice.
   await syncAccount(db, fakeProvider(['pcx-order', 'synthetic-en-warranty'], []), 'work@example.com');
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);

@@ -113,7 +113,7 @@ export async function disconnectAccount(db: Db, account: Account, now = new Date
   const stored = storedKey();
   if (!stored) throw new Error('No backup password set');
   const rows = await dumpAccount(db, account.id);
-  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: rows.attachments!.filter(keptOnDisconnect), returns: [] }, settings: {} };
+  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: rows.attachments!.filter(keptOnDisconnect), returns: [], history: rows.history ?? [] }, settings: {} };
   const text = await seal(aead, fromBase64(stored.key), stored.kdf, payload);
   await saveDisconnectBackup(db, account.email, text, now.toISOString());
   if (getSetting('backup_enabled') === '1' && (await ensureDriveAccess(false))) {
@@ -136,6 +136,6 @@ export async function restoreDisconnected(db: Db, account: Account): Promise<voi
   const stored = storedKey();
   if (!saved || !stored) throw new Error('No backup for this account');
   const data = await unseal(aead, saved.envelope, async () => fromBase64(stored.key));
-  const rows: AccountRows = { account: data.tables.accounts[0], warranties: data.tables.warranties, sources: data.tables.sources, attachments: data.tables.attachments };
+  const rows: AccountRows = { account: data.tables.accounts[0], warranties: data.tables.warranties, sources: data.tables.sources, attachments: data.tables.attachments, history: data.tables.history };
   await restoreAccount(db, account.id, rows);
 }

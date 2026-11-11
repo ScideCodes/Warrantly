@@ -139,7 +139,14 @@
     "returnBy": "Visszaküldés eddig",
     "returnHint": "14 napos elállási jog",
     "otherCovers": "További garanciák ehhez a vásárláshoz",
-    "addCover": "Újabb garancia hozzáadása (pl. kiterjesztett)"
+    "addCover": "Újabb garancia hozzáadása (pl. kiterjesztett)",
+    "history": "Előzmények (javítás, reklamáció, jegyzet)",
+    "notePlaceholder": "pl. Javításra elküldve",
+    "addNote": "Hozzáad",
+    "deleteNote": "Törlöd ezt a jegyzetet?",
+    "deleteNoteHint": "Hosszan nyomva törlöd",
+    "brandSupport": "{{brand}} ügyfélszolgálat keresése",
+    "supportQuery": "garancia szerviz ügyfélszolgálat"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
