@@ -420,3 +420,33 @@ export async function isDocsBackfilled(db: Db, accountId: number): Promise<boole
 export async function setDocsBackfilled(db: Db, accountId: number): Promise<void> {
   await db.runAsync('UPDATE accounts SET docs_backfilled = 1 WHERE id = ?', [accountId]);
 }
+
+// --- Ignored mails (section 8: hidden but reviewable and restorable) ---
+
+export interface IgnoredRow {
+  id: number;
+  product_name: string | null;
+  store_name: string;
+  purchase_date: string;
+  subject: string | null;
+  sender: string | null;
+}
+
+export async function listIgnored(db: Db): Promise<IgnoredRow[]> {
+  return db.getAllAsync<IgnoredRow>(
+    `SELECT w.id, w.product_name, w.store_name, w.purchase_date, min(s.subject) AS subject, min(s.sender) AS sender
+       FROM warranties w LEFT JOIN sources s ON s.warranty_id = w.id
+      WHERE w.status = 'ignored' GROUP BY w.id ORDER BY w.purchase_date DESC, w.id DESC`,
+    [],
+  );
+}
+
+// Back to "Needs your attention", with whatever is still unknown marked as missing.
+export async function restoreIgnored(db: Db, id: number): Promise<void> {
+  const w = await db.getFirstAsync<{ product_name: string | null; length_is_suggested: number }>('SELECT product_name, length_is_suggested FROM warranties WHERE id = ?', [id]);
+  if (!w) return;
+  const missing = [...(w.product_name ? [] : ['productName']), ...(w.length_is_suggested ? ['warrantyMonths'] : [])];
+  await db.runAsync(`UPDATE warranties SET status = ?, missing_fields = ?, updated_at = ? WHERE id = ?`, [
+    missing.length ? 'needs_input' : 'complete', JSON.stringify(missing), new Date().toISOString(), id,
+  ]);
+}

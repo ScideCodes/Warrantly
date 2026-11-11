@@ -30,7 +30,10 @@
     "add": "Add",
     "tabAll": "All",
     "tabManual": "Manual",
-    "reconnect": "Connect {{email}} again in Settings to keep syncing it."
+    "reconnect": "Connect {{email}} again in Settings to keep syncing it.",
+    "search": "Search product or store",
+    "soon": "Expiring within 30 days",
+    "noMatch": "Nothing matches. Clear the search or filters."
   },
   "warranty": {
     "unknownProduct": "Product not found",
@@ -227,5 +230,11 @@
     "problem": "Problem",
     "problemPlaceholder": "[Describe the problem here]",
     "thanks": "Thank you,"
+  },
+  "ignored": {
+    "title": "Ignored emails",
+    "hint": "Emails Warrantly skipped or you marked as not a warranty. Restore one to complete it under \"Needs your attention\".",
+    "empty": "Nothing ignored.",
+    "restore": "Restore"
   }
 }

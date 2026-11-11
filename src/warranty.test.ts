@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, formErrors, isValidYmd, reminderPlan, shortName, urgency } from './warranty.ts';
+import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderPlan, shortName, urgency, type ListFilter } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -67,4 +67,24 @@ test('reminderPlan: 90/60/30, weekly, expiry day; future only; nearest first; ca
   const capped = reminderPlan(many, '2026-11-11', 60);
   assert.equal(capped.length, 60);
   assert.ok(capped.every((r, i) => i === 0 || capped[i - 1].date <= r.date));
+});
+
+test('filterWarranties: tab, account, store, expiring soon, accent-insensitive search', () => {
+  const today = '2026-11-11';
+  const list = [
+    { id: 1, product_name: 'Philips vízforraló HD9350', store_name: 'MediaMarkt', end_date: '2026-11-30', account_id: null },
+    { id: 2, product_name: 'Gembird WM-55ST-04 fali tartó', store_name: 'PCX', end_date: '2028-01-01', account_id: 7 },
+    { id: 3, product_name: null, store_name: 'Conrad HU', end_date: '2026-10-01', account_id: 7 },
+  ];
+  const base: ListFilter = { query: '', store: null, soon: false, account: 'all', tab: 'active' };
+  const ids = (f: Partial<ListFilter>) => filterWarranties(list, { ...base, ...f }, today).map((w) => w.id);
+  assert.deepEqual(ids({}), [1, 2]);
+  assert.deepEqual(ids({ tab: 'expired' }), [3]);
+  assert.deepEqual(ids({ query: 'vizforralo' }), [1]);
+  assert.deepEqual(ids({ query: 'pcx tartó' }), [2]); // every word, product or store
+  assert.deepEqual(ids({ soon: true }), [1]);
+  assert.deepEqual(ids({ account: 7 }), [2]);
+  assert.deepEqual(ids({ account: 'manual' }), [1]);
+  assert.deepEqual(ids({ store: 'PCX' }), [2]);
+  assert.deepEqual(ids({ tab: 'expired', query: 'conrad' }), [3]);
 });

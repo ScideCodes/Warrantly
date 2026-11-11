@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -11,7 +11,7 @@ import { listAccounts, listWarranties, type Account, type Warranty } from '@/db/
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
-import { daysUntil, todayYmd } from '@/warranty';
+import { filterWarranties, todayYmd } from '@/warranty';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
 type Filter = 'all' | 'manual' | number; // an account id
@@ -24,6 +24,9 @@ export default function Home() {
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [tab, setTab] = useState<'active' | 'expired'>('active');
+  const [query, setQuery] = useState('');
+  const [store, setStore] = useState<string | null>(null);
+  const [soon, setSoon] = useState(false);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [attention, setAttention] = useState(0);
   const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
@@ -72,8 +75,9 @@ export default function Home() {
   const today = todayYmd();
   // Section 15: one tab per account plus the general Manual tab, shown once an account is connected.
   const groups: Filter[] = accounts?.length ? [...accounts.map((a) => a.id), 'manual'] : [];
-  const inFilter = (w: Warranty) => filter === 'all' || (filter === 'manual' ? w.account_id === null : w.account_id === filter);
-  const shown = warranties.filter((w) => inFilter(w) && (daysUntil(w.end_date, today) >= 0) === (tab === 'active'));
+  // Section 13: search (product, store) and filters, in both Active and Expired.
+  const shown = filterWarranties(warranties, { query, store, soon, account: filter, tab }, today);
+  const stores = [...new Set(filterWarranties(warranties, { query: '', store: null, soon: false, account: filter, tab }, today).map((w) => w.store_name))].sort();
   const label = (f: Filter) => (f === 'all' ? t('home.tabAll') : f === 'manual' ? t('home.tabManual') : (accounts?.find((a) => a.id === f)?.email ?? ''));
 
   const header = (
@@ -111,6 +115,41 @@ export default function Home() {
             {p}
           </Text>
         ))}
+      {warranties.length > 0 && (
+        <>
+          <TextInput
+            style={styles.search}
+            value={query}
+            onChangeText={setQuery}
+            placeholder={t('home.search')}
+            placeholderTextColor={colors.muted}
+            accessibilityLabel={t('home.search')}
+            clearButtonMode="while-editing"
+            returnKeyType="search"
+          />
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
+            {tab === 'active' && (
+              <Pressable style={[styles.chip, soon && styles.chipSelected]} onPress={() => setSoon(!soon)} accessibilityRole="checkbox" accessibilityState={{ checked: soon }}>
+                <Text style={[styles.chipText, soon && styles.chipTextSelected]}>{t('home.soon')}</Text>
+              </Pressable>
+            )}
+            {stores.length > 1 &&
+              stores.map((name) => (
+                <Pressable
+                  key={name}
+                  style={[styles.chip, store === name && styles.chipSelected]}
+                  onPress={() => setStore(store === name ? null : name)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: store === name }}
+                >
+                  <Text style={[styles.chipText, store === name && styles.chipTextSelected]} numberOfLines={1}>
+                    {name}
+                  </Text>
+                </Pressable>
+              ))}
+          </ScrollView>
+        </>
+      )}
       {groups.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityRole="tablist">
           {(['all', ...groups] as Filter[]).map((f) => (
@@ -141,7 +180,13 @@ export default function Home() {
   );
 
   const empty = accounts === null ? undefined : accounts.length ? (
-    <Text style={styles.empty}>{sync.kind === 'syncing' ? t('home.syncing', { email: sync.email }) : t(tab === 'active' ? 'home.emptyActive' : 'home.emptyExpired')}</Text>
+    <Text style={styles.empty}>
+      {sync.kind === 'syncing'
+        ? t('home.syncing', { email: sync.email })
+        : query || store || soon
+          ? t('home.noMatch')
+          : t(tab === 'active' ? 'home.emptyActive' : 'home.emptyExpired')}
+    </Text>
   ) : (
     <View style={styles.connect}>
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
@@ -188,6 +233,7 @@ const styles = StyleSheet.create({
   chip: { minHeight: 36, maxWidth: 220, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
   chipSelected: { backgroundColor: colors.text, borderColor: colors.text },
   chipText: { fontSize: 14, color: colors.text },
+  search: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 22, paddingHorizontal: 16, fontSize: 16, color: colors.text },
   chipTextSelected: { color: colors.background, fontWeight: '600' },
   detail: { fontSize: 12, color: colors.muted },
   tabs: { flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },

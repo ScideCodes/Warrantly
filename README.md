@@ -20,6 +20,8 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
   Expo module (Kotlin) that gets a Gmail token for a specific account; one tab per account plus Manual.
 - Step 8 (document scan + OCR, claim helper): done in app 0.5.0. ML Kit document scanner and text
   recognition on the phone; `src/parser/scan.ts` turns the text into form suggestions.
+- Step 4 (mail PDFs): sync downloads PDFs and attaches them by purchase mail or order number.
+- Step 9a (search and filters, Ignored screen): done. Widget, store templates and other providers remain.
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns

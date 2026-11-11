@@ -159,6 +159,9 @@ export default function Settings() {
         )}
         {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
         {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+        <Pressable style={styles.row} onPress={() => router.push('/ignored')} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('ignored.title')}</Text>
+        </Pressable>
 
         <Text style={styles.section} accessibilityRole="header">
           {t('backup.section')}

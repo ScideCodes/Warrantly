@@ -101,3 +101,35 @@ function addDays(ymd: string, days: number): string {
   d.setDate(d.getDate() + days);
   return toYmd(d);
 }
+
+// --- Search and filters (section 13) ---
+
+// Lower-case without Hungarian/common accents, so "vizforralo" finds "vízforraló". A fixed map instead of
+// String.normalize, which not every JS engine build ships.
+const PLAIN: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ö: 'o', ő: 'o', ú: 'u', ü: 'u', ű: 'u', ä: 'a', ß: 'ss' };
+export const plain = (s: string): string => s.toLowerCase().replace(/[áéíóöőúüűäß]/g, (c) => PLAIN[c]);
+
+export interface ListFilter {
+  query: string;
+  store: string | null;
+  soon: boolean; // expiring within 30 days
+  account: 'all' | 'manual' | number;
+  tab: 'active' | 'expired';
+}
+
+export function filterWarranties<W extends { product_name: string | null; store_name: string; end_date: string; account_id: number | null }>(
+  list: W[],
+  f: ListFilter,
+  today: string,
+): W[] {
+  const words = plain(f.query).split(/\s+/).filter(Boolean);
+  return list.filter((w) => {
+    const days = daysUntil(w.end_date, today);
+    if ((days >= 0) !== (f.tab === 'active')) return false;
+    if (f.account !== 'all' && (f.account === 'manual' ? w.account_id !== null : w.account_id !== f.account)) return false;
+    if (f.store && w.store_name !== f.store) return false;
+    if (f.soon && (days < 0 || days > 30)) return false;
+    const text = plain(`${w.product_name ?? ''} ${w.store_name}`);
+    return words.every((word) => text.includes(word));
+  });
+}
