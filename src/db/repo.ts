@@ -358,6 +358,15 @@ export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
   return files;
 }
 
+// "Delete all my data": every table, children first.
+export async function wipeDb(db: Db): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    for (const t of ['history', 'returns', 'attachments', 'sources', 'warranties', 'store_rules', 'disconnect_backups', 'accounts']) {
+      await db.runAsync(`DELETE FROM ${t}`, []);
+    }
+  });
+}
+
 // --- Repair and claim history (notes per warranty) ---
 
 export interface HistoryEntry {

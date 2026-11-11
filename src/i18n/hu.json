@@ -323,5 +323,38 @@
     "standard": "Alap",
     "store": "Bolti garancia",
     "extended": "Kiterjesztett"
+  },
+  "export": {
+    "title": "Garanciák ({{date}})",
+    "col": {
+      "product_name": "Termék",
+      "store_name": "Bolt",
+      "category": "Kategória",
+      "coverage": "Típus",
+      "purchase_date": "Vásárlás dátuma",
+      "warranty_start_date": "Garancia kezdete",
+      "warranty_months": "Hónap",
+      "end_date": "Lejár",
+      "price": "Ár",
+      "currency": "Pénznem",
+      "order_number": "Rendelésszám",
+      "serial_number": "Sorozatszám",
+      "contact_email": "Kapcsolat e-mail",
+      "contact_phone": "Kapcsolat telefon",
+      "website_url": "Weboldal",
+      "notes": "Jegyzet"
+    }
+  },
+  "data": {
+    "section": "Adataid",
+    "exportPdf": "Lista exportálása PDF-be",
+    "exportCsv": "Lista exportálása táblázatba (CSV)",
+    "exportAll": "Összes adatom exportálása",
+    "exportAllHint": "Minden adat JSON fájlban. A dokumentumok a mentésekben maradnak.",
+    "delete": "Összes adatom törlése",
+    "deleteTitle": "Törlöd az összes adatodat?",
+    "deleteBody": "A garanciák, dokumentumok, beállítások és a PIN törlődnek erről a telefonról, a Warrantly újként indul. Ez nem vonható vissza.",
+    "deletePhone": "Törlés a telefonról",
+    "deleteAll": "A Drive mentéseket is"
   }
 }
