@@ -16,6 +16,8 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
   mails is a 60-day same-product rule for now.
 - Step 7a (encrypted backup to Google Drive): done in app 0.3.0. `src/backup` holds the format
   (JSON dump, scrypt + AES-256-GCM envelope) and the Drive client; both are tested in Node.
+- Step 7b (several Gmail accounts): done in app 0.4.0. `modules/google-account-token` is a small local
+  Expo module (Kotlin) that gets a Gmail token for a specific account; one tab per account plus Manual.
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns

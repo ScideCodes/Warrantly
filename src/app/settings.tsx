@@ -1,10 +1,12 @@
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { hasBackupPassword, runBackup } from '@/backup';
+import { addGmailAccount, syncAllAccounts } from '@/accounts';
+import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
 import type { BackupInterval } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
+import { listAccounts, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
 import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting } from '@/settings';
@@ -12,7 +14,7 @@ import { colors } from '@/theme';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 
-// Settings (section 13): app lock, reminders and backup.
+// Settings (section 13): mail accounts, app lock, reminders and backup.
 export default function Settings() {
   const { t, i18n } = useTranslation();
   const [lock, setLock] = useState(isLockEnabled);
@@ -24,6 +26,8 @@ export default function Settings() {
   const [backupBusy, setBackupBusy] = useState(false);
   const [lastBackup, setLastBackup] = useState(() => getSetting('last_backup_at'));
   const [backupError, setBackupError] = useState(() => getSetting('last_backup_error'));
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountBusy, setAccountBusy] = useState<string | null>(null); // status line while adding or syncing
 
   // Back from PIN setup: show whether the lock is now on.
   useFocusEffect(
@@ -34,6 +38,7 @@ export default function Settings() {
       setBackup(getSetting('backup_enabled') === '1' && hasBackupPassword());
       setLastBackup(getSetting('last_backup_at'));
       setBackupError(getSetting('last_backup_error'));
+      void getDb().then(listAccounts).then(setAccounts);
     }, []),
   );
 
@@ -54,6 +59,42 @@ export default function Settings() {
     setRemindersEnabled(on);
     setReminders(on);
     await rescheduleReminders(await getDb());
+  }
+
+  async function addAccount() {
+    const db = await getDb();
+    try {
+      if (!(await addGmailAccount(db))) return;
+      setAccounts(await listAccounts(db));
+      setAccountBusy(t('accounts.syncing'));
+      const problems = await syncAllAccounts(db, () => {});
+      setAccountBusy(problems.length ? problems.join('\n') : null);
+    } catch (e) {
+      setAccountBusy(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  // Section 15: an encrypted backup of the account is made first; it needs the backup password.
+  function disconnect(account: Account) {
+    if (!hasBackupPassword()) {
+      return Alert.alert(t('accounts.needPassword'), undefined, [
+        { text: t('restore.cancel'), style: 'cancel' },
+        { text: t('accounts.setPassword'), onPress: () => router.push({ pathname: '/backup-password', params: { purpose: 'disconnect' } }) },
+      ]);
+    }
+    Alert.alert(t('accounts.confirmTitle', { email: account.email }), t('accounts.confirmBody'), [
+      { text: t('restore.cancel'), style: 'cancel' },
+      {
+        text: t('accounts.disconnect'),
+        style: 'destructive',
+        onPress: async () => {
+          const db = await getDb();
+          await disconnectAccount(db, account);
+          setAccounts(await listAccounts(db));
+          Alert.alert(t('accounts.done', { email: account.email }));
+        },
+      },
+    ]);
   }
 
   async function backupNow() {
@@ -89,6 +130,27 @@ export default function Settings() {
     <>
       <Stack.Screen options={{ headerShown: true, title: t('settings.title') }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <Text style={[styles.section, styles.firstSection]} accessibilityRole="header">
+          {t('accounts.section')}
+        </Text>
+        {accounts.map((a) => (
+          <View key={a.id} style={styles.row}>
+            <Text style={[styles.label, styles.rowText]} numberOfLines={1}>
+              {a.email}
+            </Text>
+            <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
+              <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
+            </Pressable>
+          </View>
+        ))}
+        <Pressable style={styles.row} onPress={addAccount} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>+ {t('accounts.add')}</Text>
+        </Pressable>
+        {accountBusy && <Text style={styles.hint}>{accountBusy}</Text>}
+
+        <Text style={styles.section} accessibilityRole="header">
+          {t('settings.general')}
+        </Text>
         {row(t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
         {lock && (
           <Pressable style={styles.row} onPress={() => router.push('/pin')} accessibilityRole="button">
@@ -151,6 +213,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, fontWeight: '600', color: colors.text },
   hint: { fontSize: 14, color: colors.muted },
   link: { color: colors.primary },
+  firstSection: { marginTop: 0 },
+  danger: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
   section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginTop: 32, marginBottom: 4 },
   block: { gap: 10, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

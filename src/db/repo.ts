@@ -74,6 +74,12 @@ const MIGRATIONS = [
   `DELETE FROM sources;
    DELETE FROM warranties WHERE origin = 'gmail';
    UPDATE accounts SET last_synced_at = NULL;`,
+  // v5: encrypted backup of an account's data, made before it is disconnected (section 15). Latest only.
+  `CREATE TABLE disconnect_backups (
+     email TEXT PRIMARY KEY,
+     created_at TEXT NOT NULL,
+     envelope TEXT NOT NULL
+   );`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -90,6 +96,10 @@ export interface Account {
   id: number;
   email: string;
   last_synced_at: string | null;
+}
+
+export async function listAccounts(db: Db): Promise<Account[]> {
+  return db.getAllAsync<Account>(`SELECT id, email, last_synced_at FROM accounts ORDER BY id`, []);
 }
 
 export async function upsertAccount(db: Db, email: string): Promise<Account> {
@@ -168,6 +178,7 @@ function insertSource(db: Db, accountId: number, warrantyId: number | null, r: P
 
 export interface WarrantyRow {
   id: number;
+  account_id: number | null;
   origin: 'gmail' | 'manual' | 'scan';
   product_name: string | null;
   store_name: string;
@@ -203,6 +214,7 @@ export async function getWarranty(db: Db, id: number): Promise<Warranty | null> 
 
 // What the add/edit form saves (section 18 "Manual add"). Saved values count as confirmed.
 export interface WarrantyInput {
+  account_id: number | null;
   product_name: string;
   store_name: string;
   purchase_date: string;
@@ -215,11 +227,10 @@ export interface WarrantyInput {
   website_url: string | null;
   notes: string | null;
 }
-const FIELDS = ['product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
+const FIELDS = ['account_id', 'product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
   'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes'] as const;
 
-// shortcut: manual entries get no account (the general "Manual" tab, section 15); choosing an account
-// tab comes with multiple accounts in build step 7.
+// Manual entries go to the tab the user picks: an account, or null for the general "Manual" tab (section 15).
 export async function addManual(db: Db, w: WarrantyInput, now = new Date().toISOString()): Promise<number> {
   const res = await db.runAsync(
     `INSERT INTO warranties (origin, ${FIELDS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
@@ -259,4 +270,59 @@ export async function deleteWarranty(db: Db, id: number): Promise<void> {
     await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
     await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
   });
+}
+
+// --- Disconnecting and reconnecting an account (section 15) ---
+
+export interface AccountRows {
+  account: Record<string, unknown>;
+  warranties: Record<string, unknown>[];
+  sources: Record<string, unknown>[];
+}
+
+export async function dumpAccount(db: Db, accountId: number): Promise<AccountRows> {
+  return {
+    account: (await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM accounts WHERE id = ?', [accountId]))!,
+    warranties: await db.getAllAsync('SELECT * FROM warranties WHERE account_id = ?', [accountId]),
+    sources: await db.getAllAsync('SELECT * FROM sources WHERE account_id = ?', [accountId]),
+  };
+}
+
+// Removes the account's warranties and mail markers. Manual and scanned entries are not affected.
+export async function deleteAccount(db: Db, accountId: number): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM sources WHERE account_id = ?', [accountId]);
+    await db.runAsync('DELETE FROM warranties WHERE account_id = ?', [accountId]);
+    await db.runAsync('DELETE FROM accounts WHERE id = ?', [accountId]);
+  });
+}
+
+// Puts a disconnect backup back under the (re)connected account. Rows get new ids, so nothing added
+// since then can collide; sources follow their warranty.
+export async function restoreAccount(db: Db, accountId: number, rows: AccountRows): Promise<void> {
+  const insert = async (table: string, row: Record<string, unknown>) => {
+    const cols = Object.keys(row);
+    const res = await db.runAsync(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, cols.map((c) => row[c] as string | number | null));
+    return res.lastInsertRowId;
+  };
+  await db.withTransactionAsync(async () => {
+    const ids = new Map<unknown, number>();
+    for (const { id, ...w } of rows.warranties) ids.set(id, await insert('warranties', { ...w, account_id: accountId }));
+    for (const { id: _id, ...src } of rows.sources) {
+      await insert('sources', { ...src, account_id: accountId, warranty_id: src.warranty_id == null ? null : (ids.get(src.warranty_id) ?? null) });
+    }
+    await db.runAsync('UPDATE accounts SET last_synced_at = ? WHERE id = ?', [rows.account.last_synced_at as string | null, accountId]);
+  });
+}
+
+export async function saveDisconnectBackup(db: Db, email: string, envelope: string, now = new Date().toISOString()): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO disconnect_backups (email, created_at, envelope) VALUES (?, ?, ?)
+     ON CONFLICT(email) DO UPDATE SET created_at = excluded.created_at, envelope = excluded.envelope`,
+    [email, now, envelope],
+  );
+}
+
+export async function getDisconnectBackup(db: Db, email: string): Promise<{ created_at: string; envelope: string } | null> {
+  return db.getFirstAsync('SELECT created_at, envelope FROM disconnect_backups WHERE email = ?', [email]);
 }

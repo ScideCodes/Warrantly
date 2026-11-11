@@ -1,4 +1,5 @@
 import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse } from 'react-native-nitro-google-signin';
+import GoogleAccountToken from '../modules/google-account-token';
 
 // Public identifier of the "Warrantly Web" OAuth client (not a secret). Credential Manager needs
 // it on Android; the Android client (package + SHA-1) is matched by Google automatically.
@@ -14,22 +15,32 @@ const hasGmailScope = () => GoogleOneTapSignIn.getCurrentUser()?.scopes.includes
 // iOS (later): add the "react-native-nitro-google-signin" plugin to app.json with iosUrlScheme from an
 // iOS OAuth client. Android needs no plugin: autolinking plus webClientId below is enough.
 
-// shortcut: the library keeps one signed-in Google account. Multiple Gmail tabs (section 15)
-// need per-account tokens; revisit in build step 7.
-
-// Signs in, asks for read-only Gmail access, and returns the account email (null if cancelled).
+// Connect a Gmail account (section 15: several are allowed). Google's account picker is always shown,
+// so a second account can be chosen; read-only Gmail access is asked once per account.
+// Returns the email, or null if cancelled.
 export async function connectGmail(): Promise<string | null> {
   await GoogleOneTapSignIn.checkPlayServices();
-  let res = await GoogleOneTapSignIn.signIn();
-  if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn();
+  const res = await GoogleOneTapSignIn.presentExplicitSignIn();
   if (!isSuccessResponse(res)) return null;
   if (!hasGmailScope()) await GoogleOneTapSignIn.requestScopes([GMAIL_READONLY]);
   return res.data!.user.email;
 }
 
-// Only counts as connected once Gmail read access is granted.
-export const connectedEmail = (): string | null =>
-  hasGmailScope() ? (GoogleOneTapSignIn.getCurrentUser()?.user.email ?? null) : null;
+// Gmail token for one specific account, without UI (native module; the sign-in library only covers its
+// last signed-in user). Rejects with code CONSENT_REQUIRED when that account must be connected again.
+export function gmailTokenFor(email: string): (expired?: string) => Promise<string> {
+  let token: string | null = null;
+  return async (expired) => {
+    if (expired) {
+      await GoogleOneTapSignIn.clearCachedAccessToken(expired);
+      token = null;
+    }
+    token ??= await GoogleAccountToken.getToken(email, [GMAIL_READONLY]);
+    return token;
+  };
+}
+
+export const needsReconnect = (e: unknown): boolean => (e as { code?: string })?.code === 'CONSENT_REQUIRED';
 
 let cached: { token: string; at: number } | null = null;
 

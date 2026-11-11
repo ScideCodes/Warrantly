@@ -1,0 +1,23 @@
+plugins {
+  id 'com.android.library'
+  id 'expo-module-gradle-plugin'
+}
+
+group = 'expo.modules.googleaccounttoken'
+version = '0.1.0'
+
+android {
+  namespace "expo.modules.googleaccounttoken"
+  defaultConfig {
+    versionCode 1
+    versionName "0.1.0"
+  }
+  lintOptions {
+    abortOnError false
+  }
+}
+
+dependencies {
+  // Same version as react-native-nitro-google-signin, so Gradle resolves one copy.
+  implementation "com.google.android.gms:play-services-auth:22.0.0"
+}
