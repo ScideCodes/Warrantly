@@ -23,6 +23,9 @@ export interface Item {
 
 export interface ParseResult {
   messageId: string;
+  subject: string; // kept as the warranty's source (section 12 "sources")
+  sender: string;
+  receivedAt: string; // ISO timestamp
   kind: Kind;
   // purchase: complete or needs_input. return: always needs_input (user picks Delete or Keep).
   status: Status;

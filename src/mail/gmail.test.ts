@@ -125,7 +125,7 @@ test('fetchAndParse skips a mail that cannot be fetched and keeps going', async 
     getAttachment: async () => new Uint8Array(),
   };
   const progress: number[][] = [];
-  const { results, failed } = await fetchAndParse(provider, null, {}, (done, total) => progress.push([done, total]));
+  const { results, failed } = await fetchAndParse(provider, null, { onProgress: (done, total) => progress.push([done, total]) });
   assert.deepEqual(progress, [[0, 2], [1, 2]]);
   assert.deepEqual(failed, [{ id: 'bad', error: 'Gmail 403 on messages/bad' }]);
   assert.equal(results.length, 1);
