@@ -23,16 +23,25 @@ export interface GmailApiMessage {
 export const SEARCH_QUERY = `(${LANGUAGES.flatMap((l) => l.searchTerms).join(' OR ')})`;
 
 // `getAccessToken` comes from expo-auth-session (gmail.readonly scope); refreshing it is the caller's job.
-export function gmailProvider(getAccessToken: () => Promise<string>, fetchFn: typeof fetch = fetch): MailProvider {
-  async function get(path: string): Promise<any> {
+export function gmailProvider(getAccessToken: () => Promise<string>, fetchFn: typeof fetch = fetch, retryDelayMs = 1000): MailProvider {
+  async function get(path: string, attempt = 1): Promise<any> {
     const res = await fetchFn(`${API}/${path}`, { headers: { Authorization: `Bearer ${await getAccessToken()}` } });
-    if (!res.ok) {
-      // Google's reason (e.g. accessNotConfigured, insufficientPermissions) says what to fix.
-      const body = await res.json().catch(() => null);
-      const reason = body?.error?.errors?.[0]?.reason ?? body?.error?.status ?? '';
-      throw new Error(`Gmail ${res.status} on ${path.split('?')[0]}${reason && `: ${reason}`}${body?.error?.message ? ` (${body.error.message})` : ''}`);
+    if (res.ok) return res.json();
+    // 403/429 can be per-user rate limits, 5xx are transient: wait and retry before giving up.
+    if (attempt < 3 && (res.status === 403 || res.status === 429 || res.status >= 500)) {
+      await new Promise((r) => setTimeout(r, retryDelayMs * attempt));
+      return get(path, attempt + 1);
     }
-    return res.json();
+    // Google's reason (e.g. accessNotConfigured, rateLimitExceeded) says what to fix.
+    const text = await res.text().catch(() => '');
+    let reason = '';
+    try {
+      const err = JSON.parse(text).error;
+      reason = [err?.errors?.[0]?.reason ?? err?.status, err?.message].filter(Boolean).join(' - ');
+    } catch {
+      reason = text.slice(0, 120);
+    }
+    throw new Error(`Gmail ${res.status} on ${path.split('?')[0]}${reason && `: ${reason}`}`);
   }
 
   return {

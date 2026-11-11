@@ -9,12 +9,21 @@ export interface MailProvider {
   getAttachment(messageId: string, attachmentId: string): Promise<Uint8Array>;
 }
 
+export interface SyncResult {
+  results: ParseResult[];
+  failed: { id: string; error: string }[]; // mails that could not be fetched; the rest of the sync still counts
+}
+
 // One sync pass: fetch every new candidate and parse it. Sequential on purpose, to stay
-// well under the Gmail per-user rate limit without any retry logic.
-export async function fetchAndParse(provider: MailProvider, after: Date | null, storeRules: StoreRules = {}): Promise<ParseResult[]> {
-  const results: ParseResult[] = [];
+// well under the Gmail per-user rate limit. One unreadable mail never stops the whole sync.
+export async function fetchAndParse(provider: MailProvider, after: Date | null, storeRules: StoreRules = {}): Promise<SyncResult> {
+  const sync: SyncResult = { results: [], failed: [] };
   for (const id of await provider.listMessageIds(after)) {
-    results.push(parseEmail(await provider.getMessage(id), storeRules));
+    try {
+      sync.results.push(parseEmail(await provider.getMessage(id), storeRules));
+    } catch (e) {
+      sync.failed.push({ id, error: e instanceof Error ? e.message : String(e) });
+    }
   }
-  return results;
+  return sync;
 }
