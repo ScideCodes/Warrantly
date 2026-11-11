@@ -114,7 +114,9 @@
     "openDocument": "Open document",
     "attachScan": "Scan and attach a document",
     "openFailed": "The document could not be opened.",
-    "documentMissing": "The document file is no longer on this phone (backups do not include documents yet)."
+    "documentMissing": "The document file is no longer on this phone (backups do not include documents yet).",
+    "removeDocument": "Remove",
+    "removeDocumentTitle": "Remove this document?"
   },
   "reminder": {
     "channel": "Warranty reminders",

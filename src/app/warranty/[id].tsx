@@ -4,7 +4,7 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { addAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
+import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, openDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
@@ -36,6 +36,22 @@ export default function WarrantyDetail() {
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
   const product = displayName(t, w);
+
+  function confirmRemoveDocument(d: Attachment) {
+    Alert.alert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
+      { text: t('detail.cancel'), style: 'cancel' },
+      {
+        text: t('detail.removeDocument'),
+        style: 'destructive',
+        onPress: async () => {
+          const db = await getDb();
+          const file = await deleteAttachment(db, d.id);
+          if (file) deleteDocuments([file]);
+          setDocs(await listAttachments(db, w!.id));
+        },
+      },
+    ]);
+  }
 
   // Any warranty can get a scanned document later, e.g. the paper invoice of a mail-imported purchase.
   async function attachScan() {
@@ -105,9 +121,9 @@ export default function WarrantyDetail() {
         {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
 
         {docs.map((d) => (
+          <View key={d.id} style={styles.docRow}>
           <Pressable
-            key={d.id}
-            style={styles.secondary}
+            style={[styles.secondary, styles.docOpen]}
             onPress={() =>
               documentExists(d.local_path)
                 ? openDocument(d.local_path).catch((e) => Alert.alert(t('detail.openFailed'), e instanceof Error ? e.message : String(e)))
@@ -117,6 +133,10 @@ export default function WarrantyDetail() {
           >
             <Text style={styles.secondaryText}>{t('detail.openDocument')}</Text>
           </Pressable>
+          <Pressable style={[styles.secondary, styles.docRemove]} onPress={() => confirmRemoveDocument(d)} accessibilityRole="button" accessibilityLabel={t('detail.removeDocument')}>
+            <Text style={[styles.secondaryText, styles.danger]}>{t('detail.removeDocument')}</Text>
+          </Pressable>
+          </View>
         ))}
         {!docs.length && (
           <Pressable style={styles.secondary} onPress={attachScan} accessibilityRole="button">
@@ -163,7 +183,8 @@ export default function WarrantyDetail() {
             <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
           </Pressable>
         )}
-        {days < 0 && (
+        {/* Section 10: mail warranties are deleted once expired; the user's own entries any time. */}
+        {(days < 0 || w.origin !== 'gmail') && (
           <Pressable style={styles.secondary} onPress={confirmDelete} accessibilityRole="button">
             <Text style={[styles.secondaryText, styles.danger]}>{t('detail.delete')}</Text>
           </Pressable>
@@ -201,6 +222,9 @@ const styles = StyleSheet.create({
   value: { fontSize: 16, color: colors.text },
   link: { color: colors.primary },
   claim: { marginTop: 16 },
+  docRow: { flexDirection: 'row', gap: 8 },
+  docOpen: { flex: 1 },
+  docRemove: { paddingHorizontal: 16 },
   primary: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   primaryText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
   headerButton: { fontSize: 16, fontWeight: '600', color: colors.primary, paddingHorizontal: 8 },

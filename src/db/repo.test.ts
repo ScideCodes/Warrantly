@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addManual, deleteAccount, listAttachments, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addManual, deleteAccount, deleteAttachment, listAttachments, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -160,6 +160,8 @@ test('scanned entries keep their documents; deleting returns the files to remove
   await addAttachment(db, id, 'Scan 2026-01-15.pdf', '1768000000000.pdf');
   assert.equal((await getWarranty(db, id))?.origin, 'scan');
   assert.deepEqual((await listAttachments(db, id)).map((a) => a.local_path), ['1768000000000.pdf']);
+  await addAttachment(db, id, 'second.pdf', '1768000000001.pdf');
+  assert.equal(await deleteAttachment(db, (await listAttachments(db, id))[1].id), '1768000000001.pdf'); // remove one document
   assert.deepEqual(await deleteWarranty(db, id), ['1768000000000.pdf']);
   assert.deepEqual(await listAttachments(db, id), []);
 });
