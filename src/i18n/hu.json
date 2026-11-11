@@ -33,7 +33,8 @@
     "reconnect": "Kapcsold össze újra a Beállításokban: {{email}}, hogy tovább szinkronizáljon.",
     "search": "Termék vagy üzlet keresése",
     "soon": "30 napon belül lejár",
-    "noMatch": "Nincs találat. Töröld a keresést vagy a szűrőket."
+    "noMatch": "Nincs találat. Töröld a keresést vagy a szűrőket.",
+    "updateReady": "Frissítés kész: koppints az újraindításhoz"
   },
   "warranty": {
     "unknownProduct": "Ismeretlen termék",
@@ -168,7 +169,8 @@
     "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon.",
     "general": "Alkalmazás",
     "widgetNames": "Terméknevek a widgeten",
-    "widgetNamesHint": "Bárki láthatja őket a kezdőképernyőn, alkalmazászár mellett is."
+    "widgetNamesHint": "Bárki láthatja őket a kezdőképernyőn, alkalmazászár mellett is.",
+    "version": "Warrantly {{version}}"
   },
   "backup": {
     "section": "Mentés",

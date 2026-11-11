@@ -40,16 +40,16 @@ test('form validation', () => {
   assert.equal(isValidYmd('2028-02-29'), true);
 });
 
-test('shortName keeps brand and model', () => {
+test('shortName: at most 3 words, ending at the model code', () => {
   assert.equal(shortName('Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)'), 'Jonsbo D300');
   assert.equal(shortName('Gembird WM-55ST-04 fali tartó konzol (815987) 12+'), 'Gembird WM-55ST-04');
-  assert.equal(shortName('White Shark WS GH-2440W/G PARROT-W/G fehér-szürke gamer headset'), 'White Shark WS GH-2440W/G');
-  assert.equal(shortName('VXE MAD R 8K optikai USB / vezeték nélküli gaming egér'), 'VXE MAD R 8K');
+  assert.equal(shortName('White Shark WS GH-2440W/G PARROT-W/G fehér-szürke gamer headset'), 'White Shark WS');
+  assert.equal(shortName('VXE MAD R 8K optikai USB / vezeték nélküli gaming egér'), 'VXE MAD R');
   assert.equal(shortName('Deepcool SC790 PWM és RGB vezérlő hub (R-SC790)'), 'Deepcool SC790');
   assert.equal(shortName('Számítógépház Jonsbo TK-3 fekete'), 'Számítógépház Jonsbo TK-3');
-  assert.equal(shortName('SAMSUNG hálózati töltő Type-C aljzat 25W, PD gyorstöltés'), 'SAMSUNG hálózati töltő Type-C…'); // model too far in
-  assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky ZERO…'); // no model code
-  assert.equal(shortName('Mixing Desk FIFINE SC3'), 'Mixing Desk FIFINE SC3');
+  assert.equal(shortName('SAMSUNG hálózati töltő Type-C aljzat 25W, PD gyorstöltés'), 'SAMSUNG hálózati töltő'); // model too far in
+  assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky'); // no model code
+  assert.equal(shortName('Mixing Desk FIFINE SC3'), 'Mixing Desk FIFINE');
   assert.equal(shortName('Samsung Galaxy S24'), 'Samsung Galaxy S24');
 });
 

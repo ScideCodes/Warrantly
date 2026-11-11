@@ -4,6 +4,7 @@ import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, Text
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
+import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { runDueBackup } from '@/backup';
 import { WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
@@ -31,6 +32,7 @@ export default function Home() {
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [attention, setAttention] = useState(0);
   const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
+  const updateReady = useUpdateReady();
   const syncing = useRef(false);
 
   const load = useCallback(async () => {
@@ -101,6 +103,11 @@ export default function Home() {
           </Pressable>
         </Link>
       </View>
+      {updateReady && (
+        <Pressable style={styles.banner} onPress={() => void restartIntoUpdate()} accessibilityRole="button">
+          <Text style={styles.bannerText}>{t('home.updateReady')} ›</Text>
+        </Pressable>
+      )}
       {attention > 0 && (
         <Link href="/attention" asChild>
           <Pressable style={styles.banner} accessibilityRole="button">
