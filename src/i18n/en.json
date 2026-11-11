@@ -92,5 +92,12 @@
     "serial": "Serial number",
     "notes": "Notes",
     "fullName": "Full product name"
+  },
+  "reminder": {
+    "channel": "Warranty reminders",
+    "channelExpiry": "Warranty ends today",
+    "daysLeft_one": "{{count}} day left on the warranty",
+    "daysLeft_other": "{{count}} days left on the warranty",
+    "today": "The warranty ends today. Claim now if anything is wrong."
   }
 }

@@ -71,3 +71,29 @@ export function shortName(name: string): string {
   const head = base.split(/\s+[-–|/]\s+|,\s+/)[0].trim();
   return head.split(/\s+/).length >= 2 ? head : base;
 }
+
+// Expiry reminders (section 16): 90, 60 and 30 days before, then weekly until expiry, and on the day.
+const REMINDER_DAYS = [90, 60, 30, 23, 16, 9, 2, 0];
+
+export interface Reminder {
+  warrantyId: number;
+  date: string; // YYYY-MM-DD, delivered at a fixed local time
+  daysLeft: number;
+}
+
+// The nearest `limit` future reminders over all warranties. Only these are scheduled, because iOS keeps
+// at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling window).
+export function reminderPlan(warranties: { id: number; end_date: string }[], today: string, limit = 60): Reminder[] {
+  return warranties
+    .flatMap((w) =>
+      REMINDER_DAYS.map((daysLeft) => ({ warrantyId: w.id, daysLeft, date: addDays(w.end_date, -daysLeft) })).filter((r) => r.date > today),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date) || a.warrantyId - b.warrantyId)
+    .slice(0, limit);
+}
+
+function addDays(ymd: string, days: number): string {
+  const d = fromYmd(ymd);
+  d.setDate(d.getDate() + days);
+  return toYmd(d);
+}
