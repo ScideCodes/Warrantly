@@ -3,11 +3,12 @@
 // To add a language, add one entry to LANGUAGES.
 
 export interface LanguageKeywords {
-  // Only invoices, receipts and warranty documents count (not order confirmations or shipping
-  // notices). `documentTerms` go into the Gmail subject search; `document` checks the subject
-  // and PDF file names of what comes back.
+  // Only warranty documents count (not invoices, order confirmations or shipping notices), as the
+  // owner decided. `documentTerms` go into the Gmail subject search; `document` checks the subject
+  // and PDF file names of what comes back; `repair` drops warranty claim and repair updates.
   documentTerms: string[];
   document: RegExp;
+  repair: RegExp;
   returnTerms: string[]; // Gmail body search for cancellations and refunds (section 11)
   returned: RegExp; // cancellation, refund, return words (specific phrases, not footer links)
   delivered: RegExp; // goods arrived or were picked up
@@ -19,8 +20,9 @@ export interface LanguageKeywords {
 }
 
 const en: LanguageKeywords = {
-  documentTerms: ['invoice', 'receipt', 'warranty', 'guarantee'],
-  document: /\b(invoice|receipt|warranty|guarantee)/i,
+  documentTerms: ['warranty', 'guarantee'],
+  document: /\b(warranty|guarantee)/i,
+  repair: /\b(claim|repair|replacement|rma)\b/i,
   returnTerms: ['"refund has been"', '"refund was"', '"issued a refund"', '"order has been cancelled"', '"order was cancelled"'],
   returned:
     /\b(refund(ed)? (has been|was) (issued|approved|processed)|refund (has been|was) approved|order (has been|was) (cancel+ed)|cancel+ation confirmed|return (has been|was) (received|accepted))\b|\bissued a refund\b/i,
@@ -33,8 +35,9 @@ const en: LanguageKeywords = {
 };
 
 const hu: LanguageKeywords = {
-  documentTerms: ['számla', 'szamla', 'nyugta', 'bizonylat', 'garancia', 'jótállás'],
-  document: /(számla|számlá|szamla|nyugta|bizonylat|garanci|jótállás|jotallas)/i,
+  documentTerms: ['garancia', 'garanciális', 'jótállás', 'jótállási', 'jotallas'],
+  document: /(garanci|jótállás|jotallas)/i,
+  repair: /(csere|beérkezett|ügyintézés|javítás|szerviz)/i,
   returnTerms: ['visszatérítés', '"állapota: törölve"', '"rendelés törölve"', 'stornó'],
   returned:
     /(új állapota:\s*törölve|rendelés(ed|ét|e)? (törölve|törölték|töröltük|lemondva)|visszatérít|stornó|elállás(od|i nyilatkozat)? (elfogad|feldolgoz))/i,

@@ -66,6 +66,10 @@ const MIGRATIONS = [
   `DELETE FROM sources;
    DELETE FROM warranties WHERE origin = 'gmail';
    UPDATE accounts SET last_synced_at = NULL;`,
+  // v3: warranty documents only, no invoices. Same reset as v2.
+  `DELETE FROM sources;
+   DELETE FROM warranties WHERE origin = 'gmail';
+   UPDATE accounts SET last_synced_at = NULL;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {

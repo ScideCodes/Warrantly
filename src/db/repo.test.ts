@@ -51,14 +51,14 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 2);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 3);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
   const db = nodeDb();
   await migrate(db);
   const now = new Date('2026-11-11T10:00:00Z');
-  const ids = ['pcx-invoice', 'conrad-invoice', 'synthetic-en-warranty', 'alza-order', 'merlin-cancel', 'steam', 'quota-hit'];
+  const ids = ['pcx-invoice', 'conrad-invoice', 'conrad-order-rule', 'synthetic-en-warranty', 'alza-order', 'merlin-cancel', 'steam', 'quota-hit'];
   const afters: (Date | null)[] = [];
 
   const failed = await syncAccount(db, fakeProvider(ids, afters), 'user@example.com', undefined, now);
@@ -70,12 +70,11 @@ test('sync saves warranties, retries failed mails, never duplicates', async () =
     ['Acme Kettle 1.7L', 24, 0, '2028-03-02'],
   ]);
   const attention = await listWarranties(db, 'needs_input');
-  assert.deepEqual(attention.map((w) => [w.store_name, w.product_name, w.missing_fields, w.warranty_start_date]), [
-    ['Conrad HU', null, '["productName","warrantyMonths"]', '2026-08-26'], // details only in the PDF
-    ['PCX Webáruház', null, '["productName","warrantyMonths"]', '2026-09-15'], // picked up in store: start = that day
+  assert.deepEqual(attention.map((w) => [w.product_name, w.missing_fields, w.length_is_suggested]), [
+    ['Jonsbo VC-20 Videokártya tartó', '["warrantyMonths"]', 1], // warranty card without a length
   ]);
   const count = (sql: string) => (db.raw.prepare(sql).get() as { n: number }).n;
-  assert.equal(count(`SELECT COUNT(*) n FROM warranties WHERE status = 'ignored'`), 2); // Alza order confirmation + Steam, kept for review
+  assert.equal(count(`SELECT COUNT(*) n FROM warranties WHERE status = 'ignored'`), 4); // 2 invoices, order confirmation, Steam: kept for review
   assert.equal(count(`SELECT COUNT(*) n FROM sources WHERE kind = 'return' AND warranty_id IS NULL`), 1);
   assert.equal(count('SELECT COUNT(*) n FROM accounts WHERE last_synced_at IS NULL'), 1); // a mail failed: marker stays
 
@@ -83,7 +82,7 @@ test('sync saves warranties, retries failed mails, never duplicates', async () =
   const failed2 = await syncAccount(db, fakeProvider(ids.filter((id) => id !== 'quota-hit'), afters), 'user@example.com', undefined, now);
   assert.deepEqual(failed2, []);
   assert.equal(afters[1]?.toISOString().slice(0, 7), '2024-11');
-  assert.equal(count('SELECT COUNT(*) n FROM warranties'), 5);
+  assert.equal(count('SELECT COUNT(*) n FROM warranties'), 6);
   assert.equal(count(`SELECT COUNT(*) n FROM accounts WHERE last_synced_at = '2026-11-11T10:00:00.000Z'`), 1);
 
   // Third sync starts from the marker.
