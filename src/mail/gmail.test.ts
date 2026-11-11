@@ -93,7 +93,10 @@ test('gmailProvider pages the search, then fetchAndParse parses each message', a
   assert.deepEqual(results[0].items.map((i) => [i.name, i.warrantyMonths]), [['Asztali tartó', 24]]);
 });
 
-test('gmailProvider surfaces HTTP errors', async () => {
-  const fakeFetch = (async () => new Response('{}', { status: 401 })) as unknown as typeof fetch;
-  await assert.rejects(gmailProvider(async () => 'expired', fakeFetch).getMessage('m1'), /Gmail 401/);
+test('gmailProvider surfaces HTTP errors with Google\'s reason', async () => {
+  const body = { error: { code: 403, message: 'Gmail API has not been used in project 1', errors: [{ reason: 'accessNotConfigured' }] } };
+  const fakeFetch = (async () => new Response(JSON.stringify(body), { status: 403 })) as unknown as typeof fetch;
+  await assert.rejects(gmailProvider(async () => 'tok', fakeFetch).getMessage('m1'), /Gmail 403 on messages\/m1: accessNotConfigured \(Gmail API has not been used/);
+  const plain = (async () => new Response('nope', { status: 401 })) as unknown as typeof fetch;
+  await assert.rejects(gmailProvider(async () => 'tok', plain).getMessage('m1'), /^Error: Gmail 401 on messages\/m1$/);
 });

@@ -26,7 +26,12 @@ export const SEARCH_QUERY = `(${LANGUAGES.flatMap((l) => l.searchTerms).join(' O
 export function gmailProvider(getAccessToken: () => Promise<string>, fetchFn: typeof fetch = fetch): MailProvider {
   async function get(path: string): Promise<any> {
     const res = await fetchFn(`${API}/${path}`, { headers: { Authorization: `Bearer ${await getAccessToken()}` } });
-    if (!res.ok) throw new Error(`Gmail ${res.status} on ${path.split('?')[0]}`);
+    if (!res.ok) {
+      // Google's reason (e.g. accessNotConfigured, insufficientPermissions) says what to fix.
+      const body = await res.json().catch(() => null);
+      const reason = body?.error?.errors?.[0]?.reason ?? body?.error?.status ?? '';
+      throw new Error(`Gmail ${res.status} on ${path.split('?')[0]}${reason && `: ${reason}`}${body?.error?.message ? ` (${body.error.message})` : ''}`);
+    }
     return res.json();
   }
 

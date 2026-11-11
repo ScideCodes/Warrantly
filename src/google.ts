@@ -5,7 +5,10 @@ import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse
 const WEB_CLIENT_ID = '237650743703-o6i7era4merslmucakbqsqimsls1hg0a.apps.googleusercontent.com';
 const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
 
-GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID });
+// Gmail scope here too, so getTokens() returns a token that can read mail.
+GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, scopes: [GMAIL_READONLY] });
+
+const hasGmailScope = () => GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(GMAIL_READONLY) ?? false;
 
 // iOS (later): add the "react-native-nitro-google-signin" plugin to app.json with iosUrlScheme from an
 // iOS OAuth client. Android needs no plugin: autolinking plus webClientId below is enough.
@@ -19,11 +22,13 @@ export async function connectGmail(): Promise<string | null> {
   let res = await GoogleOneTapSignIn.signIn();
   if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn();
   if (!isSuccessResponse(res)) return null;
-  await GoogleOneTapSignIn.requestScopes([GMAIL_READONLY]);
+  if (!hasGmailScope()) await GoogleOneTapSignIn.requestScopes([GMAIL_READONLY]);
   return res.data!.user.email;
 }
 
-export const connectedEmail = (): string | null => GoogleOneTapSignIn.getCurrentUser()?.user.email ?? null;
+// Only counts as connected once Gmail read access is granted.
+export const connectedEmail = (): string | null =>
+  hasGmailScope() ? (GoogleOneTapSignIn.getCurrentUser()?.user.email ?? null) : null;
 
 export async function getAccessToken(): Promise<string> {
   return (await GoogleOneTapSignIn.getTokens()).accessToken;
