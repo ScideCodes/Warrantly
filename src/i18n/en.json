@@ -10,6 +10,18 @@
   "home": {
     "greeting": "Hi, {{name}}!",
     "emptyTitle": "No warranties yet",
-    "emptyBody": "Soon you can connect Gmail, and Warrantly will find your receipts and warranties for you."
+    "emptyBody": "Connect Gmail, and Warrantly will find your receipts and warranties for you.",
+    "connectGmail": "Connect Gmail",
+    "syncing": "Looking for receipts in {{email}}…",
+    "summary": "{{complete}} ready · {{needsInput}} need your attention · {{ignored}} skipped",
+    "error": "Couldn't read Gmail. Check your connection and try again.",
+    "retry": "Try again",
+    "unknownProduct": "Product not found",
+    "months_one": "{{count}} month",
+    "months_other": "{{count}} months",
+    "suggested": "{{months}} (suggested)",
+    "statusComplete": "Ready",
+    "statusNeedsInput": "Needs your input",
+    "statusReturn": "Return or cancellation"
   }
 }

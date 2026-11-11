@@ -10,6 +10,18 @@
   "home": {
     "greeting": "Szia, {{name}}!",
     "emptyTitle": "Még nincs garanciád",
-    "emptyBody": "Hamarosan összekapcsolhatod a Gmailt, és a Warrantly magától megkeresi a számláidat és a garanciáidat."
+    "emptyBody": "Kapcsold össze a Gmailt, és a Warrantly magától megkeresi a számláidat és a garanciáidat.",
+    "connectGmail": "Gmail összekapcsolása",
+    "syncing": "Számlák keresése itt: {{email}}…",
+    "summary": "{{complete}} kész · {{needsInput}} figyelmet igényel · {{ignored}} kihagyva",
+    "error": "Nem sikerült olvasni a Gmailt. Ellenőrizd a kapcsolatot, és próbáld újra.",
+    "retry": "Újra",
+    "unknownProduct": "Ismeretlen termék",
+    "months_one": "{{count}} hónap",
+    "months_other": "{{count}} hónap",
+    "suggested": "{{months}} (javasolt)",
+    "statusComplete": "Kész",
+    "statusNeedsInput": "Adat hiányzik",
+    "statusReturn": "Visszaküldés vagy lemondás"
   }
 }
