@@ -33,6 +33,16 @@ export async function scanDocument(): Promise<{ text: string; localPath: string 
   return { text, localPath: pdf.name };
 }
 
+// Downloaded mail PDFs (build step 4), stored next to scans. Returns the stored file name.
+export const mailDocuments = {
+  async save(bytes: Uint8Array, _filename: string): Promise<string> {
+    const file = new File(folder(), `mail-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`);
+    file.create();
+    await file.write(bytes);
+    return file.name;
+  },
+};
+
 export const documentExists = (localPath: string): boolean => fileFor(localPath).exists;
 
 export function deleteDocuments(localPaths: string[]): void {

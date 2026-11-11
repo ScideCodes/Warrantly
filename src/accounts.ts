@@ -3,6 +3,7 @@ import i18n from '@/i18n';
 import { disconnectBackupDate, hasBackupPassword, restoreDisconnected } from '@/backup';
 import { listAccounts, upsertAccount, type Db } from '@/db/repo.ts';
 import { syncAccount } from '@/db/sync.ts';
+import { mailDocuments } from '@/documents';
 import { connectGmail, gmailTokenFor, needsReconnect } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
 
@@ -34,7 +35,7 @@ export async function syncAllAccounts(db: Db, onProgress: (email: string, done: 
   const problems: string[] = [];
   for (const { email } of await listAccounts(db)) {
     try {
-      const failed = await syncAccount(db, gmailProvider(gmailTokenFor(email)), email, (done, total) => onProgress(email, done, total));
+      const failed = await syncAccount(db, gmailProvider(gmailTokenFor(email)), email, (done, total) => onProgress(email, done, total), new Date(), mailDocuments);
       if (failed.length) problems.push(i18n.t('home.failed', { count: failed.length, detail: `${email}: ${failed[0].error}` }));
     } catch (e) {
       problems.push(needsReconnect(e) ? i18n.t('home.reconnect', { email }) : `${email}: ${e instanceof Error ? e.message : String(e)}`);
