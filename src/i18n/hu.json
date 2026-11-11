@@ -114,7 +114,9 @@
     "openDocument": "Dokumentum megnyitása",
     "attachScan": "Dokumentum beolvasása és csatolása",
     "openFailed": "A dokumentum nem nyitható meg.",
-    "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat)."
+    "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat).",
+    "removeDocument": "Eltávolítás",
+    "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",

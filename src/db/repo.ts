@@ -306,6 +306,13 @@ export async function addAttachment(db: Db, warrantyId: number, filename: string
   await db.runAsync('INSERT INTO attachments (warranty_id, filename, local_path) VALUES (?, ?, ?)', [warrantyId, filename, localPath]);
 }
 
+// Returns the file to delete from disk.
+export async function deleteAttachment(db: Db, id: number): Promise<string | null> {
+  const row = await db.getFirstAsync<{ local_path: string }>('SELECT local_path FROM attachments WHERE id = ?', [id]);
+  await db.runAsync('DELETE FROM attachments WHERE id = ?', [id]);
+  return row?.local_path ?? null;
+}
+
 export async function listAttachments(db: Db, warrantyId: number): Promise<Attachment[]> {
   return db.getAllAsync('SELECT id, filename, local_path FROM attachments WHERE warranty_id = ? ORDER BY id', [warrantyId]);
 }
