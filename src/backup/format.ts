@@ -4,7 +4,7 @@ import type { Db } from '../db/repo.ts';
 // Backup (brainstorm section 17): the database as JSON plus settings, encrypted on the phone with a key
 // from the user's backup password. Google Drive only ever sees the sealed envelope.
 
-const TABLES = ['accounts', 'warranties', 'sources', 'store_rules'] as const;
+const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments'] as const;
 
 export interface BackupData {
   app: 'warrantly';
@@ -94,6 +94,24 @@ export async function unseal(aead: Aead, text: string, keyFor: (kdf: KdfParams) 
     throw new WrongPasswordError('Wrong backup password');
   }
   return JSON.parse(new TextDecoder().decode(plain)) as BackupData;
+}
+
+// Documents (PDFs) are backed up as their own encrypted files, uploaded once each, so a backup stays small.
+export const docBackupName = (localPath: string): string => `doc-${localPath}.enc`;
+
+export async function sealBytes(aead: Aead, key: Uint8Array, bytes: Uint8Array): Promise<string> {
+  const { iv, data } = await aead.encrypt(key, bytes);
+  return JSON.stringify({ format: 'warrantly-doc', v: 1, iv: toBase64(iv), data: toBase64(data) });
+}
+
+export async function unsealBytes(aead: Aead, key: Uint8Array, text: string): Promise<Uint8Array> {
+  const env = JSON.parse(text) as { format: string; iv: string; data: string };
+  if (env.format !== 'warrantly-doc') throw new Error('Not a Warrantly document');
+  try {
+    return await aead.decrypt(key, fromBase64(env.iv), fromBase64(env.data));
+  } catch {
+    throw new WrongPasswordError('Wrong backup password');
+  }
 }
 
 export type BackupInterval = 'weekly' | 'monthly' | '3m' | '6m';

@@ -39,7 +39,7 @@ export function driveClient(getToken: () => Promise<string>, fetchFn: typeof fet
 
   async function list(): Promise<DriveFile[]> {
     const parent = await folderId();
-    const res = await call(`${API}/files?q=${q(`'${parent}' in parents and trashed = false`)}&orderBy=createdTime desc&fields=files(id,name,createdTime)`);
+    const res = await call(`${API}/files?q=${q(`'${parent}' in parents and trashed = false`)}&orderBy=createdTime desc&pageSize=1000&fields=files(id,name,createdTime)`);
     return (await res.json()).files ?? [];
   }
 
@@ -59,8 +59,11 @@ export function driveClient(getToken: () => Promise<string>, fetchFn: typeof fet
   return { list, upload, download, remove };
 }
 
-// Upload a new backup and keep only the newest few.
+export const BACKUP_PREFIX = 'warrantly-backup-';
+
+// Upload a new backup and keep only the newest few backups. Document files in the folder are left alone.
 export async function uploadAndPrune(drive: ReturnType<typeof driveClient>, name: string, text: string): Promise<void> {
   await drive.upload(name, text);
-  for (const old of (await drive.list()).slice(KEEP)) await drive.remove(old.id);
+  const backups = (await drive.list()).filter((f) => f.name.startsWith(BACKUP_PREFIX));
+  for (const old of backups.slice(KEEP)) await drive.remove(old.id);
 }
