@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { getWarranty, listWarranties, migrate, type Db } from './repo.ts';
+import { addManual, deleteWarranty, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty, type Db } from './repo.ts';
 import { syncAccount } from './sync.ts';
 
 // Same SQL as on the phone, run on Node's built-in SQLite.
@@ -92,4 +92,37 @@ test('sync saves warranties, retries failed mails, never duplicates', async () =
   const w = await getWarranty(db, complete[0].id);
   assert.equal(w?.store_name, 'Example Electronics');
   assert.equal(await getWarranty(db, 999), null);
+});
+
+test('manual add, edit, store rule, ignore and delete', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const input = {
+    product_name: 'Acme Kettle', store_name: 'Example', purchase_date: '2026-11-01', warranty_start_date: '2026-11-03',
+    warranty_months: 36, order_number: null, serial_number: 'SN1', contact_email: null, contact_phone: null, website_url: null, notes: 'gift',
+  };
+  const id = await addManual(db, input);
+  const added = await getWarranty(db, id);
+  assert.deepEqual([added?.origin, added?.status, added?.end_date, added?.serial_number, added?.length_is_suggested], ['manual', 'complete', '2029-11-03', 'SN1', 0]);
+
+  // A synced needs-input item becomes complete once edited.
+  const ids = ['conrad-order-rule'];
+  await syncAccount(db, fakeProvider(ids, []), 'user@example.com');
+  const [pending] = await listWarranties(db, 'needs_input');
+  await updateWarranty(db, pending.id, { ...input, product_name: 'Jonsbo VC-20', warranty_months: 12 });
+  assert.deepEqual(await listWarranties(db, 'needs_input'), []);
+  assert.equal((await getWarranty(db, pending.id))?.store_domain, 'conrad.hu'); // edit keeps the source link
+
+  await saveStoreRule(db, 'conrad.hu', 12);
+  await saveStoreRule(db, 'conrad.hu', 24);
+  assert.deepEqual(await loadStoreRules(db), { 'conrad.hu': { defaultWarrantyMonths: 24 } });
+
+  await ignoreWarranty(db, id);
+  assert.equal((await getWarranty(db, id))?.status, 'ignored');
+
+  // Deleting keeps the source marker, so the next sync does not import the mail again.
+  await deleteWarranty(db, pending.id);
+  assert.equal(await getWarranty(db, pending.id), null);
+  await syncAccount(db, fakeProvider(ids, []), 'user@example.com');
+  assert.deepEqual(await listWarranties(db, 'needs_input'), []);
 });

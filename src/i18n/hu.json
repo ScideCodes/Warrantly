@@ -22,7 +22,8 @@
     "emptyActive": "Nincs aktív garancia",
     "emptyExpired": "Nincs lejárt garancia",
     "attention_one": "{{count}} tétel figyelmet igényel",
-    "attention_other": "{{count}} tétel figyelmet igényel"
+    "attention_other": "{{count}} tétel figyelmet igényel",
+    "add": "Hozzáadás"
   },
   "warranty": {
     "unknownProduct": "Ismeretlen termék",
@@ -55,5 +56,40 @@
   "attention": {
     "title": "Figyelmet igényel",
     "empty": "Minden rendben"
+  },
+  "form": {
+    "titleAdd": "Garancia hozzáadása",
+    "titleEdit": "Garancia szerkesztése",
+    "product": "Termék",
+    "store": "Üzlet",
+    "purchaseDate": "Vásárlás dátuma",
+    "startDate": "Garancia kezdete",
+    "startHint": "Hagyd üresen, ha a vásárlás napja. A garancia a termék átvételének napján kezdődik.",
+    "dateHint": "Formátum: ÉÉÉÉ-HH-NN",
+    "length": "Garancia hossza (hónap)",
+    "orderNumber": "Rendelésszám (nem kötelező)",
+    "serial": "Sorozatszám (nem kötelező)",
+    "contactEmail": "Üzlet e-mail címe (nem kötelező)",
+    "contactPhone": "Üzlet telefonszáma (nem kötelező)",
+    "website": "Üzlet weboldala (nem kötelező)",
+    "notes": "Megjegyzés (nem kötelező)",
+    "remember": "Jegyezze meg ezt a hosszt ennél az üzletnél: {{store}}",
+    "save": "Garancia mentése",
+    "errProduct": "Add meg a termék nevét.",
+    "errStore": "Add meg az üzletet.",
+    "errDate": "Adj meg valós dátumot ÉÉÉÉ-HH-NN formában.",
+    "errStart": "Adj meg a vásárlás napján vagy utána lévő dátumot, vagy hagyd üresen.",
+    "errMonths": "1 és 120 hónap közötti hosszt adj meg."
+  },
+  "detail": {
+    "edit": "Szerkesztés",
+    "notWarranty": "Nem garancia",
+    "delete": "Törlés",
+    "deleteTitle": "Törlöd ezt: {{product}}?",
+    "deleteBody": "A garancia törlődik erről a telefonról. Ez nem vonható vissza.",
+    "deleteConfirm": "Garancia törlése",
+    "cancel": "Mégse",
+    "serial": "Sorozatszám",
+    "notes": "Megjegyzés"
   }
 }

@@ -86,9 +86,16 @@ export default function Home() {
 
   const header = (
     <View style={styles.header}>
-      <Text style={styles.greeting} accessibilityRole="header">
-        {t('home.greeting', { name })}
-      </Text>
+      <View style={styles.titleRow}>
+        <Text style={styles.greeting} accessibilityRole="header">
+          {t('home.greeting', { name })}
+        </Text>
+        <Link href="/warranty/edit" asChild>
+          <Pressable style={styles.addButton} accessibilityRole="button">
+            <Text style={styles.addText}>+ {t('home.add')}</Text>
+          </Pressable>
+        </Link>
+      </View>
       {attention > 0 && (
         <Link href="/attention" asChild>
           <Pressable style={styles.banner} accessibilityRole="button">
@@ -104,7 +111,7 @@ export default function Home() {
           <Text style={styles.detail}>{sync.detail}</Text>
         </View>
       )}
-      {email && (
+      {(email || warranties.length > 0) && (
         <View style={styles.tabs} accessibilityRole="tablist">
           {(['active', 'expired'] as const).map((key) => (
             <Pressable
@@ -157,7 +164,10 @@ const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   list: { paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1 },
   header: { paddingTop: 24, paddingBottom: 8, gap: 12 },
-  greeting: { fontSize: 28, fontWeight: '700', color: colors.text },
+  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
+  greeting: { flex: 1, fontSize: 28, fontWeight: '700', color: colors.text },
+  addButton: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center' },
+  addText: { fontSize: 15, fontWeight: '600', color: colors.onPrimary },
   banner: { backgroundColor: colors.banner, borderRadius: 8, padding: 12, minHeight: 48, justifyContent: 'center' },
   bannerText: { fontSize: 16, fontWeight: '600', color: colors.warning.fg },
   status: { fontSize: 14, color: colors.muted },

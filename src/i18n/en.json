@@ -22,7 +22,8 @@
     "emptyActive": "No active warranties",
     "emptyExpired": "No expired warranties",
     "attention_one": "{{count}} item needs your attention",
-    "attention_other": "{{count}} items need your attention"
+    "attention_other": "{{count}} items need your attention",
+    "add": "Add"
   },
   "warranty": {
     "unknownProduct": "Product not found",
@@ -55,5 +56,40 @@
   "attention": {
     "title": "Needs your attention",
     "empty": "All caught up"
+  },
+  "form": {
+    "titleAdd": "Add warranty",
+    "titleEdit": "Edit warranty",
+    "product": "Product",
+    "store": "Store",
+    "purchaseDate": "Purchase date",
+    "startDate": "Warranty start",
+    "startHint": "Leave empty to use the purchase date. The warranty starts when you receive the product.",
+    "dateHint": "Format: YYYY-MM-DD",
+    "length": "Warranty length (months)",
+    "orderNumber": "Order number (optional)",
+    "serial": "Serial number (optional)",
+    "contactEmail": "Store email (optional)",
+    "contactPhone": "Store phone (optional)",
+    "website": "Store website (optional)",
+    "notes": "Notes (optional)",
+    "remember": "Remember this length for {{store}}",
+    "save": "Save warranty",
+    "errProduct": "Enter the product name.",
+    "errStore": "Enter the store.",
+    "errDate": "Enter a real date as YYYY-MM-DD.",
+    "errStart": "Enter a date on or after the purchase date, or leave it empty.",
+    "errMonths": "Enter a length between 1 and 120 months."
+  },
+  "detail": {
+    "edit": "Edit",
+    "notWarranty": "Not a warranty",
+    "delete": "Delete",
+    "deleteTitle": "Delete {{product}}?",
+    "deleteBody": "This removes the warranty from this phone. It can't be undone.",
+    "deleteConfirm": "Delete warranty",
+    "cancel": "Cancel",
+    "serial": "Serial number",
+    "notes": "Notes"
   }
 }
