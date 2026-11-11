@@ -4,6 +4,10 @@ export const setUsername = (name: string): void => localStorage.setItem('usernam
 export const getRemindersEnabled = (): boolean => localStorage.getItem('reminders_enabled') !== '0';
 export const setRemindersEnabled = (on: boolean): void => localStorage.setItem('reminders_enabled', on ? '1' : '0');
 
+// Return-window reminders (EU 14-day withdrawal) are on by default.
+export const getReturnRemindersEnabled = (): boolean => localStorage.getItem('return_reminders') !== '0';
+export const setReturnRemindersEnabled = (on: boolean): void => localStorage.setItem('return_reminders', on ? '1' : '0');
+
 // Widget (section 13): product names hidden by default while the app lock is on. null = follow that default.
 export const getWidgetNames = (): boolean | null => {
   const v = localStorage.getItem('widget_names');

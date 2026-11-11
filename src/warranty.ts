@@ -80,18 +80,28 @@ const REMINDER_DAYS = [90, 60, 30, 23, 16, 9, 2, 0];
 
 export interface Reminder {
   warrantyId: number;
+  kind: 'expiry' | 'return';
   date: string; // YYYY-MM-DD, delivered at a fixed local time
   daysLeft: number;
 }
 
+// EU right of withdrawal: 14 days from delivery for online purchases. Mail imports are online orders;
+// their start date is the delivery day when the mail says so, else the order day.
+export const RETURN_DAYS = 14;
+const RETURN_WARNING = 2; // days before the window closes
+export const returnDeadline = (w: { origin: string; warranty_start_date: string }): string | null =>
+  w.origin === 'gmail' ? addDays(w.warranty_start_date, RETURN_DAYS) : null;
+
 // The nearest `limit` reminders from today on, over all warranties. Only these are scheduled, because iOS
 // keeps at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling
 // window). Today's are included: the caller drops them once their time of day has passed.
-export function reminderPlan(warranties: { id: number; end_date: string }[], today: string, limit = 60): Reminder[] {
+// `return_by` adds one reminder two days before the return window closes.
+export function reminderPlan(warranties: { id: number; end_date: string; return_by?: string | null }[], today: string, limit = 60): Reminder[] {
   return warranties
-    .flatMap((w) =>
-      REMINDER_DAYS.map((daysLeft) => ({ warrantyId: w.id, daysLeft, date: addDays(w.end_date, -daysLeft) })).filter((r) => r.date >= today),
-    )
+    .flatMap((w): Reminder[] => [
+      ...REMINDER_DAYS.map((daysLeft) => ({ warrantyId: w.id, kind: 'expiry' as const, daysLeft, date: addDays(w.end_date, -daysLeft) })),
+      ...(w.return_by ? [{ warrantyId: w.id, kind: 'return' as const, daysLeft: RETURN_WARNING, date: addDays(w.return_by, -RETURN_WARNING) }] : []),
+    ].filter((r) => r.date >= today))
     .sort((a, b) => a.date.localeCompare(b.date) || a.warrantyId - b.warrantyId)
     .slice(0, limit);
 }

@@ -130,14 +130,18 @@
     "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat).",
     "removeDocument": "Eltávolítás",
     "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?",
-    "attachImport": "Fotó vagy PDF csatolása"
+    "attachImport": "Fotó vagy PDF csatolása",
+    "returnBy": "Visszaküldés eddig",
+    "returnHint": "14 napos elállási jog"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
     "channelExpiry": "Ma lejáró garancia",
     "daysLeft_one": "{{count}} nap van hátra a garanciából",
     "daysLeft_other": "{{count}} nap van hátra a garanciából",
-    "today": "Ma jár le a garancia. Ha valami gond van vele, most jelezd."
+    "today": "Ma jár le a garancia. Ha valami gond van vele, most jelezd.",
+    "returnSoon_one": "{{count}} nap múlva lejár az elállási idő. Ha vissza akarod küldeni, most tedd.",
+    "returnSoon_other": "{{count}} nap múlva lejár az elállási idő. Ha vissza akarod küldeni, most tedd."
   },
   "lock": {
     "title": "Add meg a PIN-kódod",
@@ -170,7 +174,9 @@
     "general": "Alkalmazás",
     "widgetNames": "Terméknevek a widgeten",
     "widgetNamesHint": "Bárki láthatja őket a kezdőképernyőn, alkalmazászár mellett is.",
-    "version": "Warrantly {{version}}"
+    "version": "Warrantly {{version}}",
+    "returnReminders": "Elállási határidő emlékeztető",
+    "returnRemindersHint": "Online rendelést a kézhezvételtől 14 napig küldhetsz vissza (EU). 2 nappal előtte szól."
   },
   "backup": {
     "section": "Mentés",

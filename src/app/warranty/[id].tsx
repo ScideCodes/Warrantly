@@ -11,7 +11,7 @@ import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
-import { daysUntil, todayYmd, urgency } from '@/warranty';
+import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
 // Warranty detail (section 13). Editing, PDFs and the claim helper come in later build steps.
 export default function WarrantyDetail() {
@@ -115,6 +115,10 @@ export default function WarrantyDetail() {
         <Field label={t('warranty.startDate')} value={suggested(date(w.warranty_start_date), w.start_is_suggested)} />
         <Field label={t('warranty.length')} value={lengthLabel(t, w)} />
         <Field label={t('warranty.endDate')} value={date(w.end_date)} />
+        {(() => {
+          const returnBy = returnDeadline(w);
+          return returnBy && returnBy >= today ? <Field label={t('detail.returnBy')} value={`${date(returnBy)} (${t('detail.returnHint')})`} /> : null;
+        })()}
         {w.order_number && <Field label={t('warranty.orderNumber')} value={w.order_number} />}
         {w.contact_email && <Field label={t('warranty.contact')} value={w.contact_email} url={`mailto:${w.contact_email}`} />}
         {w.contact_phone && <Field label={t('warranty.contact')} value={w.contact_phone} url={`tel:${w.contact_phone.replace(/[^\d+]/g, '')}`} />}
