@@ -22,6 +22,7 @@
     "suggested": "{{months}} (suggested)",
     "statusComplete": "Ready",
     "statusNeedsInput": "Needs your input",
-    "statusReturn": "Return or cancellation"
+    "statusReturn": "Return or cancellation",
+    "failed": "{{count}} emails couldn't be read. First error: {{detail}}"
   }
 }

@@ -22,6 +22,7 @@
     "suggested": "{{months}} (javasolt)",
     "statusComplete": "Kész",
     "statusNeedsInput": "Adat hiányzik",
-    "statusReturn": "Visszaküldés vagy lemondás"
+    "statusReturn": "Visszaküldés vagy lemondás",
+    "failed": "{{count}} levelet nem sikerült beolvasni. Első hiba: {{detail}}"
   }
 }

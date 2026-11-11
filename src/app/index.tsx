@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { connectedEmail, connectGmail, getAccessToken } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
-import { fetchAndParse } from '@/mail/provider.ts';
+import { fetchAndParse, type SyncResult } from '@/mail/provider.ts';
 import type { ParseResult } from '@/parser/types.ts';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
@@ -13,7 +13,7 @@ import { colors } from '@/theme';
 type SyncState =
   | { kind: 'idle' }
   | { kind: 'syncing'; email: string }
-  | { kind: 'done'; results: ParseResult[] }
+  | { kind: 'done'; results: ParseResult[]; failed: SyncResult['failed'] }
   | { kind: 'error'; detail: string };
 
 const FIRST_SYNC_MONTHS = 24; // section 7 default; the range picker comes with onboarding polish
@@ -32,8 +32,8 @@ export default function Home() {
       setSync({ kind: 'syncing', email });
       const after = new Date();
       after.setMonth(after.getMonth() - FIRST_SYNC_MONTHS);
-      const results = await fetchAndParse(gmailProvider(getAccessToken), after);
-      setSync({ kind: 'done', results: results.sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate)) });
+      const { results, failed } = await fetchAndParse(gmailProvider(getAccessToken), after);
+      setSync({ kind: 'done', failed, results: results.sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate)) });
     } catch (e) {
       setSync({ kind: 'error', detail: e instanceof Error ? e.message : String(e) });
     }
@@ -52,6 +52,9 @@ export default function Home() {
             ignored: sync.results.filter((r) => r.kind === 'ignored').length,
           })}
         </Text>
+      )}
+      {sync.kind === 'done' && sync.failed.length > 0 && (
+        <Text style={styles.detail}>{t('home.failed', { count: sync.failed.length, detail: sync.failed[0].error })}</Text>
       )}
     </View>
   );
