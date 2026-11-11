@@ -13,7 +13,8 @@ import { restartIntoUpdate, versionLine } from '@/appUpdate';
 import { deleteAllData, sharePdf, shareText } from '@/dataTools';
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
-import { getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderHour, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
+import { appLanguage, resources } from '@/i18n';
+import { getLanguageSetting, setLanguageSetting, getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderHour, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
@@ -31,6 +32,7 @@ export default function Settings() {
   const [reminders, setReminders] = useState(getRemindersEnabled);
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
   const [hour, setHour] = useState(getReminderHour);
+  const [language, setLanguage] = useState(getLanguageSetting);
   const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
@@ -83,6 +85,13 @@ export default function Settings() {
     setReturnRemindersEnabled(on);
     setReturnReminders(on);
     await rescheduleReminders(await getDb());
+  }
+
+  async function chooseLanguage(code: string) {
+    setLanguageSetting(code);
+    setLanguage(code);
+    await i18n.changeLanguage(appLanguage());
+    await rescheduleReminders(await getDb()); // reminder texts are written in the app language
   }
 
   async function chooseHour(h: number) {
@@ -258,6 +267,22 @@ export default function Settings() {
         <Text style={styles.section} accessibilityRole="header">
           {t('settings.general')}
         </Text>
+        <View style={styles.block}>
+          <Text style={styles.label}>{t('settings.language')}</Text>
+          <View style={styles.chips}>
+            {['system', ...Object.keys(resources)].map((code) => (
+              <Pressable
+                key={code}
+                style={[styles.chip, language === code && styles.chipSelected]}
+                onPress={() => chooseLanguage(code)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: language === code }}
+              >
+                <Text style={[styles.chipText, language === code && styles.chipTextSelected]}>{t(`settings.lang_${code}`)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
         {row(t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
         {lock && (
           <Pressable style={styles.row} onPress={() => router.push('/pin')} accessibilityRole="button">

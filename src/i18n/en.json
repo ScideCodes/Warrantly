@@ -197,7 +197,11 @@
     "group_60": "60 days before",
     "group_30": "30 days before",
     "group_weekly": "Weekly in the last month",
-    "group_0": "On the last day"
+    "group_0": "On the last day",
+    "language": "Language",
+    "lang_system": "Phone language",
+    "lang_en": "English",
+    "lang_hu": "Magyar"
   },
   "backup": {
     "section": "Backup",
