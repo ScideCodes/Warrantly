@@ -3,7 +3,7 @@ import { fetchAndParse } from '../mail/provider.ts';
 import { parseEmail } from '../parser/parse.ts';
 import type { MailMessage, ParseResult, StoreRules } from '../parser/types.ts';
 import {
-  addAttachment, hasAttachmentNamed, isDocsBackfilled, knownMessageIds, loadStoreRules, saveResult, setDocsBackfilled,
+  addAttachment, hasAttachmentNamed, isDocsBackfilled, knownMessageIds, loadStoreRules, matchReturns, saveResult, setDocsBackfilled,
   setLastSynced, syncedMessages, upsertAccount, warrantiesForDocument, type Db,
 } from './repo.ts';
 
@@ -40,6 +40,7 @@ export async function syncAccount(
     },
   });
   if (!failed.length) await setLastSynced(db, account.id, now.toISOString());
+  await matchReturns(db, account.id);
   if (docs && !(await isDocsBackfilled(db, account.id))) await backfillDocuments(db, provider, docs, account.id, storeRules);
   return failed;
 }

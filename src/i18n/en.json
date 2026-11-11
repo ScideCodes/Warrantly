@@ -236,5 +236,11 @@
     "hint": "Emails Warrantly skipped or you marked as not a warranty. Restore one to complete it under \"Needs your attention\".",
     "empty": "Nothing ignored.",
     "restore": "Restore"
+  },
+  "returns": {
+    "title": "Returned or refunded?",
+    "body": "{{store}} sent a return, refund or cancellation message on {{date}} about {{product}}. Delete this warranty?",
+    "delete": "Delete warranty",
+    "keep": "Keep"
   }
 }
