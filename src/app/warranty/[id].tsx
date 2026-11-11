@@ -61,7 +61,7 @@ export default function WarrantyDetail() {
       const result = await source();
       if (!result) return;
       const db = await getDb();
-      await addAttachment(db, w!.id, `${product}.pdf`, result.localPath);
+      await addAttachment(db, w!.id, docs.length ? `${product} (${docs.length + 1}).pdf` : `${product}.pdf`, result.localPath); // names tell them apart
       setDocs(await listAttachments(db, w!.id));
     } catch (e) {
       Alert.alert(t('form.scanFailed', { detail: e instanceof Error ? e.message : String(e) }));
@@ -133,23 +133,22 @@ export default function WarrantyDetail() {
             }
             accessibilityRole="button"
           >
-            <Text style={styles.secondaryText}>{t('detail.openDocument')}</Text>
+            <Text style={styles.secondaryText} numberOfLines={1}>
+              {docs.length > 1 ? d.filename : t('detail.openDocument')}
+            </Text>
           </Pressable>
           <Pressable style={[styles.secondary, styles.docRemove]} onPress={() => confirmRemoveDocument(d)} accessibilityRole="button" accessibilityLabel={t('detail.removeDocument')}>
             <Text style={[styles.secondaryText, styles.danger]}>{t('detail.removeDocument')}</Text>
           </Pressable>
           </View>
         ))}
-        {!docs.length && (
-          <>
-            <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
-              <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
-            </Pressable>
-            <Pressable style={styles.secondary} onPress={() => attach(importDocument)} accessibilityRole="button">
-              <Text style={styles.secondaryText}>{t('detail.attachImport')}</Text>
-            </Pressable>
-          </>
-        )}
+        {/* Any number of documents: invoice, warranty card, repair sheet. */}
+        <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
+          <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
+        </Pressable>
+        <Pressable style={styles.secondary} onPress={() => attach(importDocument)} accessibilityRole="button">
+          <Text style={styles.secondaryText}>{t('detail.attachImport')}</Text>
+        </Pressable>
         {days >= 0 && (
           // Section 20: not offered once the warranty has expired.
           <View style={styles.claim}>
