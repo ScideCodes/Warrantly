@@ -64,8 +64,10 @@ export default function Settings() {
   async function addAccount() {
     const db = await getDb();
     try {
-      if (!(await addGmailAccount(db))) return;
+      const added = await addGmailAccount(db);
+      if (!added) return;
       setAccounts(await listAccounts(db));
+      if (added.needsRange) return router.push({ pathname: '/sync-range', params: { email: added.email } }); // syncs when started
       setAccountBusy(t('accounts.syncing'));
       const problems = await syncAllAccounts(db, () => {});
       setAccountBusy(problems.length ? problems.join('\n') : null);
@@ -138,6 +140,14 @@ export default function Settings() {
             <Text style={[styles.label, styles.rowText]} numberOfLines={1}>
               {a.email}
             </Text>
+            <Pressable
+              onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
+              accessibilityRole="button"
+              accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
+              hitSlop={8}
+            >
+              <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
+            </Pressable>
             <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
               <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
             </Pressable>
@@ -217,6 +227,7 @@ const styles = StyleSheet.create({
   hint: { fontSize: 14, color: colors.muted },
   link: { color: colors.primary },
   firstSection: { marginTop: 0 },
+  linkSmall: { fontSize: 15, fontWeight: '600', color: colors.primary },
   danger: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
   section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginTop: 32, marginBottom: 4 },
   block: { gap: 10, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },

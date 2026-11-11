@@ -12,7 +12,17 @@ export interface DocumentStore {
   save(bytes: Uint8Array, filename: string): Promise<string>; // returns the stored file's name
 }
 
-const FIRST_SYNC_MONTHS = 24; // section 7 default; the range picker comes later
+const DEFAULT_FIRST_SYNC_MONTHS = 24; // section 7: matches the most common legal warranty length
+
+// Where a sync starts: after the last sync, else as far back as the user chose (0 = all mail).
+export function syncStart(lastSynced: string | null, firstSyncDays: number | null, now: Date): Date | null {
+  if (lastSynced) return new Date(lastSynced);
+  if (firstSyncDays === 0) return null;
+  const start = new Date(now);
+  if (firstSyncDays === null) start.setMonth(start.getMonth() - DEFAULT_FIRST_SYNC_MONTHS);
+  else start.setDate(start.getDate() - firstSyncDays);
+  return start;
+}
 
 // Sync one mail account into the database. Mails seen before are skipped, each result is saved
 // as soon as it is parsed, and the sync marker only moves forward when nothing failed, so mails
@@ -26,8 +36,7 @@ export async function syncAccount(
   docs?: DocumentStore,
 ): Promise<SyncResult['failed']> {
   const account = await upsertAccount(db, email);
-  const after = account.last_synced_at ? new Date(account.last_synced_at) : new Date(now);
-  if (!account.last_synced_at) after.setMonth(after.getMonth() - FIRST_SYNC_MONTHS);
+  const after = syncStart(account.last_synced_at, account.first_sync_days, now);
 
   const storeRules = await loadStoreRules(db);
   const { failed } = await fetchAndParse(provider, after, {

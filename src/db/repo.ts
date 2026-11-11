@@ -105,6 +105,8 @@ const MIGRATIONS = [
      warranty_id INTEGER REFERENCES warranties(id),
      state TEXT NOT NULL DEFAULT 'unmatched'
    );`,
+  // v9: how far back the first sync reads (section 7): days, 0 = all mail, NULL = not chosen (24 months).
+  `ALTER TABLE accounts ADD COLUMN first_sync_days INTEGER;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -121,15 +123,22 @@ export interface Account {
   id: number;
   email: string;
   last_synced_at: string | null;
+  first_sync_days: number | null;
 }
 
 export async function listAccounts(db: Db): Promise<Account[]> {
-  return db.getAllAsync<Account>(`SELECT id, email, last_synced_at FROM accounts ORDER BY id`, []);
+  return db.getAllAsync<Account>(`SELECT id, email, last_synced_at, first_sync_days FROM accounts ORDER BY id`, []);
 }
 
 export async function upsertAccount(db: Db, email: string): Promise<Account> {
   await db.runAsync(`INSERT INTO accounts (provider, email) VALUES ('gmail', ?) ON CONFLICT(email) DO NOTHING`, [email]);
-  return (await db.getFirstAsync<Account>('SELECT id, email, last_synced_at FROM accounts WHERE email = ?', [email]))!;
+  return (await db.getFirstAsync<Account>('SELECT id, email, last_synced_at, first_sync_days FROM accounts WHERE email = ?', [email]))!;
+}
+
+// Choose how far back to read (first sync, or "Scan older emails" later). Mails already read are
+// skipped, so going further back only fetches the older ones.
+export async function setSyncRange(db: Db, accountId: number, days: number): Promise<void> {
+  await db.runAsync('UPDATE accounts SET first_sync_days = ?, last_synced_at = NULL WHERE id = ?', [days, accountId]);
 }
 
 export async function setLastSynced(db: Db, accountId: number, iso: string): Promise<void> {

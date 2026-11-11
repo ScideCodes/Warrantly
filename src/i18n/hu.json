@@ -216,7 +216,8 @@
     "restoreTitle": "Visszaállítod: {{email}}?",
     "restoreBody": "Ennek a fióknak a leválasztásakor ({{date}}) mentés készült. Visszaállítod a garanciáit?",
     "restore": "Visszaállítás",
-    "skip": "Kihagyás"
+    "skip": "Kihagyás",
+    "scanOlder": "Régebbi levelek"
   },
   "claim": {
     "subject": "Garanciális igény: {{product}}",
@@ -242,5 +243,19 @@
     "body": "A(z) {{store}} {{date}} napon visszaküldésről, visszatérítésről vagy lemondásról írt ezzel kapcsolatban: {{product}}. Törlöd ezt a garanciát?",
     "delete": "Garancia törlése",
     "keep": "Megtartás"
+  },
+  "range": {
+    "title": "Milyen régre visszamenőleg?",
+    "body": "A Warrantly ebben a fiókban keres garanciákat: {{email}}. Minél régebbre megy vissza, annál tovább tart. Később a Beállításokban régebbi leveleket is átnézhetsz.",
+    "2w": "2 hét",
+    "1m": "1 hónap",
+    "3m": "3 hónap",
+    "6m": "6 hónap",
+    "12m": "12 hónap",
+    "18m": "18 hónap",
+    "24m": "24 hónap",
+    "all": "Összes levél",
+    "recommended": "(ajánlott)",
+    "start": "Indítás"
   }
 }
