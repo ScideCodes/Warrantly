@@ -216,7 +216,8 @@
     "restoreTitle": "Restore {{email}}?",
     "restoreBody": "A backup of this account was made on {{date}} when it was disconnected. Restore its warranties?",
     "restore": "Restore",
-    "skip": "Skip"
+    "skip": "Skip",
+    "scanOlder": "Scan older emails"
   },
   "claim": {
     "subject": "Warranty claim: {{product}}",
@@ -242,5 +243,19 @@
     "body": "{{store}} sent a return, refund or cancellation message on {{date}} about {{product}}. Delete this warranty?",
     "delete": "Delete warranty",
     "keep": "Keep"
+  },
+  "range": {
+    "title": "How far back?",
+    "body": "Warrantly looks for warranties in {{email}}. Going further back takes longer. You can scan older emails later in Settings.",
+    "2w": "2 weeks",
+    "1m": "1 month",
+    "3m": "3 months",
+    "6m": "6 months",
+    "12m": "12 months",
+    "18m": "18 months",
+    "24m": "24 months",
+    "all": "All emails",
+    "recommended": "(recommended)",
+    "start": "Start"
   }
 }

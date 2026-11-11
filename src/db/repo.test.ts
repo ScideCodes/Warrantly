@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
 import { addAttachment, addManual, answerReturn, listReturnPrompts, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
-import { syncAccount } from './sync.ts';
+import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
 const fixtures: { message: MailMessage }[] = JSON.parse(readFileSync(new URL('../parser/fixtures/emails.json', import.meta.url), 'utf8'));
@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 8);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 9);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -249,4 +249,12 @@ test('a refund with no matching warranty stays quiet', async () => {
   await migrate(db);
   await syncAccount(db, fakeProvider(['merlin-cancel'], []), 'user@example.com');
   assert.deepEqual(await listReturnPrompts(db), []);
+});
+
+test('syncStart: last sync, chosen range, all mail, or the 24-month default', () => {
+  const now = new Date('2026-11-11T10:00:00Z');
+  assert.equal(syncStart('2026-11-01T00:00:00.000Z', 14, now)?.toISOString(), '2026-11-01T00:00:00.000Z');
+  assert.equal(syncStart(null, 14, now)?.toISOString(), '2026-10-28T10:00:00.000Z');
+  assert.equal(syncStart(null, 0, now), null);
+  assert.equal(syncStart(null, null, now)?.toISOString().slice(0, 7), '2024-11');
 });

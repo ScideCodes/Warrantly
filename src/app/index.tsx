@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, Redirect, useFocusEffect } from 'expo-router';
+import { Link, Redirect, router, useFocusEffect } from 'expo-router';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +64,9 @@ export default function Home() {
 
   async function connect() {
     try {
-      if (await addGmailAccount(await getDb())) await runSync();
+      const added = await addGmailAccount(await getDb());
+      if (added?.needsRange) router.push({ pathname: '/sync-range', params: { email: added.email } }); // syncs when started
+      else if (added) await runSync();
     } catch (e) {
       setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] });
     }

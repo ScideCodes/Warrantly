@@ -16,7 +16,8 @@ const ask = (title: string, body: string, yes: string, no: string) =>
   );
 
 // Connect a Gmail account (section 15). If it was disconnected before, offer the backup made then.
-export async function addGmailAccount(db: Db): Promise<string | null> {
+// Returns the email and whether it still needs its first sync range (section 7).
+export async function addGmailAccount(db: Db): Promise<{ email: string; needsRange: boolean } | null> {
   const email = await connectGmail();
   if (!email) return null;
   const account = await upsertAccount(db, email);
@@ -27,7 +28,8 @@ export async function addGmailAccount(db: Db): Promise<string | null> {
       await restoreDisconnected(db, account);
     }
   }
-  return email;
+  const now = (await listAccounts(db)).find((a) => a.email === email);
+  return { email, needsRange: !now?.last_synced_at };
 }
 
 // Sync every connected account, one after another. Returns one readable line per problem.
