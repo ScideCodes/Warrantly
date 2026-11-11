@@ -23,6 +23,7 @@
     "statusComplete": "Kész",
     "statusNeedsInput": "Adat hiányzik",
     "statusReturn": "Visszaküldés vagy lemondás",
-    "failed": "{{count}} levelet nem sikerült beolvasni. Első hiba: {{detail}}"
+    "failed": "{{count}} levelet nem sikerült beolvasni. Első hiba: {{detail}}",
+    "progress": "{{done}}/{{total}} levél beolvasva"
   }
 }

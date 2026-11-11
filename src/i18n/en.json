@@ -23,6 +23,7 @@
     "statusComplete": "Ready",
     "statusNeedsInput": "Needs your input",
     "statusReturn": "Return or cancellation",
-    "failed": "{{count}} emails couldn't be read. First error: {{detail}}"
+    "failed": "{{count}} emails couldn't be read. First error: {{detail}}",
+    "progress": "{{done}} of {{total}} emails read"
   }
 }

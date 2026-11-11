@@ -27,19 +27,22 @@ export function gmailProvider(getAccessToken: () => Promise<string>, fetchFn: ty
   async function get(path: string, attempt = 1): Promise<any> {
     const res = await fetchFn(`${API}/${path}`, { headers: { Authorization: `Bearer ${await getAccessToken()}` } });
     if (res.ok) return res.json();
-    // 403/429 can be per-user rate limits, 5xx are transient: wait and retry before giving up.
-    if (attempt < 3 && (res.status === 403 || res.status === 429 || res.status >= 500)) {
-      await new Promise((r) => setTimeout(r, retryDelayMs * attempt));
-      return get(path, attempt + 1);
-    }
     // Google's reason (e.g. accessNotConfigured, rateLimitExceeded) says what to fix.
     const text = await res.text().catch(() => '');
+    let code = '';
     let reason = '';
     try {
       const err = JSON.parse(text).error;
-      reason = [err?.errors?.[0]?.reason ?? err?.status, err?.message].filter(Boolean).join(' - ');
+      code = err?.errors?.[0]?.reason ?? err?.status ?? '';
+      reason = [code, err?.message].filter(Boolean).join(' - ');
     } catch {
       reason = text.slice(0, 120);
+    }
+    // The per-user quota is counted per minute, so a rate limit needs a long pause; 5xx only a short one.
+    const rateLimited = res.status === 429 || /rateLimitExceeded|RESOURCE_EXHAUSTED/i.test(code);
+    if (attempt < 4 && (rateLimited || res.status >= 500)) {
+      await new Promise((r) => setTimeout(r, retryDelayMs * (rateLimited ? 20 : 1) * attempt));
+      return get(path, attempt + 1);
     }
     throw new Error(`Gmail ${res.status} on ${path.split('?')[0]}${reason && `: ${reason}`}`);
   }
