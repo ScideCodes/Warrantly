@@ -1,4 +1,4 @@
-import { DEFAULT_WARRANTY_MONTHS, IGNORED_DOMAINS, LANGUAGES, type LanguageKeywords } from './keywords.ts';
+import { DEFAULT_WARRANTY_MONTHS, IGNORED_SENDERS, LANGUAGES, type LanguageKeywords } from './keywords.ts';
 import type { Item, Kind, MailMessage, ParseResult, RequiredField, Status, StoreRules } from './types.ts';
 
 const NOREPLY = /no-?reply|do-?not-?reply/i;
@@ -17,7 +17,7 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
   const deliveredDate = LANGUAGES.some((l) => l.delivered.test(all)) ? purchaseDate : null;
 
   let kind: Kind;
-  if (IGNORED_DOMAINS.has(storeDomain)) kind = 'ignored';
+  if (IGNORED_SENDERS.has(storeDomain) || IGNORED_SENDERS.has(msg.from.toLowerCase())) kind = 'ignored';
   else if (LANGUAGES.some((l) => l.returned.test(all))) kind = 'return';
   else kind = 'purchase';
 
@@ -30,9 +30,10 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
     return { name, warrantyMonths: null, warrantySource: null };
   });
 
-  // A purchase needs a purchase word plus something concrete; newsletters that only
-  // mention "rendelés" or "order" have none of these.
-  const isPurchase = LANGUAGES.some((l) => l.purchase.test(all)) && (orderNumber || items.length || pdfAttachments.length);
+  // Only invoices, receipts and warranty documents count, judged by the subject or a PDF's name
+  // (bodies of order confirmations mention "számla" too). They also need something concrete.
+  const isDocument = LANGUAGES.some((l) => l.document.test(msg.subject) || pdfAttachments.some((f) => l.document.test(f)));
+  const isPurchase = isDocument && (orderNumber || items.length || pdfAttachments.length);
   if (kind === 'purchase' && !isPurchase) kind = 'ignored';
 
   const missingFields: RequiredField[] = [];

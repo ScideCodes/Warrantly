@@ -51,14 +51,14 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 1);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 2);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
   const db = nodeDb();
   await migrate(db);
   const now = new Date('2026-11-11T10:00:00Z');
-  const ids = ['pcx-order', 'alza-order', 'conrad-invoice', 'merlin-cancel', 'steam', 'quota-hit'];
+  const ids = ['pcx-invoice', 'conrad-invoice', 'synthetic-en-warranty', 'alza-order', 'merlin-cancel', 'steam', 'quota-hit'];
   const afters: (Date | null)[] = [];
 
   const failed = await syncAccount(db, fakeProvider(ids, afters), 'user@example.com', undefined, now);
@@ -67,15 +67,15 @@ test('sync saves warranties, retries failed mails, never duplicates', async () =
 
   const complete = await listWarranties(db, 'complete');
   assert.deepEqual(complete.map((w) => [w.product_name, w.warranty_months, w.length_is_suggested, w.end_date]), [
-    ['Gembird MA-DA1-05 asztali tartó konzol', 24, 0, '2028-09-12'],
+    ['Acme Kettle 1.7L', 24, 0, '2028-03-02'],
   ]);
   const attention = await listWarranties(db, 'needs_input');
-  assert.deepEqual(attention.map((w) => [w.product_name, w.missing_fields, w.length_is_suggested]), [
-    [null, '["productName","warrantyMonths"]', 1], // Conrad invoice, details only in the PDF
-    ['Mixing Desk FIFINE SC3', '["warrantyMonths"]', 1],
+  assert.deepEqual(attention.map((w) => [w.store_name, w.product_name, w.missing_fields, w.warranty_start_date]), [
+    ['Conrad HU', null, '["productName","warrantyMonths"]', '2026-08-26'], // details only in the PDF
+    ['PCX Webáruház', null, '["productName","warrantyMonths"]', '2026-09-15'], // picked up in store: start = that day
   ]);
   const count = (sql: string) => (db.raw.prepare(sql).get() as { n: number }).n;
-  assert.equal(count(`SELECT COUNT(*) n FROM warranties WHERE status = 'ignored'`), 1); // Steam, kept for review
+  assert.equal(count(`SELECT COUNT(*) n FROM warranties WHERE status = 'ignored'`), 2); // Alza order confirmation + Steam, kept for review
   assert.equal(count(`SELECT COUNT(*) n FROM sources WHERE kind = 'return' AND warranty_id IS NULL`), 1);
   assert.equal(count('SELECT COUNT(*) n FROM accounts WHERE last_synced_at IS NULL'), 1); // a mail failed: marker stays
 
@@ -83,7 +83,7 @@ test('sync saves warranties, retries failed mails, never duplicates', async () =
   const failed2 = await syncAccount(db, fakeProvider(ids.filter((id) => id !== 'quota-hit'), afters), 'user@example.com', undefined, now);
   assert.deepEqual(failed2, []);
   assert.equal(afters[1]?.toISOString().slice(0, 7), '2024-11');
-  assert.equal(count('SELECT COUNT(*) n FROM warranties'), 4);
+  assert.equal(count('SELECT COUNT(*) n FROM warranties'), 5);
   assert.equal(count(`SELECT COUNT(*) n FROM accounts WHERE last_synced_at = '2026-11-11T10:00:00.000Z'`), 1);
 
   // Third sync starts from the marker.
@@ -91,6 +91,6 @@ test('sync saves warranties, retries failed mails, never duplicates', async () =
   assert.equal(afters[2]?.toISOString(), '2026-11-11T10:00:00.000Z');
 
   const w = await getWarranty(db, complete[0].id);
-  assert.equal(w?.store_name, 'PCX Webáruház');
+  assert.equal(w?.store_name, 'Example Electronics');
   assert.equal(await getWarranty(db, 999), null);
 });

@@ -1,4 +1,4 @@
-import { LANGUAGES } from '../parser/keywords.ts';
+import { IGNORED_SENDERS, LANGUAGES } from '../parser/keywords.ts';
 import type { MailMessage } from '../parser/types.ts';
 import { htmlToText } from './htmlToText.ts';
 import type { MailProvider } from './provider.ts';
@@ -19,14 +19,22 @@ export interface GmailApiMessage {
   payload: GmailPart;
 }
 
-// One OR-group of every language's search words (section 7: "extend per language").
-export const SEARCH_QUERY = `(${LANGUAGES.flatMap((l) => l.searchTerms).join(' OR ')})`;
+// Invoices and warranty documents (by subject or PDF name) plus cancellations, minus senders that
+// never sell warranty goods. Narrow on purpose: every fetched mail costs Gmail quota and time.
+const or = (terms: string[]) => terms.join(' OR ');
+export const SEARCH_QUERY =
+  `(subject:(${or(LANGUAGES.flatMap((l) => l.documentTerms))}) ` +
+  `OR filename:(${or(['szamla', 'invoice', 'receipt', 'nyugta', 'garancia', 'warranty'])}) ` +
+  `OR ${or(LANGUAGES.flatMap((l) => l.returnTerms))}) ` +
+  `-from:(${or([...IGNORED_SENDERS])}) -in:sent`; // forwarded invoices would double up
 
-// `getAccessToken` comes from expo-auth-session (gmail.readonly scope); refreshing it is the caller's job.
-export function gmailProvider(getAccessToken: () => Promise<string>, fetchFn: typeof fetch = fetch, retryDelayMs = 1000): MailProvider {
-  async function get(path: string, attempt = 1): Promise<any> {
-    const res = await fetchFn(`${API}/${path}`, { headers: { Authorization: `Bearer ${await getAccessToken()}` } });
+// `getAccessToken` may cache; it gets the rejected token back after a 401 and must return a fresh one.
+export function gmailProvider(getAccessToken: (expired?: string) => Promise<string>, fetchFn: typeof fetch = fetch, retryDelayMs = 1000): MailProvider {
+  async function get(path: string, attempt = 1, expired?: string): Promise<any> {
+    const token = await getAccessToken(expired);
+    const res = await fetchFn(`${API}/${path}`, { headers: { Authorization: `Bearer ${token}` } });
     if (res.ok) return res.json();
+    if (res.status === 401 && !expired) return get(path, attempt, token); // cached token expired: refresh once
     // Google's reason (e.g. accessNotConfigured, rateLimitExceeded) says what to fix.
     const text = await res.text().catch(() => '');
     let code = '';

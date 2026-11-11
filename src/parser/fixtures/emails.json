@@ -1,67 +1,95 @@
 [
   {
-    "name": "alza order confirmation (HU), product found, no warranty length",
+    "name": "alza order confirmation (HU) is skipped: order/pickup notices are not warranty documents (items still extracted)",
     "message": {
       "id": "alza-order",
       "from": "segito@alza.hu",
       "fromName": "Alza.hu",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Már dolgozunk rajta. / 1060000001 sz. megr.",
       "date": "2026-10-31T16:06:49Z",
       "text": "Mail Információ a megrendelésről\n\n| |\n\n| | |\n| [](https://www.alza.hu) | Megrendelés 1060000001[](https://www.alza.hu/my-account/x) |\n\n| |\n| Várd meg a következő SMS/e-mail üzenetet |\n| |\n| 1060000001 sz. megrendelésed feldolgozását megkezdtük. |\n| |\n\n| | |\n| | A megrendelés átvételének várható időpontja: | |\n| | vasárnap 11.01. 10:00 órától. | |\n\n| |\n| Számla letöltése[](https://www.alza.hu/x) |\n\n| |\n| Ez egy automatikusan generált üzenet, mellyel még nem jött létre szerződés közöttünk. |\n\n| | |\n| Számla neve: Alza.hu Kft |\n| Hivatkozási szám: 1060000001 |\n| Összeg: 16480 HUF |\n\n| | [](https://www.alza.hu/kod/FFN009a2) | | 1x Mixing Desk FIFINE SC3[](https://www.alza.hu/kod/FFN009a2) | 15 290,00 HUF | |\n| Lefoglalva |\n| |\n\n| | [](https://www.alza.hu/kod/SL061a) | | 1x Be nem vált ajándék kicserélése utalványra 2027.1.31-ig (FFN009a2)[](https://www.alza.hu/kod/SL061a) | 0,00 HUF | |\n| Lefoglalva |\n| |\n\n| | [](https://www.alza.hu/szallitasi-informacio) | | 1x Delivery - AlzaBox, , Payment - Cash on delivery[](https://www.alza.hu/szallitasi-informacio) | 1 190,00 HUF | |\n| Lefoglalva |\n| |\n\n| | Fizetendő összesen (ÁFÁ-val együtt): | 16 480 HUF | |\n\n| |\n| Kérjük, erre az e-mailre ne válaszolj, automatikusan küldtük a megrendeléseddel kapcsolatban. |\n| Alza.hu Kft., székhely: 1134 Budapest, Róbert Károly körút 54-58., cégjegyzékszám: 01-09-286873, adószám: 25745849-2-41. |\n\n| |\n| Az Alza.hu csapata |\n| AHUW000000001 |",
-      "attachments": [{ "filename": "Alza.hu_ASF_B2C_20260723.pdf", "mimeType": "application/octet-stream" }]
+      "attachments": [
+        {
+          "filename": "Alza.hu_ASF_B2C_20260723.pdf",
+          "mimeType": "application/octet-stream"
+        }
+      ]
     },
     "expect": {
-      "kind": "purchase",
-      "status": "needs_input",
+      "kind": "ignored",
+      "status": "ignored",
       "storeDomain": "alza.hu",
       "orderNumber": "1060000001",
-      "items": [{ "name": "Mixing Desk FIFINE SC3", "warrantyMonths": null, "warrantySource": null }],
-      "missingFields": ["warrantyMonths"],
-      "suggestedWarrantyMonths": 24,
+      "items": [
+        {
+          "name": "Mixing Desk FIFINE SC3",
+          "warrantyMonths": null,
+          "warrantySource": null
+        }
+      ],
+      "missingFields": [],
+      "suggestedWarrantyMonths": null,
       "contactEmail": "segito@alza.hu"
     }
   },
   {
-    "name": "alza pickup notice (HU), delivery date, no items",
+    "name": "alza pickup notice (HU) is skipped: order/pickup notices are not warranty documents (items still extracted)",
     "message": {
       "id": "alza-pickup",
       "from": "segito@alza.hu",
       "fromName": "Alza.hu",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Vedd át 1060000002 sz. megrendelésed",
       "date": "2026-11-02T06:01:31Z",
       "text": "Megrendelés 1060000002 Vedd át a megrendelésed az AlzaBoxból 1060000002 sz. megrendelésed megérkezett a(z) Budapest III. - Heltai Jenő tér (Príma) AlzaBoxba, melynek címe: Heltai Jenő tér 7, Budapest.",
       "attachments": []
     },
     "expect": {
-      "kind": "purchase",
-      "status": "needs_input",
+      "kind": "ignored",
+      "status": "ignored",
       "orderNumber": "1060000002",
       "deliveredDate": "2026-11-02",
       "suggestedStartDate": "2026-11-02",
-      "missingFields": ["productName", "warrantyMonths"]
+      "missingFields": []
     }
   },
   {
-    "name": "pcx order (HU), per-item warranty in body, complete",
+    "name": "pcx order (HU) is skipped: order/pickup notices are not warranty documents (items still extracted)",
     "message": {
       "id": "pcx-order",
       "from": "pcx@pcx.hu",
       "fromName": "PCX Webáruház",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Rendelés",
       "date": "2026-09-12T07:00:40Z",
       "text": "Kedves Teszt Elek!\n\nKöszönjük, hogy a PCX Webáruházat választottad!Rendelésed\na következő adatokkal került rögzítésre:\n\nSZÁMLÁZÁSI ADATOK\n\nTeszt Elek\n\n1111 Budapest, Minta utca 1\n\nÁTVÉTELI ADATOK\n\n1138 Budapest, Berettyó u. 2.\n\nFizetési mód: Átvétel során\n\nAzonosító: 260901/900001   Gembird MA-DA1-05 asztali tartó\nkonzol (378204) 24 hó gar.8 691 HUF1 db 8 691\nHUF  Összesen:8 691 HUF \n\nRendelésedet néhány napon belül átveheted, az átvételről\ne-mailben értesítünk.Köszönjük a megrendelést, a\nmegvásárolt termékekhez sok örömet kívánunk!\n\n\t\n\t\n\n\t\t\t\tPCX webáruház, minden jog fenntartva.Kapcsolat: pcx@pcx.hu",
-      "attachments": [{ "filename": "378204_1.jpg", "mimeType": "image/jpeg" }]
+      "attachments": [
+        {
+          "filename": "378204_1.jpg",
+          "mimeType": "image/jpeg"
+        }
+      ]
     },
     "expect": {
-      "kind": "purchase",
-      "status": "complete",
+      "kind": "ignored",
+      "status": "ignored",
       "storeName": "PCX Webáruház",
       "orderNumber": "260901/900001",
       "deliveredDate": null,
-      "items": [{ "name": "Gembird MA-DA1-05 asztali tartó konzol", "warrantyMonths": 24, "warrantySource": "email" }],
+      "items": [
+        {
+          "name": "Gembird MA-DA1-05 asztali tartó konzol",
+          "warrantyMonths": 24,
+          "warrantySource": "email"
+        }
+      ],
       "missingFields": [],
       "suggestedWarrantyMonths": null,
       "contactEmail": "pcx@pcx.hu"
@@ -73,14 +101,25 @@
       "id": "pcx-invoice",
       "from": "pcx@pcx.hu",
       "fromName": "PCX Webáruház",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Személyes átvétel, vásárlást igazoló számla",
       "date": "2026-09-15T12:08:02Z",
       "text": "Kedves Teszt Elek!\nKöszönjük, hogy vásárlásodhoz a PCX Webáruházat\nválasztottad és rendelésedet személyesen átvetted\nüzletünkben. A vásárlást igazoló számlát, mely aláírás\nés bélyegző nélkül is hiteles, kinyomtatva elszámolásra\nalkalmas, jelen levelünkhöz mellékeltük. Védjük együtt\nkörnyezetünket, ezért a számlát csak akkor nyomtasd ki, ha\naz elszámoláshoz szükséges, a garancia igazolásához\nelegendő a számla számra vagy rendelési azonosítóra\nhivatkoznod a hibabejelentés során. A megvásárolt\ntermékekhez hibamentes használatot és sok örömet kívánunk!\n\n\t\n\n\t\t\t\tPCX webáruház, minden jog fenntartva.Kapcsolat: pcx@pcx.hu",
       "attachments": [
-        { "filename": "header_logo_email.png", "mimeType": "image/png" },
-        { "filename": "PBK000001-2026.pdf", "mimeType": "application/pdf" },
-        { "filename": "260901-900001.pdf", "mimeType": "application/pdf" }
+        {
+          "filename": "header_logo_email.png",
+          "mimeType": "image/png"
+        },
+        {
+          "filename": "PBK000001-2026.pdf",
+          "mimeType": "application/pdf"
+        },
+        {
+          "filename": "260901-900001.pdf",
+          "mimeType": "application/pdf"
+        }
       ]
     },
     "expect": {
@@ -88,47 +127,73 @@
       "status": "needs_input",
       "orderNumber": null,
       "deliveredDate": "2026-09-15",
-      "missingFields": ["productName", "warrantyMonths"],
-      "pdfAttachments": ["PBK000001-2026.pdf", "260901-900001.pdf"]
+      "missingFields": [
+        "productName",
+        "warrantyMonths"
+      ],
+      "pdfAttachments": [
+        "PBK000001-2026.pdf",
+        "260901-900001.pdf"
+      ]
     }
   },
   {
-    "name": "conrad order (HU), product with '1 db', footer mentions returns",
+    "name": "conrad order (HU) is skipped: order/pickup notices are not warranty documents (items still extracted)",
     "message": {
       "id": "conrad-order",
       "from": "rendeles@conrad.hu",
       "fromName": "Conrad Electronic",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Conrad Electronic - az Ön rendelésének száma 2010000001",
       "date": "2026-08-24T19:45:53Z",
       "text": " Thank you for your order\n\n| | |\n| | Személyes fiók[](https://www.conrad.hu/szemelyes-fiok) Webshop[](https://www.conrad.hu/) |\n\n| Köszönjük rendelését! Ügyfélszám: 0590000001 Megrendelés száma: 2010000001 Megrendelés beérkezési ideje: 2026. 08. 24. 21:45:53 Szállítási mód: Személyesen Szaküzletünkben (1067 Budapest, Teréz krt. 23.) |\n\n| Számlázási cím: Teszt Elek 1111 Budapest Minta utca 1 Magyarország Szállítási cím: 1067 Budapest Teréz Krt. 23. Magyarország |\n\n| Ügyfélszám Megrendelés száma | 0590000001 2010000001 |\n| Jonsbo VC-20 Videokártya tartó 1 db [](#) | Egységár: 6090 Ft Mennyiség: 1 Darab Ár: 6090 Ft |\n| Termékek ára: | 6090 Ft |\n| Szállítási költség: | 0 Ft |\n| Végösszeg: | 6090 Ft |\n\n| Visszaküldene egy terméket? Elállási jogra vonatkozó tájékoztatónkat itt[](https://help.conrad.hu/hc/hu/articles/360001251798-P%C3%A9nzvisszafizet%C3%A9si-garancia-el%C3%A1ll%C3%A1s-a-v%C3%A1s%C3%A1rl%C3%A1st%C3%B3l) találja. Számlázási kérdése van? A szállítási értesítést követően emailben elküldjük Önnek számláját. |\n\n| 2022© Szinker Kft. Telefonos vevőszolgálat Tel.: (06-1) 319-0250 Email: [email protected] (H-P: 09.00-16.00) |",
       "attachments": []
     },
     "expect": {
-      "kind": "purchase",
-      "status": "needs_input",
+      "kind": "ignored",
+      "status": "ignored",
       "orderNumber": "2010000001",
-      "items": [{ "name": "Jonsbo VC-20 Videokártya tartó", "warrantyMonths": null, "warrantySource": null }],
-      "missingFields": ["warrantyMonths"],
+      "items": [
+        {
+          "name": "Jonsbo VC-20 Videokártya tartó",
+          "warrantyMonths": null,
+          "warrantySource": null
+        }
+      ],
+      "missingFields": [],
       "contactPhone": "(06-1) 319-0250"
     }
   },
   {
-    "name": "conrad order with a remembered store rule becomes complete",
-    "storeRules": { "conrad.hu": { "defaultWarrantyMonths": 12 } },
+    "name": "invoice with a remembered store rule becomes complete (real Conrad item lines, invoice subject)",
+    "storeRules": {
+      "conrad.hu": {
+        "defaultWarrantyMonths": 12
+      }
+    },
     "message": {
       "id": "conrad-order-rule",
       "from": "rendeles@conrad.hu",
       "fromName": "Conrad Electronic",
-      "to": ["user@example.com"],
-      "subject": "Conrad Electronic - az Ön rendelésének száma 2010000001",
+      "to": [
+        "user@example.com"
+      ],
+      "subject": "Conrad Electronic Számla (9780000001, 590000001)",
       "date": "2026-08-24T19:45:53Z",
       "text": "| Ügyfélszám Megrendelés száma | 0590000001 2010000001 |\n| Jonsbo VC-20 Videokártya tartó 1 db [](#) | Egységár: 6090 Ft Mennyiség: 1 Darab Ár: 6090 Ft |",
       "attachments": []
     },
     "expect": {
       "status": "complete",
-      "items": [{ "name": "Jonsbo VC-20 Videokártya tartó", "warrantyMonths": 12, "warrantySource": "store_rule" }],
+      "items": [
+        {
+          "name": "Jonsbo VC-20 Videokártya tartó",
+          "warrantyMonths": 12,
+          "warrantySource": "store_rule"
+        }
+      ],
       "missingFields": []
     }
   },
@@ -138,17 +203,29 @@
       "id": "conrad-invoice",
       "from": "vevoszolgalat@conrad.hu",
       "fromName": "Conrad HU",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Conrad Electronic Számla (9780000001, 590000001)",
       "date": "2026-08-26T12:45:17Z",
       "text": "Tisztelt Ügyfelünk!,\n\nA számlát ennek az e-mailnek mellékleteként küldjük Önnek.\n\nHa további kérdései lennének a bizonylattal kapcsolatban, állunk\nrendelkezésére.\n\nTisztelettel, Conrad Vevőszolgálat",
-      "attachments": [{ "filename": "9780000001.pdf", "mimeType": "application/pdf" }]
+      "attachments": [
+        {
+          "filename": "9780000001.pdf",
+          "mimeType": "application/pdf"
+        }
+      ]
     },
     "expect": {
       "kind": "purchase",
       "status": "needs_input",
-      "missingFields": ["productName", "warrantyMonths"],
-      "pdfAttachments": ["9780000001.pdf"],
+      "missingFields": [
+        "productName",
+        "warrantyMonths"
+      ],
+      "pdfAttachments": [
+        "9780000001.pdf"
+      ],
       "contactEmail": "vevoszolgalat@conrad.hu"
     }
   },
@@ -158,7 +235,9 @@
       "id": "merlin-cancel",
       "from": "info@merlinhardver.hu",
       "fromName": "Merlinhardver",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Rendelés - Állapotváltozás",
       "date": "2026-08-25T14:05:33Z",
       "text": "a {\n text-decoration: none;\n color: inherit;\n }\n\n Kedves Teszt Elek!\n\n Tájékoztatunk, hogy 20260801_0001 sz. megrendelésed állapota\nmegváltozott.\n\n A rendelés új állapota: Törölve.\n\n Amennyiben további kérdésed lenne a megrendeléssel\n kapcsolatban, fordulj hozzánk a +36 30 373 88 36 telefonszámon vagy írj\nNekünk az info@merlinhardver.hu e-mail címre.\n\n Rendelésed részletei:\n\n Azonosító:\n 20260801_0001\n\n Rendelés Időpontja:\n 2026-08-12 20:38:59\n\n Számlázási adatok:\n\n Név:\n\n Teszt Elek\n\n E-mail:\n user@example.com\n\n Telefonszám:\n +36301234567\n\n Megrendelt Termékek:\n\n Név\n Cikkszám\n Darabszám\n br. Egységár\n\n Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)\n 22170\n 1\n 37.643 Ft\n\n Jonsbo TG-360 AiO Water Cooling, ARGB - 360mm, Black (TG-360B)\n 76751\n 1\n 27.609 Ft\n\n Végösszeg\n 105.263 HUF\n\n Üdvözlettel,\n\n A Merlinhardver Csapata",
@@ -174,23 +253,31 @@
     }
   },
   {
-    "name": "ATK order confirmed (EN), product with '× 1'",
+    "name": "ATK order confirmed (EN) is skipped: order/pickup notices are not warranty documents (items still extracted)",
     "message": {
       "id": "atk-order",
       "from": "cs@atkgear.com",
       "fromName": "ATK Gaming Gear",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Order #ATKGR00001 confirmed",
       "date": "2026-05-17T15:16:05Z",
       "text": "Thank you for your order!\n\nATK Gaming Gear\n\nOrder #ATKGR00001\n\n-------------------------\nThank you for your order!\n-------------------------\n\nWe're getting your order ready to be shipped. We will\nnotify you when it has been sent.\n\nView your order\n( https://www.atk.store/orders/redacted )\n\nor Visit our store\n( https://www.atk.store )\n\nOrder summary\n-------------\n\nATK Blazing Sky ZERO Ultralight Wireless Gaming\nMouse × 1\n\nZERO Extreme / Frosted Orange\n\n$109.98\n\nSubtotal\n\n$109.98\n\nShipping\n\n$30.00\nFree\n\nTotal\n\n$109.98 USD\n\nShipping address\n----------------\n\nElek\nMinta utca 1\nBudapest\n1111\nHungary\n\nPayment\n-------\n\nMastercard\nending with 0000\n\nIf you have any questions, reply to this email or\ncontact us at cs@atkgear.com",
       "attachments": []
     },
     "expect": {
-      "kind": "purchase",
-      "status": "needs_input",
+      "kind": "ignored",
+      "status": "ignored",
       "orderNumber": "ATKGR00001",
-      "items": [{ "name": "ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse", "warrantyMonths": null, "warrantySource": null }],
-      "missingFields": ["warrantyMonths"],
+      "items": [
+        {
+          "name": "ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse",
+          "warrantyMonths": null,
+          "warrantySource": null
+        }
+      ],
+      "missingFields": [],
       "contactEmail": "cs@atkgear.com",
       "websiteUrl": "https://atkgear.com"
     }
@@ -201,7 +288,9 @@
       "id": "synthetic-en-warranty",
       "from": "orders@example-electronics.com",
       "fromName": "Example Electronics",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Your receipt for order 55501",
       "date": "2026-03-02T09:00:00Z",
       "text": "Thanks for shopping with us.\n\nOrder number: 55501\n\n| 1x Acme Kettle 1.7L | $39.00 |\n| 1x Shipping | $5.00 |\n\nYour Acme Kettle comes with a 2-year warranty.\nQuestions? Call +1 555 010 0199.",
@@ -211,7 +300,13 @@
       "kind": "purchase",
       "status": "complete",
       "orderNumber": "55501",
-      "items": [{ "name": "Acme Kettle 1.7L", "warrantyMonths": 24, "warrantySource": "email" }],
+      "items": [
+        {
+          "name": "Acme Kettle 1.7L",
+          "warrantyMonths": 24,
+          "warrantySource": "email"
+        }
+      ],
       "contactEmail": "orders@example-electronics.com",
       "contactPhone": "+1 555 010 0199"
     }
@@ -222,13 +317,19 @@
       "id": "steam",
       "from": "noreply@steampowered.com",
       "fromName": "Steam Support",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Thank you for your recent purchase for Rust",
       "date": "2026-10-27T17:12:15Z",
       "text": "Hello player\n\nThank you for your recent transaction on Steam. To view the details, please\nvisit\nhttps://store.steampowered.com/email/VATPurchaseReceipt?redacted\n\n\tCheers,\nThe Steam Team",
       "attachments": []
     },
-    "expect": { "kind": "ignored", "status": "ignored", "missingFields": [] }
+    "expect": {
+      "kind": "ignored",
+      "status": "ignored",
+      "missingFields": []
+    }
   },
   {
     "name": "foodora receipt (HU) is ignored, food delivery",
@@ -236,13 +337,23 @@
       "id": "foodora",
       "from": "no-reply@foodora.hu",
       "fromName": "foodora",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Rendelésedhez tartozó bizonylat",
       "date": "2026-10-30T12:41:26Z",
       "text": "foodora rendelésedhez tartozó bizonylat Kedves Elek! Köszönjük, hogy foodoráról rendeltél! Csatolva küldjük a bizonylatot.",
-      "attachments": [{ "filename": "bizonylat.pdf", "mimeType": "application/pdf" }]
+      "attachments": [
+        {
+          "filename": "bizonylat.pdf",
+          "mimeType": "application/pdf"
+        }
+      ]
     },
-    "expect": { "kind": "ignored", "status": "ignored" }
+    "expect": {
+      "kind": "ignored",
+      "status": "ignored"
+    }
   },
   {
     "name": "google play refund (EN) is ignored, digital goods",
@@ -250,13 +361,18 @@
       "id": "gplay-refund",
       "from": "googleplay-noreply@google.com",
       "fromName": "Google Play",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Your Google Play refund has been approved",
       "date": "2026-05-11T20:12:30Z",
       "text": "Hi, We've issued a refund of HUF 590 for OneGlass (Dark) - Icon Pack, Transaction ID GPA.0000-0000-0000-00000.",
       "attachments": []
     },
-    "expect": { "kind": "ignored", "status": "ignored" }
+    "expect": {
+      "kind": "ignored",
+      "status": "ignored"
+    }
   },
   {
     "name": "terms-change newsletter (HU, synthetic body) mentioning orders is ignored",
@@ -264,12 +380,17 @@
       "id": "notino-terms",
       "from": "info@notino.hu",
       "fromName": "Notino",
-      "to": ["user@example.com"],
+      "to": [
+        "user@example.com"
+      ],
       "subject": "Tájékoztatás az üzleti feltételek változásáról",
       "date": "2026-10-20T08:00:00Z",
       "text": "Kedves Vásárlónk! Tájékoztatunk, hogy az ÁSZF megváltozik. A változás a jövőbeni rendelésekre vonatkozik.",
       "attachments": []
     },
-    "expect": { "kind": "ignored", "status": "ignored" }
+    "expect": {
+      "kind": "ignored",
+      "status": "ignored"
+    }
   }
 ]

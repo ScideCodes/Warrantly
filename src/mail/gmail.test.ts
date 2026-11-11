@@ -9,14 +9,16 @@ import { fetchAndParse } from './provider.ts';
 const html = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const b64url = (s: string, enc: 'utf8' | 'latin1' = 'utf8') => Buffer.from(s, enc).toString('base64url');
 
-// Real HTML bodies (anonymized) must parse the same way the connector's plain text did.
+// Real HTML bodies (anonymized) must parse the same way the connector's plain text did. These are
+// order confirmations, so they are skipped, but their line items must still be found: invoices use
+// the same extractor.
 const htmlCases = [
   { file: 'alza-order.html', from: 'segito@alza.hu', subject: 'Már dolgozunk rajta. / 1060000001 sz. megr.',
-    expect: { orderNumber: '1060000001', items: [{ name: 'Mixing Desk FIFINE SC3', warrantyMonths: null, warrantySource: null }], status: 'needs_input' } },
+    expect: { orderNumber: '1060000001', items: [{ name: 'Mixing Desk FIFINE SC3', warrantyMonths: null, warrantySource: null }], status: 'ignored' } },
   { file: 'pcx-order.html', from: 'pcx@pcx.hu', subject: 'Rendelés',
-    expect: { orderNumber: '260901/900001', items: [{ name: 'Gembird MA-DA1-05 asztali tartó konzol', warrantyMonths: 24, warrantySource: 'email' }], status: 'complete' } },
+    expect: { orderNumber: '260901/900001', items: [{ name: 'Gembird MA-DA1-05 asztali tartó konzol', warrantyMonths: 24, warrantySource: 'email' }], status: 'ignored' } },
   { file: 'atk-order.html', from: 'cs@atkgear.com', subject: 'Order #ATKGR00001 confirmed',
-    expect: { orderNumber: 'ATKGR00001', items: [{ name: 'ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse', warrantyMonths: null, warrantySource: null }], status: 'needs_input' } },
+    expect: { orderNumber: 'ATKGR00001', items: [{ name: 'ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse', warrantyMonths: null, warrantySource: null }], status: 'ignored' } },
 ];
 
 for (const c of htmlCases) {
@@ -49,7 +51,7 @@ const apiMessage: GmailApiMessage = {
     headers: [
       { name: 'From', value: 'PCX Webáruház <pcx@pcx.hu>' },
       { name: 'To', value: 'Teszt Elek <user@example.com>' },
-      { name: 'Subject', value: 'Rendelés' },
+      { name: 'Subject', value: 'Számla - Rendelés' },
     ],
     parts: [
       { mimeType: 'multipart/alternative', parts: [
@@ -113,6 +115,19 @@ test('gmailProvider reports permanent errors at once and retries rate limits', a
   const limited = (async () => (q++ < 2 ? new Response(JSON.stringify(quota), { status: 403 }) : new Response(JSON.stringify(apiMessage), { status: 200 }))) as unknown as typeof fetch;
   assert.equal((await gmailProvider(async () => 'tok', limited, 0).getMessage('m1')).id, 'm1');
   assert.equal(q, 3);
+});
+
+test('gmailProvider refreshes an expired token once', async () => {
+  const seen: (string | undefined)[] = [];
+  const getToken = async (expired?: string) => (seen.push(expired), expired ? 'fresh' : 'stale');
+  const fakeFetch = (async (_url: string, init: RequestInit) =>
+    (init.headers as Record<string, string>).Authorization === 'Bearer fresh'
+      ? new Response(JSON.stringify(apiMessage), { status: 200 })
+      : new Response('{}', { status: 401 })) as unknown as typeof fetch;
+  assert.equal((await gmailProvider(getToken, fakeFetch, 0).getMessage('m1')).id, 'm1');
+  assert.deepEqual(seen, [undefined, 'stale']);
+  const always401 = (async () => new Response('{}', { status: 401 })) as unknown as typeof fetch;
+  await assert.rejects(gmailProvider(getToken, always401, 0).getMessage('m1'), /Gmail 401/);
 });
 
 test('fetchAndParse skips a mail that cannot be fetched and keeps going', async () => {

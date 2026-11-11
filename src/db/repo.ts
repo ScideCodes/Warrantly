@@ -61,6 +61,11 @@ const MIGRATIONS = [
      store_domain TEXT PRIMARY KEY,
      default_warranty_months INTEGER NOT NULL
    );`,
+  // v2: only invoices and warranty documents count now (no order confirmations). Nothing is
+  // user-edited yet, so drop the imported mail and re-read it with the new rules on next sync.
+  `DELETE FROM sources;
+   DELETE FROM warranties WHERE origin = 'gmail';
+   UPDATE accounts SET last_synced_at = NULL;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {

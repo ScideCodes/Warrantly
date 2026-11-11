@@ -30,6 +30,16 @@ export async function connectGmail(): Promise<string | null> {
 export const connectedEmail = (): string | null =>
   hasGmailScope() ? (GoogleOneTapSignIn.getCurrentUser()?.user.email ?? null) : null;
 
-export async function getAccessToken(): Promise<string> {
-  return (await GoogleOneTapSignIn.getTokens()).accessToken;
+// Google access tokens live about an hour. Reuse one instead of asking the native layer before every
+// request; after a 401 the provider passes the rejected token back and we fetch a fresh one.
+let cached: { token: string; at: number } | null = null;
+export async function getAccessToken(expired?: string): Promise<string> {
+  if (expired) {
+    await GoogleOneTapSignIn.clearCachedAccessToken(expired);
+    cached = null;
+  }
+  if (!cached || Date.now() - cached.at > 45 * 60_000) {
+    cached = { token: (await GoogleOneTapSignIn.getTokens()).accessToken, at: Date.now() };
+  }
+  return cached.token;
 }
