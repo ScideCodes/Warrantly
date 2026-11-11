@@ -88,7 +88,12 @@
     "errStart": "Adj meg a vásárlás napján vagy utána lévő dátumot, vagy hagyd üresen.",
     "errMonths": "1 és 120 hónap közötti hosszt adj meg.",
     "pickerFailed": "A naptár nem nyílt meg, írd be a dátumot. ({{detail}})",
-    "saveTo": "Mentés ide"
+    "saveTo": "Mentés ide",
+    "scan": "Dokumentum beolvasása",
+    "scanHint": "Fotózd le a nyugtát vagy a garanciajegyet. A Warrantly ezen a telefonon olvassa be, és kitölti, amit talál.",
+    "scanning": "Dokumentum olvasása…",
+    "scanned": "Dokumentum csatolva. Ellenőrizd lent az adatokat, a beolvasás tévedhet.",
+    "scanFailed": "A beolvasás nem sikerült: {{detail}}"
   },
   "detail": {
     "edit": "Szerkesztés",
@@ -105,7 +110,8 @@
     "noPermission": "A Warrantly értesítései ki vannak kapcsolva. Kapcsold be az Android beállításokban.",
     "claim": "Garanciális igény bejelentése",
     "claimNoEmail": "Nincs mentett e-mail cím az üzlethez. Hívd fel vagy nyisd meg a fenti weboldalt, vagy add meg a címet a Szerkesztésben.",
-    "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon."
+    "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon.",
+    "openDocument": "Dokumentum megnyitása"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",

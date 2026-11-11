@@ -4,8 +4,9 @@ import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'r
 import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { deleteWarranty, getWarranty, ignoreWarranty, type Warranty } from '@/db/repo.ts';
-import { claimEmail, mailtoUrl } from '@/claim';
+import { deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
+import { deleteDocuments, openDocument, sendClaim } from '@/documents';
+import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
@@ -16,12 +17,14 @@ export default function WarrantyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
+  const [docs, setDocs] = useState<Attachment[]>([]);
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
-      void getDb()
-        .then((db) => getWarranty(db, Number(id)))
-        .then(setW);
+      void getDb().then(async (db) => {
+        setW(await getWarranty(db, Number(id)));
+        setDocs(await listAttachments(db, Number(id)));
+      });
     }, [id]),
   );
 
@@ -46,7 +49,7 @@ export default function WarrantyDetail() {
         text: t('detail.deleteConfirm'),
         style: 'destructive',
         onPress: async () => {
-          await deleteWarranty(await getDb(), w!.id);
+          deleteDocuments(await deleteWarranty(await getDb(), w!.id)); // stored PDFs go too (section 10)
           router.back();
         },
       },
@@ -88,6 +91,11 @@ export default function WarrantyDetail() {
         {w.serial_number && <Field label={t('detail.serial')} value={w.serial_number} />}
         {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
 
+        {docs.map((d) => (
+          <Pressable key={d.id} style={styles.secondary} onPress={() => openDocument(d.local_path)} accessibilityRole="button">
+            <Text style={styles.secondaryText}>{t('detail.openDocument')}</Text>
+          </Pressable>
+        ))}
         {days >= 0 && (
           // Section 20: not offered once the warranty has expired.
           <View style={styles.claim}>
@@ -103,7 +111,7 @@ export default function WarrantyDetail() {
                     serialNumber: w.serial_number,
                     name: getUsername(),
                   });
-                  Linking.openURL(mailtoUrl(w.contact_email!, subject, body)).catch(() => Alert.alert(t('detail.noMailApp')));
+                  sendClaim(w.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => Alert.alert(t('detail.noMailApp')));
                 }}
                 accessibilityRole="button"
               >

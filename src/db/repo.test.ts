@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addManual, deleteAccount, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addManual, deleteAccount, listAttachments, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 5);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 6);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -148,4 +148,18 @@ test('disconnect removes one account only; reconnect restores it under the new a
   // The mails are known again, so the next sync does not import them twice.
   await syncAccount(db, fakeProvider(['pcx-order', 'synthetic-en-warranty'], []), 'work@example.com');
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);
+});
+
+test('scanned entries keep their documents; deleting returns the files to remove', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const id = await addManual(db, {
+    account_id: null, product_name: 'Kettle', store_name: 'MediaMarkt', purchase_date: '2026-01-15', warranty_start_date: '2026-01-15',
+    warranty_months: 36, order_number: null, serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null,
+  }, 'scan');
+  await addAttachment(db, id, 'Scan 2026-01-15.pdf', '1768000000000.pdf');
+  assert.equal((await getWarranty(db, id))?.origin, 'scan');
+  assert.deepEqual((await listAttachments(db, id)).map((a) => a.local_path), ['1768000000000.pdf']);
+  assert.deepEqual(await deleteWarranty(db, id), ['1768000000000.pdf']);
+  assert.deepEqual(await listAttachments(db, id), []);
 });

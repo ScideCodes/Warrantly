@@ -95,7 +95,8 @@ export function registrableDomain(email: string): string {
 }
 
 const ORDER_PATTERNS = [
-  /\b(?:order|megrendelés|rendelés)\w*\s*(?:#|no\.?|number|nr\.?|id|száma|azonosító(?:ja)?)?\s*[:#]?\s*([A-Z0-9][\w/.-]*\d[\w/-]*)/i,
+  // [\wáéíóöőúüű]*: Hungarian suffixes and compounds, e.g. "rendelésének", "Rendelésszám"
+  /\b(?:order|megrendelés|rendelés)[\wáéíóöőúüű]*\s*(?:#|no\.?|number|nr\.?|id|száma|azonosító(?:ja)?)?\s*[:#]?\s*([A-Z0-9][\w/.-]*\d[\w/-]*)/i,
   /\b([A-Z0-9][\w/-]*\d[\w/-]*)\s*sz\.\s*(?:megr|rend)/i,
   /\bAzonosító:\s*([\w/-]*\d[\w/-]*)/i,
 ];
