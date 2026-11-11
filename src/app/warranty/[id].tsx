@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { agoLabel, daysLabel, formatDate, lengthLabel } from '@/components/WarrantyRow';
+import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { deleteWarranty, getWarranty, ignoreWarranty, type Warranty } from '@/db/repo.ts';
 import { colors } from '@/theme';
@@ -29,7 +29,7 @@ export default function WarrantyDetail() {
   const pill = colors[urgency(days)];
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
-  const product = w.product_name ?? t('warranty.unknownProduct');
+  const product = displayName(t, w);
 
   async function notWarranty() {
     await ignoreWarranty(await getDb(), w!.id);
@@ -72,6 +72,7 @@ export default function WarrantyDetail() {
         </View>
         {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
 
+        {w.product_name && w.product_name !== product && <Field label={t('detail.fullName')} value={w.product_name} />}
         <Field label={t('warranty.store')} value={w.store_name} />
         <Field label={t('warranty.purchaseDate')} value={`${date(w.purchase_date)} (${agoLabel(t, w.purchase_date, today)})`} />
         <Field label={t('warranty.startDate')} value={suggested(date(w.warranty_start_date), w.start_is_suggested)} />

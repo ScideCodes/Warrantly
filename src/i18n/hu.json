@@ -90,6 +90,7 @@
     "deleteConfirm": "Garancia törlése",
     "cancel": "Mégse",
     "serial": "Sorozatszám",
-    "notes": "Megjegyzés"
+    "notes": "Megjegyzés",
+    "fullName": "Teljes terméknév"
   }
 }

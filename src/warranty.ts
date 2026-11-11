@@ -62,3 +62,12 @@ export function formErrors(f: { product_name: string; store_name: string; purcha
   if (!Number.isInteger(months) || months < 1 || months > 120) errors.push('warranty_months');
   return errors;
 }
+
+// Shop product names are long: "Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)". For the list,
+// drop bracketed codes and a trailing "12+" (from "12+12 hó gar."), then keep the part before the first
+// " - ", " / ", " | " or ", " if that still has two words. The full name stays in the database.
+export function shortName(name: string): string {
+  const base = name.replace(/\s*[([][^)\]]*[)\]]/g, '').replace(/\s+\d+\+$/, '').trim();
+  const head = base.split(/\s+[-–|/]\s+|,\s+/)[0].trim();
+  return head.split(/\s+/).length >= 2 ? head : base;
+}
