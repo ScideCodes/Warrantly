@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { getDb } from '@/db/client';
 import { addManual, getWarranty, saveStoreRule, updateWarranty, type Warranty } from '@/db/repo.ts';
 import { colors } from '@/theme';
-import { formErrors, todayYmd, type FormField } from '@/warranty';
+import { formatDate } from '@/components/WarrantyRow';
+import { formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [12, 24, 36];
 type Form = Record<FormField | 'order_number' | 'serial_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes', string>;
@@ -25,10 +27,10 @@ const fromWarranty = (w: Warranty | null): Form => ({
 });
 
 // Manual add, and edit of any warranty (section 9 resolve view, section 18 manual add).
-// shortcut: dates are typed as YYYY-MM-DD; switch to a native date picker at the next native build.
+// Dates open the system calendar on Android; elsewhere (web previews, iOS for now) they are typed as YYYY-MM-DD.
 export default function EditWarranty() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
   const [errors, setErrors] = useState<FormField[]>([]);
@@ -75,8 +77,39 @@ export default function EditWarranty() {
     router.back();
   }
 
-  const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean } = {}) => {
+  const pickDate = (key: 'purchase_date' | 'warranty_start_date') => {
+    const current = form[key] || form.purchase_date;
+    const [y, m, d] = (isValidYmd(current) ? current : todayYmd()).split('-').map(Number);
+    DateTimePickerAndroid.open({
+      value: new Date(y, m - 1, d),
+      mode: 'date',
+      onChange: (event, date) => {
+        if (event.type === 'set' && date) set(key)(todayYmd(date));
+      },
+    });
+  };
+
+  const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
+    if (opts.date && Platform.OS === 'android') {
+      const value = form[key];
+      return (
+        <View style={styles.field}>
+          <Text style={styles.label}>{label}</Text>
+          <Pressable
+            style={[styles.input, styles.dateInput, invalid && styles.inputError]}
+            onPress={() => pickDate(key as 'purchase_date' | 'warranty_start_date')}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}: ${value ? formatDate(value, i18n.language) : ''}`}
+          >
+            <Text style={[styles.dateText, !value && styles.datePlaceholder]}>
+              {value ? formatDate(value, i18n.language) : formatDate(form.purchase_date, i18n.language)}
+            </Text>
+          </Pressable>
+          {invalid && opts.error ? <Text style={styles.error}>{opts.error}</Text> : key === 'warranty_start_date' && <Text style={styles.hint}>{opts.hint}</Text>}
+        </View>
+      );
+    }
     return (
       <View style={styles.field}>
         <Text style={styles.label} nativeID={`${key}-label`}>
@@ -110,8 +143,8 @@ export default function EditWarranty() {
         <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {field('product_name', t('form.product'), { error: t('form.errProduct') })}
           {field('store_name', t('form.store'), { error: t('form.errStore') })}
-          {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation' })}
-          {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation' })}
+          {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
+          {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
 
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.length')}</Text>
@@ -181,6 +214,9 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
   chipTextSelected: { color: colors.onPrimary },
   monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },
+  dateInput: { justifyContent: 'center' },
+  dateText: { fontSize: 16, color: colors.text },
+  datePlaceholder: { color: colors.muted },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   switchLabel: { flex: 1, fontSize: 15, color: colors.text },
   button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },

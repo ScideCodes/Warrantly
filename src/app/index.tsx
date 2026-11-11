@@ -9,6 +9,7 @@ import { listWarranties, type Warranty } from '@/db/repo.ts';
 import { syncAccount } from '@/db/sync.ts';
 import { connectedEmail, connectGmail, getAccessToken } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
+import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
 import { daysUntil, todayYmd } from '@/warranty';
@@ -34,6 +35,8 @@ export default function Home() {
     const db = await getDb();
     setWarranties(await listWarranties(db, 'complete'));
     setAttention((await listWarranties(db, 'needs_input')).length);
+    // Runs on open, after sync and after edits: the rolling reminder window (section 16).
+    rescheduleReminders(db).catch((e) => console.warn('reminders', e)); // must not break the list
   }, []);
 
   const runSync = useCallback(

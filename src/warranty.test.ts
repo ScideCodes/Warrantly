@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, formErrors, isValidYmd, shortName, urgency } from './warranty.ts';
+import { ago, daysUntil, endDate, formErrors, isValidYmd, reminderPlan, shortName, urgency } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -49,4 +49,20 @@ test('shortName keeps the identifying part of shop product names', () => {
   assert.equal(shortName('Samsung Galaxy S24'), 'Samsung Galaxy S24'); // trailing model number stays
   assert.equal(shortName('Monitor - 27"'), 'Monitor - 27"'); // one word left: keep the whole name
   assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse');
+});
+
+test('reminderPlan: 90/60/30, weekly, expiry day; future only; nearest first; capped', () => {
+  const plan = reminderPlan([{ id: 1, end_date: '2027-03-01' }], '2026-11-11');
+  assert.deepEqual(plan.map((r) => [r.date, r.daysLeft]), [
+    ['2026-12-01', 90], ['2026-12-31', 60], ['2027-01-30', 30], ['2027-02-06', 23],
+    ['2027-02-13', 16], ['2027-02-20', 9], ['2027-02-27', 2], ['2027-03-01', 0],
+  ]);
+  // Already inside the window: only what is still ahead; today's reminder is not re-sent.
+  assert.deepEqual(reminderPlan([{ id: 2, end_date: '2026-11-20' }], '2026-11-11').map((r) => r.daysLeft), [2, 0]);
+  assert.deepEqual(reminderPlan([{ id: 3, end_date: '2026-11-13' }], '2026-11-11').map((r) => r.daysLeft), [0]);
+  assert.deepEqual(reminderPlan([{ id: 4, end_date: '2026-11-01' }], '2026-11-11'), []); // expired
+  const many = Array.from({ length: 20 }, (_, i) => ({ id: i, end_date: '2027-01-01' }));
+  const capped = reminderPlan(many, '2026-11-11', 60);
+  assert.equal(capped.length, 60);
+  assert.ok(capped.every((r, i) => i === 0 || capped[i - 1].date <= r.date));
 });
