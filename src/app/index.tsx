@@ -98,6 +98,11 @@ export default function Home() {
             <Text style={styles.addText}>+ {t('home.add')}</Text>
           </Pressable>
         </Link>
+        <Link href="/settings" asChild>
+          <Pressable style={styles.settingsButton} accessibilityRole="button" accessibilityLabel={t('settings.title')}>
+            <Text style={styles.settingsText}>⚙</Text>
+          </Pressable>
+        </Link>
       </View>
       {attention > 0 && (
         <Link href="/attention" asChild>
@@ -171,6 +176,8 @@ const styles = StyleSheet.create({
   greeting: { flex: 1, fontSize: 28, fontWeight: '700', color: colors.text },
   addButton: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center' },
   addText: { fontSize: 15, fontWeight: '600', color: colors.onPrimary },
+  settingsButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
+  settingsText: { fontSize: 24, color: colors.text },
   banner: { backgroundColor: colors.banner, borderRadius: 8, padding: 12, minHeight: 48, justifyContent: 'center' },
   bannerText: { fontSize: 16, fontWeight: '600', color: colors.warning.fg },
   status: { fontSize: 14, color: colors.muted },

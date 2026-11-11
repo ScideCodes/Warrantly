@@ -5,6 +5,7 @@ import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
+import { getRemindersEnabled } from '@/settings';
 import { reminderPlan, shortName, todayYmd } from '@/warranty';
 
 const REMINDER_HOUR = 9;
@@ -26,7 +27,7 @@ async function ensureChannels() {
 // Replace all scheduled reminders with the nearest ones for confirmed warranties (rolling window).
 export async function rescheduleReminders(db: Db): Promise<void> {
   const warranties = await listWarranties(db, 'complete');
-  const plan = reminderPlan(warranties, todayYmd());
+  const plan = getRemindersEnabled() ? reminderPlan(warranties, todayYmd()) : [];
   await Notifications.cancelAllScheduledNotificationsAsync();
   if (!plan.length) return;
   await ensureChannels(); // Android 13 only shows the permission prompt once a channel exists
