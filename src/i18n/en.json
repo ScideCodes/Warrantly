@@ -1,0 +1,15 @@
+{
+  "onboarding": {
+    "title": "Welcome to Warrantly",
+    "subtitle": "Keep every warranty in one place and see how many days are left.",
+    "nameLabel": "What should we call you?",
+    "namePlaceholder": "Your name",
+    "nameHelper": "Saved only on this phone.",
+    "continue": "Continue"
+  },
+  "home": {
+    "greeting": "Hi, {{name}}!",
+    "emptyTitle": "No warranties yet",
+    "emptyBody": "Soon you can connect Gmail, and Warrantly will find your receipts and warranties for you."
+  }
+}

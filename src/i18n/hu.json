@@ -1,0 +1,15 @@
+{
+  "onboarding": {
+    "title": "Üdvözöl a Warrantly",
+    "subtitle": "Minden garanciád egy helyen, és látod, hány nap van még hátra.",
+    "nameLabel": "Hogyan szólítsunk?",
+    "namePlaceholder": "A neved",
+    "nameHelper": "Csak ezen a telefonon tároljuk.",
+    "continue": "Tovább"
+  },
+  "home": {
+    "greeting": "Szia, {{name}}!",
+    "emptyTitle": "Még nincs garanciád",
+    "emptyBody": "Hamarosan összekapcsolhatod a Gmailt, és a Warrantly magától megkeresi a számláidat és a garanciáidat."
+  }
+}
