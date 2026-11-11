@@ -43,7 +43,8 @@ const fromWarranty = (w: Warranty | null): Form => ({
 // Manual add, and edit of any warranty (section 9 resolve view, section 18 manual add).
 // Dates open the system calendar on Android; elsewhere (web previews, iOS for now) they are typed as YYYY-MM-DD.
 export default function EditWarranty() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
+  const { id, copyFrom } = useLocalSearchParams<{ id?: string; copyFrom?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
@@ -51,6 +52,7 @@ export default function EditWarranty() {
   const [remember, setRemember] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState<number | null>(null); // null = the Manual tab
+  const [coverage, setCoverage] = useState<'store' | 'extended' | null>(null);
   const [scan, setScan] = useState<{ state: 'idle' | 'busy' | 'done' | 'attached' | 'failed'; detail?: string }>({ state: 'idle' });
   const scannedPdf = useRef<string | null>(null); // deleted again if the form is left without saving
   useEffect(
@@ -67,17 +69,27 @@ export default function EditWarranty() {
   useEffect(() => {
     void getDb().then(async (db) => {
       setAccounts(await listAccounts(db));
+      if (copyFrom) {
+        const from = await getWarranty(db, Number(copyFrom));
+        if (!from) return;
+        setForm({ ...fromWarranty(null), product_name: from.product_name ?? '', store_name: from.store_name, purchase_date: from.purchase_date,
+          warranty_start_date: from.warranty_start_date, category: from.category ?? '', order_number: from.order_number ?? '', serial_number: from.serial_number ?? '' });
+        setAccountId(from.account_id);
+        setCoverage('extended');
+        return;
+      }
       if (!id) return;
       const w = await getWarranty(db, Number(id));
       setExisting(w);
       setForm(fromWarranty(w));
       setAccountId(w?.account_id ?? null);
+      setCoverage(w?.coverage ?? null);
       // "Next" reuses this screen with a new id: start the item fresh.
       setErrors([]);
       setRemember(false);
       setMail({ state: 'hidden' });
     });
-  }, [id]);
+  }, [id, copyFrom]);
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -117,6 +129,7 @@ export default function EditWarranty() {
       price: form.price.trim() && Number.isFinite(Number(form.price.replace(/\s/g, '').replace(',', '.'))) ? Number(form.price.replace(/\s/g, '').replace(',', '.')) : null,
       currency: form.price.trim() ? form.currency.trim().toUpperCase() || localCurrency() : null,
       category: opt(form.category),
+      coverage,
     };
     const db = await getDb();
     if (existing) await updateWarranty(db, existing.id, input);
@@ -358,6 +371,22 @@ export default function EditWarranty() {
             </View>
           )}
 
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('form.coverage')}</Text>
+            <View style={styles.wrapChips}>
+              {([null, 'store', 'extended'] as const).map((c) => (
+                <Pressable
+                  key={String(c)}
+                  style={[styles.chip, coverage === c && styles.chipSelected]}
+                  onPress={() => setCoverage(c)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: coverage === c }}
+                >
+                  <Text style={[styles.chipText, coverage === c && styles.chipTextSelected]}>{t(`coverage.${c ?? 'standard'}`)}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.category')}</Text>
             <View style={styles.wrapChips}>

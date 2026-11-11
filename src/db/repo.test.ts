@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addManual, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addManual, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -306,4 +306,18 @@ test('resolving attention items: apply a length to the store, move to the next, 
   assert.equal(await nextNeedsInput(db, order[order.length - 1]), order.length > 1 ? order[0] : null); // wraps around
 
   assert.deepEqual({ ...(await sourceOf(db, conrad[0].id)) }, { message_id: 'conrad-order-rule', email: 'user@example.com' });
+});
+
+test('a product can have several warranties: the others are found by product, store and day', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const base = {
+    account_id: null, product_name: 'TV 55', store_name: 'Shop', purchase_date: '2026-01-01', warranty_start_date: '2026-01-01',
+    warranty_months: 24, order_number: null, serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null,
+  };
+  const main = await addManual(db, base);
+  const extended = await addManual(db, { ...base, warranty_months: 60, coverage: 'extended' });
+  await addManual(db, { ...base, product_name: 'Soundbar' }); // same purchase, other product
+  const others = await otherCovers(db, (await getWarranty(db, main))!);
+  assert.deepEqual(others.map((w) => [w.id, w.coverage, w.end_date]), [[extended, 'extended', '2031-01-01']]);
 });

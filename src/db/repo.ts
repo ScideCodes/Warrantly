@@ -107,10 +107,12 @@ const MIGRATIONS = [
    );`,
   // v9: how far back the first sync reads (section 7): days, 0 = all mail, NULL = not chosen (24 months).
   `ALTER TABLE accounts ADD COLUMN first_sync_days INTEGER;`,
-  // v10: price paid (and its currency) and a category, both optional and entered by the user.
+  // v10: price paid (and its currency), a category, and the kind of cover when a product has several
+  // warranties (coverage: NULL = the standard one, 'store', 'extended'). All optional, entered by the user.
   `ALTER TABLE warranties ADD COLUMN price REAL;
    ALTER TABLE warranties ADD COLUMN currency TEXT;
-   ALTER TABLE warranties ADD COLUMN category TEXT;`,
+   ALTER TABLE warranties ADD COLUMN category TEXT;
+   ALTER TABLE warranties ADD COLUMN coverage TEXT;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -250,6 +252,7 @@ export interface WarrantyRow {
   price: number | null;
   currency: string | null;
   category: string | null;
+  coverage: 'store' | 'extended' | null;
   status: 'complete' | 'needs_input' | 'ignored';
   missing_fields: string;
 }
@@ -261,6 +264,15 @@ const withEnd = (w: WarrantyRow): Warranty => ({ ...w, end_date: endDate(w.warra
 export async function listWarranties(db: Db, status: 'complete' | 'needs_input'): Promise<Warranty[]> {
   const rows = await db.getAllAsync<WarrantyRow>('SELECT * FROM warranties WHERE status = ?', [status]);
   return rows.map(withEnd).sort((a, b) => a.end_date.localeCompare(b.end_date));
+}
+
+// The other warranties of the same purchase (manufacturer, store, extended plan), section 12.
+export async function otherCovers(db: Db, w: Warranty): Promise<Warranty[]> {
+  const rows = await db.getAllAsync<WarrantyRow>(
+    `SELECT * FROM warranties WHERE id != ? AND status != 'ignored' AND product_name IS ? AND store_name = ? AND purchase_date = ?`,
+    [w.id, w.product_name, w.store_name, w.purchase_date],
+  );
+  return rows.map(withEnd);
 }
 
 export async function getWarranty(db: Db, id: number): Promise<Warranty | null> {
@@ -285,9 +297,10 @@ export interface WarrantyInput {
   price?: number | null;
   currency?: string | null;
   category?: string | null;
+  coverage?: 'store' | 'extended' | null;
 }
 const FIELDS = ['account_id', 'product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
-  'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes', 'price', 'currency', 'category'] as const;
+  'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes', 'price', 'currency', 'category', 'coverage'] as const;
 
 // Manual entries go to the tab the user picks: an account, or null for the general "Manual" tab (section 15).
 export async function addManual(db: Db, w: WarrantyInput, origin: 'manual' | 'scan' = 'manual', now = new Date().toISOString()): Promise<number> {
