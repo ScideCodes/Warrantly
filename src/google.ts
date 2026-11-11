@@ -79,15 +79,23 @@ export async function getAccessToken(expired?: string): Promise<string> {
   return cached.token;
 }
 
-// The backup account's token; the signed-in user's token is the fallback (and what older installs used).
+// Pick the Google account whose Drive holds the backups (Google's account picker). Returns its email,
+// or null if cancelled.
+export async function chooseBackupAccount(): Promise<string | null> {
+  await GoogleOneTapSignIn.checkPlayServices();
+  const res = await GoogleOneTapSignIn.presentExplicitSignIn();
+  if (!isSuccessResponse(res)) return null;
+  if (!GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
+  const email = res.data!.user.email;
+  if (!email) return null;
+  setSetting('backup_account', email);
+  cached = null;
+  return email;
+}
+
+// The backup account's token. Never another account's: a backup must not land in the wrong Drive.
 async function driveToken(): Promise<string> {
   const account = getSetting('backup_account');
-  if (account) {
-    try {
-      return await GoogleAccountToken.getToken(account, [DRIVE_FILE]);
-    } catch {
-      // fall through
-    }
-  }
+  if (account) return GoogleAccountToken.getToken(account, [DRIVE_FILE]);
   return (await GoogleOneTapSignIn.getTokens()).accessToken;
 }

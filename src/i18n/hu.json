@@ -185,7 +185,10 @@
     "never": "Még nincs mentés",
     "failed": "Az utolsó mentés nem sikerült: {{detail}}",
     "working": "Mentés folyamatban…",
-    "done": "A mentés a Google Drive-ra került."
+    "done": "A mentés a Google Drive-ra került.",
+    "account": "Google Drive fiók",
+    "accountNone": "Az első mentéskor választod ki",
+    "change": "Módosítás"
   },
   "backupPassword": {
     "title": "Mentési jelszó",

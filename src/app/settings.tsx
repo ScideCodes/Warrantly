@@ -9,6 +9,7 @@ import { getDb } from '@/db/client';
 import { listAccounts, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
+import { chooseBackupAccount } from '@/google';
 import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting, setWidgetNames } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
@@ -28,6 +29,7 @@ export default function Settings() {
   const [backupBusy, setBackupBusy] = useState(false);
   const [lastBackup, setLastBackup] = useState(() => getSetting('last_backup_at'));
   const [backupError, setBackupError] = useState(() => getSetting('last_backup_error'));
+  const [backupAccount, setBackupAccount] = useState(() => getSetting('backup_account'));
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountBusy, setAccountBusy] = useState<string | null>(null); // status line while adding or syncing
 
@@ -42,6 +44,7 @@ export default function Settings() {
       setBackup(getSetting('backup_enabled') === '1' && hasBackupPassword());
       setLastBackup(getSetting('last_backup_at'));
       setBackupError(getSetting('last_backup_error'));
+      setBackupAccount(getSetting('backup_account'));
       void getDb().then(listAccounts).then(setAccounts);
     }, []),
   );
@@ -120,7 +123,20 @@ export default function Settings() {
     await runBackup(await getDb(), true).catch(() => {}); // the error is saved and shown below
     setLastBackup(getSetting('last_backup_at'));
     setBackupError(getSetting('last_backup_error'));
+    setBackupAccount(getSetting('backup_account'));
     setBackupBusy(false);
+  }
+
+  // Section 17: which Google account's Drive holds the backups. The next backup goes there in full.
+  async function changeBackupAccount() {
+    try {
+      const email = await chooseBackupAccount();
+      if (!email) return;
+      setBackupAccount(email);
+      if (backup) await backupNow();
+    } catch (e) {
+      setBackupError(e instanceof Error ? e.message : String(e));
+    }
   }
 
   async function toggleBackup(on: boolean) {
@@ -227,6 +243,17 @@ export default function Settings() {
             </Pressable>
           </View>
         )}
+        <View style={styles.row}>
+          <View style={styles.rowText}>
+            <Text style={styles.label}>{t('backup.account')}</Text>
+            <Text style={styles.hint} numberOfLines={1}>
+              {backupAccount ?? t('backup.accountNone')}
+            </Text>
+          </View>
+          <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>
+            <Text style={styles.linkSmall}>{t('backup.change')}</Text>
+          </Pressable>
+        </View>
         <Pressable style={styles.row} onPress={() => router.push('/restore')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('backup.restore')}</Text>
         </Pressable>

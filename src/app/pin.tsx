@@ -5,7 +5,10 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PinPad } from '@/components/PinPad';
 import { MAX_PIN, MIN_PIN } from '@/lock/pin.ts';
-import { setPin } from '@/lock/store';
+import { getDb } from '@/db/client';
+import { isLockEnabled, setPin } from '@/lock/store';
+import { setWidgetNames } from '@/settings';
+import { updateWidget } from '@/widget';
 import { colors } from '@/theme';
 
 // Choose a PIN (turn the lock on, change it, or after "Forgot PIN"): enter, then confirm.
@@ -21,7 +24,9 @@ export default function PinSetup() {
     if (first === null) return setValue(next);
     if (next.length < first.length) return setValue(next);
     if (next === first) {
+      if (!isLockEnabled()) setWidgetNames(null); // lock turned on: names go back to hidden on the widget
       setPin(next);
+      void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
       return goBack();
     }
     setFirst(null);

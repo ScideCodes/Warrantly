@@ -185,7 +185,10 @@
     "never": "No backup yet",
     "failed": "Last backup failed: {{detail}}",
     "working": "Backing up…",
-    "done": "Backup saved to Google Drive."
+    "done": "Backup saved to Google Drive.",
+    "account": "Google Drive account",
+    "accountNone": "Chosen at the first backup",
+    "change": "Change"
   },
   "backupPassword": {
     "title": "Backup password",
