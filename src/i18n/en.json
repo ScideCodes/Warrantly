@@ -102,5 +102,34 @@
     "daysLeft_one": "{{count}} day left on the warranty",
     "daysLeft_other": "{{count}} days left on the warranty",
     "today": "The warranty ends today. Claim now if anything is wrong."
+  },
+  "lock": {
+    "title": "Enter your PIN",
+    "wrong": "Wrong PIN. Try again.",
+    "wait_one": "Too many tries. Try again in {{count}} second.",
+    "wait_other": "Too many tries. Try again in {{count}} seconds.",
+    "biometric": "Unlock with fingerprint or face",
+    "biometricPrompt": "Unlock Warrantly",
+    "usePin": "Use PIN",
+    "forgot": "Forgot PIN?",
+    "forgotPrompt": "Confirm it's you to set a new PIN",
+    "delete": "Delete digit",
+    "noDeviceLock": "This phone has no screen lock, so the PIN can't be reset. Clear Warrantly's data in Android settings, then restore from a backup."
+  },
+  "pin": {
+    "titleNew": "Choose a PIN",
+    "confirm": "Enter the PIN again",
+    "continue": "Continue",
+    "hint": "4 to 6 digits. If you forget it, your phone's screen lock lets you set a new one.",
+    "mismatch": "The PINs don't match. Choose a PIN again."
+  },
+  "settings": {
+    "title": "Settings",
+    "lock": "App lock",
+    "lockHint": "Ask for a PIN when the app opens, and after 3 minutes away.",
+    "changePin": "Change PIN",
+    "biometric": "Unlock with fingerprint or face",
+    "reminders": "Expiry reminders",
+    "remindersHint": "90, 60 and 30 days before, then weekly, and on the last day."
   }
 }

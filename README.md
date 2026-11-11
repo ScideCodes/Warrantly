@@ -11,7 +11,9 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
   SQLite schema and sync; `src/warranty.ts` the date logic. DB tests run the same SQL on Node's
   built-in SQLite.
 - Step 5 (manual add and edit, resolving "Needs your attention", store rules, ignore, delete): done.
-  Mail import keeps warranty documents only (subject or PDF name says garancia/jótállás/warranty).
+  Mail import keeps warranty documents and mails that state a warranty length ("24 hó gar.").
+- Step 6 (reminders, app lock): done. Reminders need app 0.2.0 (native build); merging of duplicate
+  mails is a 60-day same-product rule for now.
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns

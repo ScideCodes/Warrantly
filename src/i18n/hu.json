@@ -102,5 +102,34 @@
     "daysLeft_one": "{{count}} nap van hátra a garanciából",
     "daysLeft_other": "{{count}} nap van hátra a garanciából",
     "today": "Ma jár le a garancia. Ha valami gond van vele, most jelezd."
+  },
+  "lock": {
+    "title": "Add meg a PIN-kódod",
+    "wrong": "Hibás PIN. Próbáld újra.",
+    "wait_one": "Túl sok próbálkozás. Próbáld újra {{count}} másodperc múlva.",
+    "wait_other": "Túl sok próbálkozás. Próbáld újra {{count}} másodperc múlva.",
+    "biometric": "Feloldás ujjlenyomattal vagy arccal",
+    "biometricPrompt": "Warrantly feloldása",
+    "usePin": "PIN használata",
+    "forgot": "Elfelejtetted a PIN-t?",
+    "forgotPrompt": "Igazold magad az új PIN beállításához",
+    "delete": "Számjegy törlése",
+    "noDeviceLock": "Ezen a telefonon nincs képernyőzár, ezért a PIN nem állítható vissza. Töröld a Warrantly adatait az Android beállításokban, majd állítsd vissza egy mentésből."
+  },
+  "pin": {
+    "titleNew": "Válassz PIN-kódot",
+    "confirm": "Add meg újra a PIN-t",
+    "continue": "Tovább",
+    "hint": "4–6 számjegy. Ha elfelejted, a telefon képernyőzárával újat állíthatsz be.",
+    "mismatch": "A két PIN nem egyezik. Válassz újra."
+  },
+  "settings": {
+    "title": "Beállítások",
+    "lock": "Alkalmazászár",
+    "lockHint": "PIN kérése megnyitáskor és 3 perc távollét után.",
+    "changePin": "PIN módosítása",
+    "biometric": "Feloldás ujjlenyomattal vagy arccal",
+    "reminders": "Lejárati emlékeztetők",
+    "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon."
   }
 }
