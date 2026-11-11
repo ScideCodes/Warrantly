@@ -8,7 +8,7 @@ export interface MailMessage {
   subject: string;
   date: string; // ISO 8601 timestamp the mail was sent
   text: string; // plain-text body (HTML already converted)
-  attachments: { filename: string; mimeType: string }[];
+  attachments: { filename: string; mimeType: string; id?: string }[]; // id: provider attachment id for download
 }
 
 export type Kind = 'purchase' | 'return' | 'ignored';

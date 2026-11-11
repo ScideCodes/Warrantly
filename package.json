@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node --test src/parser/parse.test.ts",
+    "test": "node --test src/parser/parse.test.ts src/mail/gmail.test.ts",
     "typecheck": "tsc -p ."
   },
   "engines": {
