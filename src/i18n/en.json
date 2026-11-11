@@ -130,14 +130,18 @@
     "documentMissing": "The document file is no longer on this phone (backups do not include documents yet).",
     "removeDocument": "Remove",
     "removeDocumentTitle": "Remove this document?",
-    "attachImport": "Attach a photo or PDF"
+    "attachImport": "Attach a photo or PDF",
+    "returnBy": "Return by",
+    "returnHint": "14-day right of withdrawal"
   },
   "reminder": {
     "channel": "Warranty reminders",
     "channelExpiry": "Warranty ends today",
     "daysLeft_one": "{{count}} day left on the warranty",
     "daysLeft_other": "{{count}} days left on the warranty",
-    "today": "The warranty ends today. Claim now if anything is wrong."
+    "today": "The warranty ends today. Claim now if anything is wrong.",
+    "returnSoon_one": "The return window closes in {{count}} day. Return it now if you want to.",
+    "returnSoon_other": "The return window closes in {{count}} days. Return it now if you want to."
   },
   "lock": {
     "title": "Enter your PIN",
@@ -170,7 +174,9 @@
     "general": "App",
     "widgetNames": "Show product names on the widget",
     "widgetNamesHint": "Anyone who sees your home screen can read them, even with the app lock on.",
-    "version": "Warrantly {{version}}"
+    "version": "Warrantly {{version}}",
+    "returnReminders": "Return-window reminders",
+    "returnRemindersHint": "Online orders can be returned within 14 days of delivery (EU). Reminds you 2 days before that ends."
   },
   "backup": {
     "section": "Backup",

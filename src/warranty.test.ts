@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderPlan, shortName, urgency, type ListFilter } from './warranty.ts';
+import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderPlan, returnDeadline, shortName, urgency, type ListFilter } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -64,6 +64,10 @@ test('reminderPlan: 90/60/30, weekly, expiry day; from today on; nearest first; 
   assert.deepEqual(reminderPlan([{ id: 2, end_date: '2026-11-20' }], '2026-11-11').map((r) => r.daysLeft), [9, 2, 0]);
   assert.deepEqual(reminderPlan([{ id: 3, end_date: '2026-11-13' }], '2026-11-11').map((r) => r.daysLeft), [2, 0]);
   assert.deepEqual(reminderPlan([{ id: 5, end_date: '2026-11-11' }], '2026-11-11').map((r) => r.daysLeft), [0]); // expiry day
+  // A return window closing on 2026-11-25 is reminded 2 days before.
+  const withReturn = reminderPlan([{ id: 6, end_date: '2028-11-11', return_by: '2026-11-25' }], '2026-11-11');
+  assert.deepEqual(withReturn[0], { warrantyId: 6, kind: 'return', daysLeft: 2, date: '2026-11-23' });
+  assert.equal(reminderPlan([{ id: 6, end_date: '2028-11-11', return_by: '2026-11-12' }], '2026-11-11')[0].kind, 'expiry'); // warning day already past
   assert.deepEqual(reminderPlan([{ id: 4, end_date: '2026-11-01' }], '2026-11-11'), []); // expired
   const many = Array.from({ length: 20 }, (_, i) => ({ id: i, end_date: '2027-01-01' }));
   const capped = reminderPlan(many, '2026-11-11', 60);
@@ -89,4 +93,9 @@ test('filterWarranties: tab, account, store, expiring soon, accent-insensitive s
   assert.deepEqual(ids({ account: 'manual' }), [1]);
   assert.deepEqual(ids({ store: 'PCX' }), [2]);
   assert.deepEqual(ids({ tab: 'expired', query: 'conrad' }), [3]);
+});
+
+test('returnDeadline: 14 days from delivery, mail (online) purchases only', () => {
+  assert.equal(returnDeadline({ origin: 'gmail', warranty_start_date: '2026-11-11' }), '2026-11-25');
+  assert.equal(returnDeadline({ origin: 'manual', warranty_start_date: '2026-11-11' }), null);
 });

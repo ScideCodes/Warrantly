@@ -5,8 +5,8 @@ import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
-import { getRemindersEnabled } from '@/settings';
-import { reminderPlan, shortName, todayYmd } from '@/warranty';
+import { getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
+import { reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
 
 const REMINDER_HOUR = 9;
 
@@ -39,10 +39,17 @@ async function reschedule(db: Db): Promise<void> {
   const warranties = await listWarranties(db, 'complete');
   const byId = new Map(warranties.map((w) => [w.id, w]));
   const now = new Date();
-  const jobs = (getRemindersEnabled() ? reminderPlan(warranties, todayYmd(now)) : [])
+  const returns = getReturnRemindersEnabled();
+  const items = warranties.map((w) => ({ ...w, return_by: returns ? returnDeadline(w) : null }));
+  const jobs = (getRemindersEnabled() ? reminderPlan(items, todayYmd(now)) : [])
     .map((r) => {
       const [y, m, d] = r.date.split('-').map(Number);
-      return { content: content(byId.get(r.warrantyId)!, r.daysLeft), date: new Date(y, m - 1, d, REMINDER_HOUR), channelId: r.daysLeft === 0 ? 'expiry' : 'reminders' };
+      const w = byId.get(r.warrantyId)!;
+      return {
+        content: r.kind === 'return' ? returnContent(w) : content(w, r.daysLeft),
+        date: new Date(y, m - 1, d, REMINDER_HOUR),
+        channelId: r.kind === 'expiry' && r.daysLeft === 0 ? 'expiry' : 'reminders',
+      };
     })
     .filter((j) => j.date > now); // today's reminder after its hour has already been shown
   const key = JSON.stringify(jobs);
@@ -67,6 +74,10 @@ function content(w: Warranty, daysLeft: number): Notifications.NotificationConte
     body: daysLeft === 0 ? i18n.t('reminder.today') : i18n.t('reminder.daysLeft', { count: daysLeft }),
     data: { url: `/warranty/${w.id}` },
   };
+}
+
+function returnContent(w: Warranty): Notifications.NotificationContentInput {
+  return { ...content(w, 0), body: i18n.t('reminder.returnSoon', { count: 2 }) };
 }
 
 // shortcut: a test button on the detail screen; move it into Settings once that screen exists.

@@ -11,7 +11,7 @@ import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBi
 import { rescheduleReminders } from '@/reminders';
 import { versionLine } from '@/appUpdate';
 import { chooseBackupAccount } from '@/google';
-import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting, setWidgetNames } from '@/settings';
+import { getRemindersEnabled, getReturnRemindersEnabled, getSetting, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 
@@ -24,6 +24,7 @@ export default function Settings() {
   const [biometric, setBiometric] = useState(isBiometricEnabled);
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
+  const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
@@ -69,6 +70,12 @@ export default function Settings() {
     setWidgetNames(on);
     setWidgetNamesState(on);
     await updateWidget(await getDb());
+  }
+
+  async function toggleReturnReminders(on: boolean) {
+    setReturnRemindersEnabled(on);
+    setReturnReminders(on);
+    await rescheduleReminders(await getDb());
   }
 
   async function toggleReminders(on: boolean) {
@@ -202,6 +209,7 @@ export default function Settings() {
         )}
         {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
         {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+        {reminders && row(t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
         {Platform.OS === 'android' && row(t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
         <Pressable style={styles.row} onPress={() => router.push('/ignored')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('ignored.title')}</Text>
