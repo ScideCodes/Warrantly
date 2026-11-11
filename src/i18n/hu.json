@@ -111,7 +111,10 @@
     "claim": "Garanciális igény bejelentése",
     "claimNoEmail": "Nincs mentett e-mail cím az üzlethez. Hívd fel vagy nyisd meg a fenti weboldalt, vagy add meg a címet a Szerkesztésben.",
     "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon.",
-    "openDocument": "Dokumentum megnyitása"
+    "openDocument": "Dokumentum megnyitása",
+    "attachScan": "Dokumentum beolvasása és csatolása",
+    "openFailed": "A dokumentum nem nyitható meg.",
+    "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat)."
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",

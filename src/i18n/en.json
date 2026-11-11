@@ -111,7 +111,10 @@
     "claim": "Claim warranty",
     "claimNoEmail": "No store email saved. Call or open the website above, or add the email with Edit.",
     "noMailApp": "No email app found on this phone.",
-    "openDocument": "Open document"
+    "openDocument": "Open document",
+    "attachScan": "Scan and attach a document",
+    "openFailed": "The document could not be opened.",
+    "documentMissing": "The document file is no longer on this phone (backups do not include documents yet)."
   },
   "reminder": {
     "channel": "Warranty reminders",
