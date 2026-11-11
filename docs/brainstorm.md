@@ -311,6 +311,7 @@ One purchase often produces several emails: order confirmation, shipping notice,
 - Build the mail layer as a provider interface (list new messages, read a message, download an attachment), so the parser and the rest of the app do not care which provider an email came from.
 - Each account has a provider type and its own tab, like Gmail accounts.
 - Technical notes (verify when planned): Outlook would use Microsoft's own OAuth and mail API with its own review rules, different from Google's. IMAP needs a TCP socket library in React Native and often an app password from the user. The Gmail-specific limits in section 5 do not apply to other providers.
+- Outlook skipped for now (2026-11-11): registering the app with Microsoft needs an Azure account, which asks for card details. The app offers Gmail only. Outlook can be added later through the same provider interface.
 
 ---
 
@@ -501,6 +502,7 @@ One purchase often produces several emails: order confirmation, shipping notice,
 
 ## Changelog
 
+- **2026-11-11 (update 22):** Outlook skipped for now; the app offers Gmail only (15).
 - **2026-11-11 (update 21):** Confirmed the development name as Warrantly. The public name will be chosen once the app works. Gardo stays only as a candidate.
 - **2026-11-11 (update 20):** Warranty start date = delivery, defaulting to the invoice date, editable (8, 12). Returns and refunds notify the user and ask to delete (11). Serial number and notes fields (12, 13, 20). Other email providers supported later, mail layer as a provider interface (15). Version one ships English and Hungarian (3). Only open question left: the final app name.
 - **2026-11-11 (update 19):** Store templates decided as a later improvement (8, build order). Confirmed disconnect backup details (15) and widget name hiding (13). Closed those open questions.
