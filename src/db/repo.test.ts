@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 6);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 7);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -162,4 +162,43 @@ test('scanned entries keep their documents; deleting returns the files to remove
   assert.deepEqual((await listAttachments(db, id)).map((a) => a.local_path), ['1768000000000.pdf']);
   assert.deepEqual(await deleteWarranty(db, id), ['1768000000000.pdf']);
   assert.deepEqual(await listAttachments(db, id), []);
+});
+
+test('mail PDFs: invoice PDF named after the order lands on that warranty, once; old mails are backfilled', async () => {
+  const order = byId.get('pcx-order')!; // order 260901/900001, "24 hó gar."
+  const invoice = byId.get('pcx-invoice')!; // separate invoice mail, PDF "260901-900001.pdf"
+  const withIds = (m: MailMessage) => ({ ...m, attachments: m.attachments.map((a, i) => ({ ...a, id: `${m.id}-att${i}` })) });
+  byId.set('pcx-order-d', withIds({ ...order, id: 'pcx-order-d' }));
+  byId.set('pcx-invoice-d', withIds({ ...invoice, id: 'pcx-invoice-d' }));
+  byId.set('other-invoice', withIds({ ...invoice, id: 'other-invoice', attachments: [{ filename: '999999-111111.pdf', mimeType: 'application/pdf' }] }));
+
+  const downloads: string[] = [];
+  const saved: string[] = [];
+  const provider = (ids: string[]): MailProvider => ({
+    ...fakeProvider(ids, []),
+    getAttachment: async (messageId, attachmentId) => (downloads.push(`${messageId}/${attachmentId}`), new Uint8Array([37, 80, 68, 70])),
+  });
+  const docs = { save: async (_bytes: Uint8Array, filename: string) => (saved.push(filename), `stored-${saved.length}.pdf`) };
+
+  // Old app: synced without downloading PDFs.
+  const db = nodeDb();
+  await migrate(db);
+  await syncAccount(db, provider(['pcx-invoice-d', 'pcx-order-d', 'other-invoice']), 'user@example.com');
+  const [w] = await listWarranties(db, 'complete');
+  assert.deepEqual(await listAttachments(db, w.id), []);
+
+  // New app: nothing new in Gmail, but the one-time pass reads the old mails for PDFs.
+  await syncAccount(db, provider([]), 'user@example.com', undefined, new Date(), docs);
+  assert.deepEqual((await listAttachments(db, w.id)).map((a) => [a.filename, a.local_path]), [['260901-900001.pdf', 'stored-1.pdf']]);
+  assert.deepEqual(downloads, ['pcx-invoice-d/pcx-invoice-d-att2']); // only the matching PDF, not the PBK one or the logo
+  // Next syncs do not download or attach it again.
+  await syncAccount(db, provider(['pcx-invoice-d']), 'user@example.com', undefined, new Date(), docs);
+  assert.equal(downloads.length, 1);
+
+  // Fresh install with the new app: attached during the first sync already.
+  const db2 = nodeDb();
+  await migrate(db2);
+  await syncAccount(db2, provider(['pcx-invoice-d', 'pcx-order-d']), 'user@example.com', undefined, new Date(), docs);
+  const [w2] = await listWarranties(db2, 'complete');
+  assert.deepEqual((await listAttachments(db2, w2.id)).map((a) => a.filename), ['260901-900001.pdf']);
 });

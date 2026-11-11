@@ -1,6 +1,7 @@
 import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync, getRandomBytes } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
+import { deleteDocuments } from '@/documents';
 import { ensureDriveAccess, getAccessToken } from '@/google';
 import { applySnapshot, getSetting, setSetting, settingsSnapshot } from '@/settings';
 import { driveClient, uploadAndPrune } from './drive.ts';
@@ -96,7 +97,7 @@ export async function disconnectAccount(db: Db, account: Account, now = new Date
   if (getSetting('backup_enabled') === '1' && (await ensureDriveAccess(false))) {
     await drive().upload(`warrantly-disconnect-${account.email}-${now.toISOString().replace(/[:.]/g, '-')}.json`, text).catch(() => {}); // the copy on the phone is enough
   }
-  await deleteAccount(db, account.id);
+  deleteDocuments(await deleteAccount(db, account.id)); // its downloaded PDFs go too
 }
 
 export async function disconnectBackupDate(db: Db, email: string): Promise<string | null> {

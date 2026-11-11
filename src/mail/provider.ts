@@ -18,7 +18,7 @@ export interface FetchOptions {
   storeRules?: StoreRules;
   skip?: Set<string>; // message ids already processed in an earlier sync
   onProgress?: (done: number, total: number) => void;
-  onResult?: (result: ParseResult) => Promise<void>; // save as we go, so an interrupted sync keeps its work
+  onResult?: (result: ParseResult, message: MailMessage) => Promise<void>; // save as we go, so an interrupted sync keeps its work
 }
 
 // One sync pass: fetch every new candidate and parse it. Sequential on purpose, to stay
@@ -29,13 +29,15 @@ export async function fetchAndParse(provider: MailProvider, after: Date | null, 
   for (const [i, id] of ids.entries()) {
     opts.onProgress?.(i, ids.length);
     let result: ParseResult;
+    let message: MailMessage;
     try {
-      result = parseEmail(await provider.getMessage(id), opts.storeRules);
+      message = await provider.getMessage(id);
+      result = parseEmail(message, opts.storeRules);
     } catch (e) {
       sync.failed.push({ id, error: e instanceof Error ? e.message : String(e) });
       continue;
     }
-    await opts.onResult?.(result); // a save error is a bug, not a bad mail: let it stop the sync
+    await opts.onResult?.(result, message); // a save error is a bug, not a bad mail: let it stop the sync
     sync.results.push(result);
   }
   return sync;

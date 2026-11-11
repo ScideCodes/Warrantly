@@ -89,6 +89,9 @@ const MIGRATIONS = [
      filename TEXT NOT NULL,
      local_path TEXT NOT NULL
    );`,
+  // v7: mail PDFs are downloaded now (build step 4); this marks accounts whose earlier mails were
+  // already checked for PDFs once.
+  `ALTER TABLE accounts ADD COLUMN docs_backfilled INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -134,11 +137,17 @@ export async function loadStoreRules(db: Db): Promise<StoreRules> {
 // record so it shows up in "Needs your attention". Ignored mails are kept as `ignored`
 // records so they can be reviewed later (section 8). Returns only get a source row until
 // matching lands in build step 6.
-export async function saveResult(db: Db, accountId: number, r: ParseResult, now = new Date().toISOString()): Promise<void> {
+// Returns the ids of the warranties the mail created or was merged into.
+export async function saveResult(db: Db, accountId: number, r: ParseResult, now = new Date().toISOString()): Promise<number[]> {
+  const ids: number[] = [];
   await db.withTransactionAsync(async () => {
     const products = r.kind === 'return' ? [] : r.items.length ? r.items : [null];
     for (const item of products) {
-      if (item && r.kind === 'purchase' && (await mergeIntoExisting(db, accountId, r, item.name))) continue;
+      const merged = item && r.kind === 'purchase' ? await mergeIntoExisting(db, accountId, r, item.name) : null;
+      if (merged) {
+        ids.push(merged);
+        continue;
+      }
       const months = item?.warrantyMonths ?? null;
       const missing = r.kind === 'ignored' ? [] : item ? (months ? [] : ['warrantyMonths']) : r.missingFields;
       const status = r.kind === 'ignored' ? 'ignored' : missing.length ? 'needs_input' : 'complete';
@@ -152,21 +161,23 @@ export async function saveResult(db: Db, accountId: number, r: ParseResult, now 
           status, JSON.stringify(missing), now, now],
       );
       await insertSource(db, accountId, res.lastInsertRowId, r);
+      ids.push(res.lastInsertRowId);
     }
     if (!products.length) await insertSource(db, accountId, null, r);
   });
+  return ids;
 }
 
 // One shop order sends several mails naming the same product (order, packing, pickup, review request).
 // shortcut: same store + same product name within 60 days counts as one purchase, so buying the same
 // item twice in two months merges; upgrade with order numbers in build step 6 (dedupe).
-async function mergeIntoExisting(db: Db, accountId: number, r: ParseResult, product: string): Promise<boolean> {
+async function mergeIntoExisting(db: Db, accountId: number, r: ParseResult, product: string): Promise<number | null> {
   const hit = await db.getFirstAsync<{ id: number }>(
     `SELECT id FROM warranties WHERE account_id = ? AND store_domain = ? AND product_name = ? AND status != 'ignored'
        AND abs(julianday(purchase_date) - julianday(?)) <= 60 LIMIT 1`,
     [accountId, r.storeDomain, product, r.purchaseDate],
   );
-  if (!hit) return false;
+  if (!hit) return null;
   // The earliest mail is closest to the purchase; a confirmed start date is left alone.
   await db.runAsync(
     `UPDATE warranties SET purchase_date = min(purchase_date, ?),
@@ -175,7 +186,7 @@ async function mergeIntoExisting(db: Db, accountId: number, r: ParseResult, prod
     [r.purchaseDate, r.suggestedStartDate, hit.id],
   );
   await insertSource(db, accountId, hit.id, r);
-  return true;
+  return hit.id;
 }
 
 function insertSource(db: Db, accountId: number, warrantyId: number | null, r: ParseResult) {
@@ -316,13 +327,19 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
 }
 
 // Removes the account's warranties and mail markers. Manual and scanned entries are not affected.
-export async function deleteAccount(db: Db, accountId: number): Promise<void> {
+// Returns the attachment files the caller must delete from disk.
+export async function deleteAccount(db: Db, accountId: number): Promise<string[]> {
+  const files = await db.getAllAsync<{ local_path: string }>(
+    'SELECT local_path FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)',
+    [accountId],
+  );
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
     await db.runAsync('DELETE FROM sources WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM warranties WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM accounts WHERE id = ?', [accountId]);
   });
+  return files.map((f) => f.local_path);
 }
 
 // Puts a disconnect backup back under the (re)connected account. Rows get new ids, so nothing added
@@ -353,4 +370,46 @@ export async function saveDisconnectBackup(db: Db, email: string, envelope: stri
 
 export async function getDisconnectBackup(db: Db, email: string): Promise<{ created_at: string; envelope: string } | null> {
   return db.getFirstAsync('SELECT created_at, envelope FROM disconnect_backups WHERE email = ?', [email]);
+}
+
+// --- Mail PDFs (build step 4) ---
+
+const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+// A PDF on a mail that is not itself a warranty (e.g. PCX's separate invoice mail, "260427-380724.pdf")
+// belongs to the same store's warranty whose order number appears in the file name or the mail.
+export async function warrantiesForDocument(db: Db, accountId: number, storeDomain: string, haystack: string): Promise<number[]> {
+  const rows = await db.getAllAsync<{ id: number; order_number: string }>(
+    `SELECT id, order_number FROM warranties WHERE account_id = ? AND store_domain = ? AND order_number IS NOT NULL AND status != 'ignored'`,
+    [accountId, storeDomain],
+  );
+  const text = normalize(haystack);
+  return rows.filter((w) => normalize(w.order_number).length >= 6 && text.includes(normalize(w.order_number))).map((w) => w.id);
+}
+
+export async function hasAttachmentNamed(db: Db, warrantyId: number, filename: string): Promise<boolean> {
+  return (await db.getFirstAsync('SELECT 1 FROM attachments WHERE warranty_id = ? AND filename = ?', [warrantyId, filename])) !== null;
+}
+
+// Messages already synced for an account, with the (not ignored) warranties they belong to.
+export async function syncedMessages(db: Db, accountId: number): Promise<{ message_id: string; warranty_ids: number[] }[]> {
+  const rows = await db.getAllAsync<{ message_id: string; warranty_id: number | null }>(
+    `SELECT s.message_id, CASE WHEN w.status != 'ignored' THEN s.warranty_id END AS warranty_id
+       FROM sources s LEFT JOIN warranties w ON w.id = s.warranty_id WHERE s.account_id = ?`,
+    [accountId],
+  );
+  const byMessage = new Map<string, number[]>();
+  for (const r of rows) {
+    const list = byMessage.get(r.message_id) ?? [];
+    if (r.warranty_id !== null) list.push(r.warranty_id);
+    byMessage.set(r.message_id, list);
+  }
+  return [...byMessage].map(([message_id, warranty_ids]) => ({ message_id, warranty_ids }));
+}
+
+export async function isDocsBackfilled(db: Db, accountId: number): Promise<boolean> {
+  return (await db.getFirstAsync<{ docs_backfilled: number }>('SELECT docs_backfilled FROM accounts WHERE id = ?', [accountId]))?.docs_backfilled === 1;
+}
+export async function setDocsBackfilled(db: Db, accountId: number): Promise<void> {
+  await db.runAsync('UPDATE accounts SET docs_backfilled = 1 WHERE id = ?', [accountId]);
 }
