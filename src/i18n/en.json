@@ -102,7 +102,10 @@
     "notes": "Notes",
     "fullName": "Full product name",
     "testReminder": "Send a test reminder in 5 seconds",
-    "noPermission": "Notifications are turned off for Warrantly. Turn them on in Android settings."
+    "noPermission": "Notifications are turned off for Warrantly. Turn them on in Android settings.",
+    "claim": "Claim warranty",
+    "claimNoEmail": "No store email saved. Call or open the website above, or add the email with Edit.",
+    "noMailApp": "No email app found on this phone."
   },
   "reminder": {
     "channel": "Warranty reminders",
@@ -200,5 +203,18 @@
     "restoreBody": "A backup of this account was made on {{date}} when it was disconnected. Restore its warranties?",
     "restore": "Restore",
     "skip": "Skip"
+  },
+  "claim": {
+    "subject": "Warranty claim: {{product}}",
+    "greeting": "Hello,",
+    "intro": "I would like to make a warranty claim for this product:",
+    "product": "Product",
+    "purchaseDate": "Purchase date",
+    "orderNumber": "Order number",
+    "serialNumber": "Serial number",
+    "validUntil": "Warranty valid until",
+    "problem": "Problem",
+    "problemPlaceholder": "[Describe the problem here]",
+    "thanks": "Thank you,"
   }
 }

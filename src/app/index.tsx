@@ -70,8 +70,8 @@ export default function Home() {
   if (!name) return <Redirect href="/onboarding" />;
 
   const today = todayYmd();
-  const hasManual = warranties.some((w) => w.account_id === null);
-  const groups: Filter[] = [...(accounts ?? []).map((a) => a.id), ...(hasManual ? (['manual'] as const) : [])];
+  // Section 15: one tab per account plus the general Manual tab, shown once an account is connected.
+  const groups: Filter[] = accounts?.length ? [...accounts.map((a) => a.id), 'manual'] : [];
   const inFilter = (w: Warranty) => filter === 'all' || (filter === 'manual' ? w.account_id === null : w.account_id === filter);
   const shown = warranties.filter((w) => inFilter(w) && (daysUntil(w.end_date, today) >= 0) === (tab === 'active'));
   const label = (f: Filter) => (f === 'all' ? t('home.tabAll') : f === 'manual' ? t('home.tabManual') : (accounts?.find((a) => a.id === f)?.email ?? ''));
@@ -111,7 +111,7 @@ export default function Home() {
             {p}
           </Text>
         ))}
-      {groups.length > 1 && (
+      {groups.length > 0 && (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityRole="tablist">
           {(['all', ...groups] as Filter[]).map((f) => (
             <Pressable key={String(f)} style={[styles.chip, filter === f && styles.chipSelected]} onPress={() => setFilter(f)} accessibilityRole="tab" accessibilityState={{ selected: filter === f }}>

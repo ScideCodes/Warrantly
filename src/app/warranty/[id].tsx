@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { deleteWarranty, getWarranty, ignoreWarranty, type Warranty } from '@/db/repo.ts';
+import { claimEmail, mailtoUrl } from '@/claim';
 import { sendTestReminder } from '@/reminders';
+import { getUsername } from '@/settings';
 import { colors } from '@/theme';
 import { daysUntil, todayYmd, urgency } from '@/warranty';
 
@@ -86,6 +88,32 @@ export default function WarrantyDetail() {
         {w.serial_number && <Field label={t('detail.serial')} value={w.serial_number} />}
         {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
 
+        {days >= 0 && (
+          // Section 20: not offered once the warranty has expired.
+          <View style={styles.claim}>
+            {w.contact_email ? (
+              <Pressable
+                style={styles.primary}
+                onPress={() => {
+                  const { subject, body } = claimEmail(t, {
+                    product: w.product_name ?? t('warranty.unknownProduct'),
+                    purchaseDate: date(w.purchase_date),
+                    endDate: date(w.end_date),
+                    orderNumber: w.order_number,
+                    serialNumber: w.serial_number,
+                    name: getUsername(),
+                  });
+                  Linking.openURL(mailtoUrl(w.contact_email!, subject, body)).catch(() => Alert.alert(t('detail.noMailApp')));
+                }}
+                accessibilityRole="button"
+              >
+                <Text style={styles.primaryText}>{t('detail.claim')}</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.note}>{t('detail.claimNoEmail')}</Text>
+            )}
+          </View>
+        )}
         <Pressable
           style={styles.secondary}
           onPress={async () => {
@@ -137,6 +165,9 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, color: colors.muted },
   value: { fontSize: 16, color: colors.text },
   link: { color: colors.primary },
+  claim: { marginTop: 16 },
+  primary: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  primaryText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
   headerButton: { fontSize: 16, fontWeight: '600', color: colors.primary, paddingHorizontal: 8 },
   secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
