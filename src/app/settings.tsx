@@ -1,20 +1,29 @@
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { hasBackupPassword, runBackup } from '@/backup';
+import type { BackupInterval } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
-import { getRemindersEnabled, setRemindersEnabled } from '@/settings';
+import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting } from '@/settings';
 import { colors } from '@/theme';
 
-// Settings (section 13): app lock and reminders for now.
+const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
+
+// Settings (section 13): app lock, reminders and backup.
 export default function Settings() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [lock, setLock] = useState(isLockEnabled);
   const [biometric, setBiometric] = useState(isBiometricEnabled);
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
+  const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
+  const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
+  const [backupBusy, setBackupBusy] = useState(false);
+  const [lastBackup, setLastBackup] = useState(() => getSetting('last_backup_at'));
+  const [backupError, setBackupError] = useState(() => getSetting('last_backup_error'));
 
   // Back from PIN setup: show whether the lock is now on.
   useFocusEffect(
@@ -22,6 +31,9 @@ export default function Settings() {
       setLock(isLockEnabled());
       setBiometric(isBiometricEnabled());
       void biometricAvailable().then(setCanBiometric);
+      setBackup(getSetting('backup_enabled') === '1' && hasBackupPassword());
+      setLastBackup(getSetting('last_backup_at'));
+      setBackupError(getSetting('last_backup_error'));
     }, []),
   );
 
@@ -42,6 +54,25 @@ export default function Settings() {
     setRemindersEnabled(on);
     setReminders(on);
     await rescheduleReminders(await getDb());
+  }
+
+  async function backupNow() {
+    setBackupBusy(true);
+    await runBackup(await getDb(), true).catch(() => {}); // the error is saved and shown below
+    setLastBackup(getSetting('last_backup_at'));
+    setBackupError(getSetting('last_backup_error'));
+    setBackupBusy(false);
+  }
+
+  async function toggleBackup(on: boolean) {
+    if (!on) {
+      setSetting('backup_enabled', '0');
+      return setBackup(false);
+    }
+    if (!hasBackupPassword()) return router.push('/backup-password'); // turns backup on when saved
+    setSetting('backup_enabled', '1');
+    setBackup(true);
+    await backupNow();
   }
 
   const row = (label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void) => (
@@ -66,6 +97,47 @@ export default function Settings() {
         )}
         {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
         {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+
+        <Text style={styles.section} accessibilityRole="header">
+          {t('backup.section')}
+        </Text>
+        {row(t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
+        {backup && (
+          <View style={styles.block}>
+            <Text style={styles.label}>{t('backup.interval')}</Text>
+            <View style={styles.chips}>
+              {INTERVALS.map((i) => (
+                <Pressable
+                  key={i}
+                  style={[styles.chip, interval === i && styles.chipSelected]}
+                  onPress={() => {
+                    setSetting('backup_interval', i);
+                    setIntervalChoice(i);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: interval === i }}
+                >
+                  <Text style={[styles.chipText, interval === i && styles.chipTextSelected]}>{t(`backup.${i}`)}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={backupError ? styles.error : styles.hint}>
+              {backupBusy
+                ? t('backup.working')
+                : backupError
+                  ? t('backup.failed', { detail: backupError })
+                  : lastBackup
+                    ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
+                    : t('backup.never')}
+            </Text>
+            <Pressable style={styles.secondary} onPress={backupNow} disabled={backupBusy} accessibilityRole="button">
+              {backupBusy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t('backup.now')}</Text>}
+            </Pressable>
+          </View>
+        )}
+        <Pressable style={styles.row} onPress={() => router.push('/restore')} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('backup.restore')}</Text>
+        </Pressable>
       </ScrollView>
     </>
   );
@@ -79,4 +151,14 @@ const styles = StyleSheet.create({
   label: { fontSize: 16, fontWeight: '600', color: colors.text },
   hint: { fontSize: 14, color: colors.muted },
   link: { color: colors.primary },
+  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginTop: 32, marginBottom: 4 },
+  block: { gap: 10, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
+  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  chipText: { fontSize: 15, color: colors.text },
+  chipTextSelected: { color: colors.onPrimary, fontWeight: '600' },
+  error: { fontSize: 14, color: colors.soon.fg },
+  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
 });

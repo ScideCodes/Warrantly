@@ -135,5 +135,49 @@
     "biometric": "Unlock with fingerprint or face",
     "reminders": "Expiry reminders",
     "remindersHint": "90, 60 and 30 days before, then weekly, and on the last day."
+  },
+  "backup": {
+    "section": "Backup",
+    "enable": "Back up to Google Drive",
+    "enableHint": "Encrypted on this phone first. Drive only stores a file it can't read.",
+    "interval": "How often",
+    "weekly": "Weekly",
+    "monthly": "Monthly",
+    "3m": "Every 3 months",
+    "6m": "Every 6 months",
+    "now": "Back up now",
+    "restore": "Restore from backup",
+    "last": "Last backup: {{date}}",
+    "never": "No backup yet",
+    "failed": "Last backup failed: {{detail}}",
+    "working": "Backing up…",
+    "done": "Backup saved to Google Drive."
+  },
+  "backupPassword": {
+    "title": "Backup password",
+    "body": "You need this password to restore on a new phone. There is no server, so a lost password can't be recovered and the backup can't be opened.",
+    "password": "Password (at least 8 characters)",
+    "confirm": "Repeat password",
+    "errShort": "Use at least 8 characters.",
+    "errMatch": "The passwords don't match.",
+    "save": "Turn on backup",
+    "working": "Setting up backup…"
+  },
+  "restore": {
+    "title": "Restore from backup",
+    "looking": "Looking for backups on Google Drive…",
+    "none": "No backup found in the Warrantly Backups folder.",
+    "found": "Latest backup: {{date}}",
+    "password": "Backup password",
+    "passwordHint": "Needed when the backup was made on another phone.",
+    "button": "Restore",
+    "confirmTitle": "Replace everything on this phone?",
+    "confirmBody": "Warranties on this phone are replaced with the backup from {{date}}. This can't be undone.",
+    "confirm": "Replace",
+    "cancel": "Cancel",
+    "needPassword": "Enter the backup password.",
+    "wrong": "Wrong backup password.",
+    "done": "Restored. Connect Gmail again to keep syncing.",
+    "working": "Restoring…"
   }
 }

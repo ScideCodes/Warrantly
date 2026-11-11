@@ -4,6 +4,7 @@ import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse
 // it on Android; the Android client (package + SHA-1) is matched by Google automatically.
 const WEB_CLIENT_ID = '237650743703-o6i7era4merslmucakbqsqimsls1hg0a.apps.googleusercontent.com';
 const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
+const DRIVE_FILE = 'https://www.googleapis.com/auth/drive.file'; // backups: only files this app creates
 
 // Gmail scope here too, so getTokens() returns a token that can read mail.
 GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, scopes: [GMAIL_READONLY] });
@@ -30,9 +31,26 @@ export async function connectGmail(): Promise<string | null> {
 export const connectedEmail = (): string | null =>
   hasGmailScope() ? (GoogleOneTapSignIn.getCurrentUser()?.user.email ?? null) : null;
 
+let cached: { token: string; at: number } | null = null;
+
+// Backups go to Google Drive (section 17). `interactive: false` (automatic backups) never shows a dialog.
+export async function ensureDriveAccess(interactive: boolean): Promise<boolean> {
+  const user = GoogleOneTapSignIn.getCurrentUser();
+  if (user?.scopes.includes(DRIVE_FILE)) return true;
+  if (!interactive) return false;
+  if (!user) {
+    await GoogleOneTapSignIn.checkPlayServices();
+    let res = await GoogleOneTapSignIn.signIn();
+    if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn();
+    if (!isSuccessResponse(res)) return false;
+  }
+  await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
+  cached = null; // the cached token was issued before Drive access was granted
+  return true;
+}
+
 // Google access tokens live about an hour. Reuse one instead of asking the native layer before every
 // request; after a 401 the provider passes the rejected token back and we fetch a fresh one.
-let cached: { token: string; at: number } | null = null;
 export async function getAccessToken(expired?: string): Promise<string> {
   if (expired) {
     await GoogleOneTapSignIn.clearCachedAccessToken(expired);

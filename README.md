@@ -14,6 +14,8 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
   Mail import keeps warranty documents and mails that state a warranty length ("24 hó gar.").
 - Step 6 (reminders, app lock): done. Reminders need app 0.2.0 (native build); merging of duplicate
   mails is a 60-day same-product rule for now.
+- Step 7a (encrypted backup to Google Drive): done in app 0.3.0. `src/backup` holds the format
+  (JSON dump, scrypt + AES-256-GCM envelope) and the Drive client; both are tested in Node.
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns

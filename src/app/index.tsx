@@ -9,6 +9,7 @@ import { listWarranties, type Warranty } from '@/db/repo.ts';
 import { syncAccount } from '@/db/sync.ts';
 import { connectedEmail, connectGmail, getAccessToken } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
+import { runDueBackup } from '@/backup';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
@@ -37,6 +38,7 @@ export default function Home() {
     setAttention((await listWarranties(db, 'needs_input')).length);
     // Runs on open, after sync and after edits: the rolling reminder window (section 16).
     rescheduleReminders(db).catch((e) => console.warn('reminders', e)); // must not break the list
+    void runDueBackup(db); // section 17: a due backup runs on app open
   }, []);
 
   const runSync = useCallback(
