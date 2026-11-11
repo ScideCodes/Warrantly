@@ -4,7 +4,7 @@ import { AndroidImportance } from 'expo-notifications';
 import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
-import { listWarranties, type Db } from '@/db/repo.ts';
+import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
 import { reminderPlan, shortName, todayYmd } from '@/warranty';
 
 const REMINDER_HOUR = 9;
@@ -38,11 +38,7 @@ export async function rescheduleReminders(db: Db): Promise<void> {
     const w = byId.get(r.warrantyId)!;
     const [y, m, d] = r.date.split('-').map(Number);
     await Notifications.scheduleNotificationAsync({
-      content: {
-        title: w.product_name ? (w.origin === 'manual' ? w.product_name : shortName(w.product_name)) : w.store_name,
-        body: r.daysLeft === 0 ? i18n.t('reminder.today') : i18n.t('reminder.daysLeft', { count: r.daysLeft }),
-        data: { url: `/warranty/${w.id}` },
-      },
+      content: content(w, r.daysLeft),
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,
         date: new Date(y, m - 1, d, REMINDER_HOUR),
@@ -50,6 +46,26 @@ export async function rescheduleReminders(db: Db): Promise<void> {
       },
     });
   }
+}
+
+function content(w: Warranty, daysLeft: number): Notifications.NotificationContentInput {
+  return {
+    title: w.product_name ? (w.origin === 'manual' ? w.product_name : shortName(w.product_name)) : w.store_name,
+    body: daysLeft === 0 ? i18n.t('reminder.today') : i18n.t('reminder.daysLeft', { count: daysLeft }),
+    data: { url: `/warranty/${w.id}` },
+  };
+}
+
+// shortcut: a test button on the detail screen; move it into Settings once that screen exists.
+export async function sendTestReminder(w: Warranty, daysLeft: number): Promise<boolean> {
+  await ensureChannels();
+  const { granted } = await Notifications.requestPermissionsAsync();
+  if (!granted) return false;
+  await Notifications.scheduleNotificationAsync({
+    content: content(w, Math.max(0, daysLeft)),
+    trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds: 5, channelId: daysLeft <= 0 ? 'expiry' : 'reminders' },
+  });
+  return true;
 }
 
 // Tapping a reminder opens that warranty, also when the tap launched the app.

@@ -79,7 +79,8 @@
     "errStore": "Enter the store.",
     "errDate": "Enter a real date as YYYY-MM-DD.",
     "errStart": "Enter a date on or after the purchase date, or leave it empty.",
-    "errMonths": "Enter a length between 1 and 120 months."
+    "errMonths": "Enter a length between 1 and 120 months.",
+    "pickerFailed": "The calendar could not open, type the date instead. ({{detail}})"
   },
   "detail": {
     "edit": "Edit",
@@ -91,7 +92,9 @@
     "cancel": "Cancel",
     "serial": "Serial number",
     "notes": "Notes",
-    "fullName": "Full product name"
+    "fullName": "Full product name",
+    "testReminder": "Send a test reminder in 5 seconds",
+    "noPermission": "Notifications are turned off for Warrantly. Turn them on in Android settings."
   },
   "reminder": {
     "channel": "Warranty reminders",

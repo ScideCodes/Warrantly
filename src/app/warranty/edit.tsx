@@ -36,6 +36,7 @@ export default function EditWarranty() {
   const [errors, setErrors] = useState<FormField[]>([]);
   const [remember, setRemember] = useState(false);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
+  const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
 
   useEffect(() => {
     if (!id) return;
@@ -83,15 +84,15 @@ export default function EditWarranty() {
     DateTimePickerAndroid.open({
       value: new Date(y, m - 1, d),
       mode: 'date',
-      onChange: (event, date) => {
-        if (event.type === 'set' && date) set(key)(todayYmd(date));
-      },
+      onValueChange: (_event, date) => set(key)(todayYmd(date)),
+      // The library swallows native errors unless asked; show it and let the user type the date instead.
+      onError: (e) => setPickerError(e instanceof Error ? e.message : String(e)),
     });
   };
 
   const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
-    if (opts.date && Platform.OS === 'android') {
+    if (opts.date && Platform.OS === 'android' && !pickerError) {
       const value = form[key];
       return (
         <View style={styles.field}>
@@ -125,6 +126,7 @@ export default function EditWarranty() {
           accessibilityLabelledBy={`${key}-label`}
           accessibilityHint={opts.hint}
         />
+        {opts.date && pickerError && <Text style={styles.hint}>{t('form.pickerFailed', { detail: pickerError })}</Text>}
         {invalid && opts.error ? (
           <Text style={styles.error} accessibilityLiveRegion="polite">
             {opts.error}

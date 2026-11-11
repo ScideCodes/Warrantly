@@ -40,15 +40,17 @@ test('form validation', () => {
   assert.equal(isValidYmd('2028-02-29'), true);
 });
 
-test('shortName keeps the identifying part of shop product names', () => {
+test('shortName keeps brand and model', () => {
   assert.equal(shortName('Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)'), 'Jonsbo D300');
-  assert.equal(shortName('Gembird WM-55ST-04 fali tartó konzol (815987) 12+'), 'Gembird WM-55ST-04 fali tartó konzol');
-  assert.equal(shortName('SAMSUNG hálózati töltő Type-C aljzat 25W, PD gyorstöltés, fekete'), 'SAMSUNG hálózati töltő Type-C aljzat 25W');
-  assert.equal(shortName('VXE MAD R 8K optikai USB / vezeték nélküli gaming egér'), 'VXE MAD R 8K optikai USB');
-  assert.equal(shortName('Deepcool SC790 PWM és RGB vezérlő hub (R-SC790)'), 'Deepcool SC790 PWM és RGB vezérlő hub');
-  assert.equal(shortName('Samsung Galaxy S24'), 'Samsung Galaxy S24'); // trailing model number stays
-  assert.equal(shortName('Monitor - 27"'), 'Monitor - 27"'); // one word left: keep the whole name
-  assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse');
+  assert.equal(shortName('Gembird WM-55ST-04 fali tartó konzol (815987) 12+'), 'Gembird WM-55ST-04');
+  assert.equal(shortName('White Shark WS GH-2440W/G PARROT-W/G fehér-szürke gamer headset'), 'White Shark WS GH-2440W/G');
+  assert.equal(shortName('VXE MAD R 8K optikai USB / vezeték nélküli gaming egér'), 'VXE MAD R 8K');
+  assert.equal(shortName('Deepcool SC790 PWM és RGB vezérlő hub (R-SC790)'), 'Deepcool SC790');
+  assert.equal(shortName('Számítógépház Jonsbo TK-3 fekete'), 'Számítógépház Jonsbo TK-3');
+  assert.equal(shortName('SAMSUNG hálózati töltő Type-C aljzat 25W, PD gyorstöltés'), 'SAMSUNG hálózati töltő Type-C…'); // model too far in
+  assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky ZERO…'); // no model code
+  assert.equal(shortName('Mixing Desk FIFINE SC3'), 'Mixing Desk FIFINE SC3');
+  assert.equal(shortName('Samsung Galaxy S24'), 'Samsung Galaxy S24');
 });
 
 test('reminderPlan: 90/60/30, weekly, expiry day; future only; nearest first; capped', () => {
