@@ -135,5 +135,49 @@
     "biometric": "Feloldás ujjlenyomattal vagy arccal",
     "reminders": "Lejárati emlékeztetők",
     "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon."
+  },
+  "backup": {
+    "section": "Mentés",
+    "enable": "Mentés Google Drive-ra",
+    "enableHint": "Előbb ezen a telefonon titkosítjuk, a Drive csak egy olvashatatlan fájlt tárol.",
+    "interval": "Milyen gyakran",
+    "weekly": "Hetente",
+    "monthly": "Havonta",
+    "3m": "3 havonta",
+    "6m": "6 havonta",
+    "now": "Mentés most",
+    "restore": "Visszaállítás mentésből",
+    "last": "Utolsó mentés: {{date}}",
+    "never": "Még nincs mentés",
+    "failed": "Az utolsó mentés nem sikerült: {{detail}}",
+    "working": "Mentés folyamatban…",
+    "done": "A mentés a Google Drive-ra került."
+  },
+  "backupPassword": {
+    "title": "Mentési jelszó",
+    "body": "Ezzel a jelszóval állíthatod vissza az adataidat új telefonon. Nincs szerver, ezért az elfelejtett jelszó nem állítható vissza, és a mentés nem nyitható meg.",
+    "password": "Jelszó (legalább 8 karakter)",
+    "confirm": "Jelszó újra",
+    "errShort": "Legalább 8 karaktert használj.",
+    "errMatch": "A két jelszó nem egyezik.",
+    "save": "Mentés bekapcsolása",
+    "working": "Mentés beállítása…"
+  },
+  "restore": {
+    "title": "Visszaállítás mentésből",
+    "looking": "Mentések keresése a Google Drive-on…",
+    "none": "Nem található mentés a Warrantly Backups mappában.",
+    "found": "Legújabb mentés: {{date}}",
+    "password": "Mentési jelszó",
+    "passwordHint": "Akkor kell, ha a mentés másik telefonon készült.",
+    "button": "Visszaállítás",
+    "confirmTitle": "Lecserélsz mindent ezen a telefonon?",
+    "confirmBody": "A telefonon lévő garanciák helyére a(z) {{date}} mentés kerül. Ez nem vonható vissza.",
+    "confirm": "Csere",
+    "cancel": "Mégse",
+    "needPassword": "Add meg a mentési jelszót.",
+    "wrong": "Hibás mentési jelszó.",
+    "done": "Visszaállítva. Kapcsold össze újra a Gmailt a szinkronizáláshoz.",
+    "working": "Visszaállítás…"
   }
 }

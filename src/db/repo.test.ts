@@ -1,36 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addManual, deleteWarranty, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty, type Db } from './repo.ts';
+import { addManual, deleteWarranty, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount } from './sync.ts';
-
-// Same SQL as on the phone, run on Node's built-in SQLite.
-function nodeDb(): Db & { raw: DatabaseSync } {
-  const d = new DatabaseSync(':memory:');
-  return {
-    raw: d,
-    execAsync: async (sql) => void d.exec(sql),
-    runAsync: async (sql, p) => {
-      const r = d.prepare(sql).run(...p);
-      return { lastInsertRowId: Number(r.lastInsertRowid), changes: Number(r.changes) };
-    },
-    getAllAsync: async <T,>(sql: string, p: (string | number | null)[]) => d.prepare(sql).all(...p) as T[],
-    getFirstAsync: async <T,>(sql: string, p: (string | number | null)[]) => (d.prepare(sql).get(...p) ?? null) as T | null,
-    withTransactionAsync: async (task) => {
-      d.exec('BEGIN');
-      try {
-        await task();
-        d.exec('COMMIT');
-      } catch (e) {
-        d.exec('ROLLBACK');
-        throw e;
-      }
-    },
-  };
-}
+import { nodeDb } from './testDb.ts';
 
 const fixtures: { message: MailMessage }[] = JSON.parse(readFileSync(new URL('../parser/fixtures/emails.json', import.meta.url), 'utf8'));
 const byId = new Map(fixtures.map((f) => [f.message.id, f.message]));

@@ -1,0 +1,66 @@
+// Google Drive storage for backups, with the drive.file scope: the app only sees files it created.
+const API = 'https://www.googleapis.com/drive/v3';
+const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id';
+export const FOLDER_NAME = 'Warrantly Backups';
+export const KEEP = 5;
+
+export interface DriveFile {
+  id: string;
+  name: string;
+  createdTime: string;
+}
+
+export function driveClient(getToken: () => Promise<string>, fetchFn: typeof fetch = fetch) {
+  async function call(url: string, init: RequestInit = {}): Promise<Response> {
+    const res = await fetchFn(url, { ...init, headers: { ...(init.headers as Record<string, string>), Authorization: `Bearer ${await getToken()}` } });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      let reason = text.slice(0, 160);
+      try {
+        const err = JSON.parse(text).error;
+        reason = [err?.errors?.[0]?.reason ?? err?.status, err?.message].filter(Boolean).join(' - ');
+      } catch {}
+      throw new Error(`Drive ${res.status}${reason && `: ${reason}`}`);
+    }
+    return res;
+  }
+  const q = (query: string) => encodeURIComponent(query);
+
+  async function folderId(): Promise<string> {
+    const found = await (await call(`${API}/files?q=${q(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`)}&fields=files(id)`)).json();
+    if (found.files?.length) return found.files[0].id;
+    const created = await call(`${API}/files?fields=id`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
+    });
+    return (await created.json()).id;
+  }
+
+  async function list(): Promise<DriveFile[]> {
+    const parent = await folderId();
+    const res = await call(`${API}/files?q=${q(`'${parent}' in parents and trashed = false`)}&orderBy=createdTime desc&fields=files(id,name,createdTime)`);
+    return (await res.json()).files ?? [];
+  }
+
+  async function upload(name: string, text: string): Promise<string> {
+    const boundary = `warrantly${Date.now()}`;
+    const body =
+      `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n` +
+      JSON.stringify({ name, parents: [await folderId()], mimeType: 'application/json' }) +
+      `\r\n--${boundary}\r\nContent-Type: application/json\r\n\r\n${text}\r\n--${boundary}--`;
+    const res = await call(UPLOAD, { method: 'POST', headers: { 'Content-Type': `multipart/related; boundary=${boundary}` }, body });
+    return (await res.json()).id;
+  }
+
+  const download = async (id: string): Promise<string> => (await call(`${API}/files/${id}?alt=media`)).text();
+  const remove = async (id: string): Promise<void> => void (await call(`${API}/files/${id}`, { method: 'DELETE' }));
+
+  return { list, upload, download, remove };
+}
+
+// Upload a new backup and keep only the newest few.
+export async function uploadAndPrune(drive: ReturnType<typeof driveClient>, name: string, text: string): Promise<void> {
+  await drive.upload(name, text);
+  for (const old of (await drive.list()).slice(KEEP)) await drive.remove(old.id);
+}

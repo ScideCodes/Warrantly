@@ -2,3 +2,4 @@
 export const connectGmail = async (): Promise<string | null> => null;
 export const connectedEmail = (): string | null => null;
 export const getAccessToken = async (_expired?: string): Promise<string> => '';
+export const ensureDriveAccess = async (_interactive: boolean): Promise<boolean> => false;

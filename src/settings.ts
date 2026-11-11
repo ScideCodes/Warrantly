@@ -9,3 +9,12 @@ export const setUsername = (name: string): void => Storage.setItemSync(USERNAME,
 // Expiry reminders are on by default (section 16).
 export const getRemindersEnabled = (): boolean => Storage.getItemSync('reminders_enabled') !== '0';
 export const setRemindersEnabled = (on: boolean): void => Storage.setItemSync('reminders_enabled', on ? '1' : '0');
+
+// Backup settings (section 17). The backup password's key lives in SecureStore, not here.
+export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error'): string | null => Storage.getItemSync(key);
+export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error', value: string): void => Storage.setItemSync(key, value);
+// What a backup carries besides the database.
+export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), reminders_enabled: Storage.getItemSync('reminders_enabled') });
+export function applySnapshot(s: Record<string, string | null>): void {
+  for (const [k, v] of Object.entries(s)) if ((k === 'username' || k === 'reminders_enabled') && v !== null) Storage.setItemSync(k, v);
+}
