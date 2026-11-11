@@ -6,13 +6,13 @@ import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { runDueBackup } from '@/backup';
-import { WarrantyRow } from '@/components/WarrantyRow';
+import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
-import { filterWarranties, todayYmd } from '@/warranty';
+import { CATEGORIES, filterWarranties, todayYmd, totalValue } from '@/warranty';
 import { updateWidget } from '@/widget';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
@@ -21,13 +21,14 @@ type Filter = 'all' | 'manual' | number; // an account id
 // Warranty list (section 13): one tab per mail account plus Manual (section 15), each with Active and
 // Expired (section 10), sorted by soonest expiry.
 export default function Home() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const name = getUsername();
   const [accounts, setAccounts] = useState<Account[] | null>(null);
   const [filter, setFilter] = useState<Filter>('all');
   const [tab, setTab] = useState<'active' | 'expired'>('active');
   const [query, setQuery] = useState('');
   const [store, setStore] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(null);
   const [soon, setSoon] = useState(false);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [attention, setAttention] = useState(0);
@@ -82,7 +83,9 @@ export default function Home() {
   // Section 15: one tab per account plus the general Manual tab, shown once an account is connected.
   const groups: Filter[] = accounts?.length ? [...accounts.map((a) => a.id), 'manual'] : [];
   // Section 13: search (product, store) and filters, in both Active and Expired.
-  const shown = filterWarranties(warranties, { query, store, soon, account: filter, tab }, today);
+  const shown = filterWarranties(warranties, { query, store, category, soon, account: filter, tab }, today);
+  const usedCategories = CATEGORIES.filter((c) => warranties.some((w) => w.category === c));
+  const total = Object.entries(totalValue(shown)).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + ');
   const stores = [...new Set(filterWarranties(warranties, { query: '', store: null, soon: false, account: filter, tab }, today).map((w) => w.store_name))].sort();
   const label = (f: Filter) => (f === 'all' ? t('home.tabAll') : f === 'manual' ? t('home.tabManual') : (accounts?.find((a) => a.id === f)?.email ?? ''));
 
@@ -144,6 +147,17 @@ export default function Home() {
                 <Text style={[styles.chipText, soon && styles.chipTextSelected]}>{t('home.soon')}</Text>
               </Pressable>
             )}
+            {usedCategories.map((c) => (
+              <Pressable
+                key={c}
+                style={[styles.chip, category === c && styles.chipSelected]}
+                onPress={() => setCategory(category === c ? null : c)}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: category === c }}
+              >
+                <Text style={[styles.chipText, category === c && styles.chipTextSelected]}>{t(`category.${c}`)}</Text>
+              </Pressable>
+            ))}
             {stores.length > 1 &&
               stores.map((name) => (
                 <Pressable
@@ -187,6 +201,7 @@ export default function Home() {
           ))}
         </View>
       )}
+      {total !== '' && <Text style={styles.total}>{t('home.total', { total })}</Text>}
     </View>
   );
 
@@ -194,7 +209,7 @@ export default function Home() {
     <Text style={styles.empty}>
       {sync.kind === 'syncing'
         ? t('home.syncing', { email: sync.email })
-        : query || store || soon
+        : query || store || soon || category
           ? t('home.noMatch')
           : t(tab === 'active' ? 'home.emptyActive' : 'home.emptyExpired')}
     </Text>
@@ -228,6 +243,7 @@ export default function Home() {
 }
 
 const styles = StyleSheet.create({
+  total: { fontSize: 14, color: colors.muted },
   screen: { flex: 1, backgroundColor: colors.background },
   list: { paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1 },
   header: { paddingTop: 24, paddingBottom: 8, gap: 12 },

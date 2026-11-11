@@ -107,6 +107,10 @@ const MIGRATIONS = [
    );`,
   // v9: how far back the first sync reads (section 7): days, 0 = all mail, NULL = not chosen (24 months).
   `ALTER TABLE accounts ADD COLUMN first_sync_days INTEGER;`,
+  // v10: price paid (and its currency) and a category, both optional and entered by the user.
+  `ALTER TABLE warranties ADD COLUMN price REAL;
+   ALTER TABLE warranties ADD COLUMN currency TEXT;
+   ALTER TABLE warranties ADD COLUMN category TEXT;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -243,6 +247,9 @@ export interface WarrantyRow {
   website_url: string | null;
   serial_number: string | null;
   notes: string | null;
+  price: number | null;
+  currency: string | null;
+  category: string | null;
   status: 'complete' | 'needs_input' | 'ignored';
   missing_fields: string;
 }
@@ -275,16 +282,19 @@ export interface WarrantyInput {
   contact_phone: string | null;
   website_url: string | null;
   notes: string | null;
+  price?: number | null;
+  currency?: string | null;
+  category?: string | null;
 }
 const FIELDS = ['account_id', 'product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
-  'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes'] as const;
+  'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes', 'price', 'currency', 'category'] as const;
 
 // Manual entries go to the tab the user picks: an account, or null for the general "Manual" tab (section 15).
 export async function addManual(db: Db, w: WarrantyInput, origin: 'manual' | 'scan' = 'manual', now = new Date().toISOString()): Promise<number> {
   const res = await db.runAsync(
     `INSERT INTO warranties (origin, ${FIELDS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
      VALUES (?, ${FIELDS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
-    [origin, ...FIELDS.map((f) => w[f]), now, now],
+    [origin, ...FIELDS.map((f) => w[f] ?? null), now, now],
   );
   return res.lastInsertRowId;
 }
@@ -294,7 +304,7 @@ export async function updateWarranty(db: Db, id: number, w: WarrantyInput, now =
   await db.runAsync(
     `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, start_is_suggested = 0, length_is_suggested = 0,
        status = 'complete', missing_fields = '[]', updated_at = ? WHERE id = ?`,
-    [...FIELDS.map((f) => w[f]), now, id],
+    [...FIELDS.map((f) => w[f] ?? null), now, id],
   );
 }
 

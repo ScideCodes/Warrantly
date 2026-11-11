@@ -27,6 +27,15 @@ export function displayName(t: TFunction, w: Warranty): string {
   return w.origin === 'manual' ? w.product_name : shortName(w.product_name);
 }
 
+// "105 263 Ft", "49,90 €"; falls back to "105263 HUF" if the engine lacks that currency.
+export function formatMoney(amount: number, currency: string, language: string): string {
+  try {
+    return amount.toLocaleString(language, { style: 'currency', currency, maximumFractionDigits: Number.isInteger(amount) ? 0 : 2 });
+  } catch {
+    return `${amount} ${currency}`;
+  }
+}
+
 export function formatDate(ymd: string, language: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' });

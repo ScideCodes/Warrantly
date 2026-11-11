@@ -3,7 +3,7 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { goBack } from '@/nav';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
+import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, importDocument, scanDocument, sendClaim } from '@/documents';
@@ -119,6 +119,8 @@ export default function WarrantyDetail() {
           const returnBy = returnDeadline(w);
           return returnBy && returnBy >= today ? <Field label={t('detail.returnBy')} value={`${date(returnBy)} (${t('detail.returnHint')})`} /> : null;
         })()}
+        {w.price !== null && w.currency && <Field label={t('form.price')} value={formatMoney(w.price, w.currency, i18n.language)} />}
+        {w.category && <Field label={t('form.category')} value={t(`category.${w.category}`)} />}
         {w.order_number && <Field label={t('warranty.orderNumber')} value={w.order_number} />}
         {w.contact_email && <Field label={t('warranty.contact')} value={w.contact_email} url={`mailto:${w.contact_email}`} />}
         {w.contact_phone && <Field label={t('warranty.contact')} value={w.contact_phone} url={`tel:${w.contact_phone.replace(/[^\d+]/g, '')}`} />}
