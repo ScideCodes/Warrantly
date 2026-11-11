@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addManual, deleteAccount, deleteAttachment, listAttachments, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addManual, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -203,4 +203,22 @@ test('mail PDFs: invoice PDF named after the order lands on that warranty, once;
   await syncAccount(db2, provider(['pcx-invoice-d', 'pcx-order-d']), 'user@example.com', undefined, new Date(), docs);
   const [w2] = await listWarranties(db2, 'complete');
   assert.deepEqual((await listAttachments(db2, w2.id)).map((a) => a.filename), ['260901-900001.pdf']);
+});
+
+test('ignored mails are listed with their subject and can be restored for review', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  await syncAccount(db, fakeProvider(['alza-order', 'steam'], []), 'user@example.com'); // both skipped
+  const ignored = await listIgnored(db);
+  assert.deepEqual(ignored.map((r) => [r.subject, r.product_name]), [
+    ['Már dolgozunk rajta. / 1060000001 sz. megr.', 'Mixing Desk FIFINE SC3'],
+    ['Thank you for your recent purchase for Rust', null],
+  ]);
+  await restoreIgnored(db, ignored[0].id);
+  await restoreIgnored(db, ignored[1].id);
+  assert.deepEqual((await listWarranties(db, 'needs_input')).map((w) => [w.product_name, w.missing_fields]).sort(), [
+    ['Mixing Desk FIFINE SC3', '["warrantyMonths"]'],
+    [null, '["productName","warrantyMonths"]'],
+  ].sort());
+  assert.deepEqual(await listIgnored(db), []);
 });

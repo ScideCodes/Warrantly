@@ -30,7 +30,10 @@
     "add": "Hozzáadás",
     "tabAll": "Mind",
     "tabManual": "Kézi",
-    "reconnect": "Kapcsold össze újra a Beállításokban: {{email}}, hogy tovább szinkronizáljon."
+    "reconnect": "Kapcsold össze újra a Beállításokban: {{email}}, hogy tovább szinkronizáljon.",
+    "search": "Termék vagy üzlet keresése",
+    "soon": "30 napon belül lejár",
+    "noMatch": "Nincs találat. Töröld a keresést vagy a szűrőket."
   },
   "warranty": {
     "unknownProduct": "Ismeretlen termék",
@@ -227,5 +230,11 @@
     "problem": "A hiba leírása",
     "problemPlaceholder": "[Írd le itt a hibát]",
     "thanks": "Köszönettel:"
+  },
+  "ignored": {
+    "title": "Kihagyott levelek",
+    "hint": "Levelek, amelyeket a Warrantly kihagyott, vagy amelyeket nem garanciának jelöltél. Állítsd vissza, és egészítsd ki a „Figyelmet igényel” listában.",
+    "empty": "Nincs kihagyott levél.",
+    "restore": "Visszaállítás"
   }
 }
