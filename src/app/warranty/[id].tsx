@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { deleteWarranty, getWarranty, ignoreWarranty, type Warranty } from '@/db/repo.ts';
+import { sendTestReminder } from '@/reminders';
 import { colors } from '@/theme';
 import { daysUntil, todayYmd, urgency } from '@/warranty';
 
@@ -85,6 +86,15 @@ export default function WarrantyDetail() {
         {w.serial_number && <Field label={t('detail.serial')} value={w.serial_number} />}
         {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
 
+        <Pressable
+          style={styles.secondary}
+          onPress={async () => {
+            if (!(await sendTestReminder(w, days))) Alert.alert(t('detail.noPermission'));
+          }}
+          accessibilityRole="button"
+        >
+          <Text style={styles.secondaryText}>{t('detail.testReminder')}</Text>
+        </Pressable>
         {w.status === 'needs_input' && (
           <Pressable style={styles.secondary} onPress={notWarranty} accessibilityRole="button">
             <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
