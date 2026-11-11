@@ -8,16 +8,45 @@ import { colors } from '@/theme';
 
 const MAX_NAME = 30;
 
-// Onboarding step 1: username (brainstorm section 13). Gmail connect is added as step 2 later.
+// Onboarding (brainstorm section 13): username, then the app-lock offer (section 19). Gmail is connected from home.
 export default function Onboarding() {
   const { t } = useTranslation();
   const [name, setName] = useState('');
+  const [askLock, setAskLock] = useState(false);
   const trimmed = name.trim();
 
   function submit() {
     if (!trimmed) return;
     setUsername(trimmed);
+    setAskLock(true);
+  }
+
+  function finish(withPin: boolean) {
     router.replace('/');
+    if (withPin) router.push('/pin'); // PIN setup goes back to home when done
+  }
+
+  if (askLock) {
+    return (
+      <SafeAreaView style={styles.screen}>
+        <View style={styles.body}>
+          <View style={styles.intro}>
+            <Text style={styles.title} accessibilityRole="header">
+              {t('onboarding.lockTitle')}
+            </Text>
+            <Text style={styles.subtitle}>{t('onboarding.lockBody')}</Text>
+          </View>
+          <View style={styles.choices}>
+            <Pressable style={styles.button} onPress={() => finish(true)} accessibilityRole="button">
+              <Text style={styles.buttonText}>{t('onboarding.setUpPin')}</Text>
+            </Pressable>
+            <Pressable style={styles.secondary} onPress={() => finish(false)} accessibilityRole="button">
+              <Text style={styles.secondaryText}>{t('onboarding.later')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </SafeAreaView>
+    );
   }
 
   return (
@@ -85,5 +114,8 @@ const styles = StyleSheet.create({
   helper: { fontSize: 14, color: colors.muted },
   button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { backgroundColor: colors.primaryDisabled },
+  choices: { gap: 12 },
+  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
 });

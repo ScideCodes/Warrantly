@@ -5,7 +5,11 @@
     "nameLabel": "What should we call you?",
     "namePlaceholder": "Your name",
     "nameHelper": "Saved only on this phone.",
-    "continue": "Continue"
+    "continue": "Continue",
+    "lockTitle": "Protect Warrantly with a PIN?",
+    "lockBody": "Your warranties stay on this phone. A PIN keeps them private when someone else uses your phone. You can change this any time in Settings.",
+    "setUpPin": "Set up PIN",
+    "later": "Later"
   },
   "home": {
     "greeting": "Hi, {{name}}!",

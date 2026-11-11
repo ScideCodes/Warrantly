@@ -5,7 +5,11 @@
     "nameLabel": "Hogyan szólítsunk?",
     "namePlaceholder": "A neved",
     "nameHelper": "Csak ezen a telefonon tároljuk.",
-    "continue": "Tovább"
+    "continue": "Tovább",
+    "lockTitle": "Véded az alkalmazást PIN-kóddal?",
+    "lockBody": "A garanciáid ezen a telefonon maradnak. A PIN-kód védi őket, ha más használja a telefonodat. Ezt bármikor módosíthatod a Beállításokban.",
+    "setUpPin": "PIN beállítása",
+    "later": "Később"
   },
   "home": {
     "greeting": "Szia, {{name}}!",
