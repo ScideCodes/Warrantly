@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
-import i18n, { pickLanguage } from '@/i18n';
+import i18n, { appLanguage } from '@/i18n';
 import { LockScreen } from '@/components/LockScreen';
 import { shouldRelock } from '@/lock/pin.ts';
 import { isLockEnabled } from '@/lock/store';
@@ -36,7 +36,7 @@ export default function RootLayout() {
   }, []);
   const locales = useLocales();
   useEffect(() => {
-    i18n.changeLanguage(pickLanguage(locales[0]?.languageCode));
+    i18n.changeLanguage(appLanguage()); // the phone's language changed; a language chosen in Settings stays
   }, [locales]);
 
   return (

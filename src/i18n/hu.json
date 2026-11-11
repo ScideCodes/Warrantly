@@ -197,7 +197,11 @@
     "group_60": "60 nappal előtte",
     "group_30": "30 nappal előtte",
     "group_weekly": "Hetente az utolsó hónapban",
-    "group_0": "Az utolsó napon"
+    "group_0": "Az utolsó napon",
+    "language": "Nyelv",
+    "lang_system": "Telefon nyelve",
+    "lang_en": "English",
+    "lang_hu": "Magyar"
   },
   "backup": {
     "section": "Mentés",
