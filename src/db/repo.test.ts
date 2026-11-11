@@ -51,7 +51,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 3);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -125,4 +125,20 @@ test('manual add, edit, store rule, ignore and delete', async () => {
   assert.equal(await getWarranty(db, pending.id), null);
   await syncAccount(db, fakeProvider(ids, []), 'user@example.com');
   assert.deepEqual(await listWarranties(db, 'needs_input'), []);
+});
+
+test('mails about the same product from one shop merge into one warranty', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const order = byId.get('pcx-order')!; // 2026-09-12, "24 hó gar."
+  byId.set('pcx-review', { ...order, id: 'pcx-review', subject: 'Hogyan vált be? Értékelj és nyerj!', date: '2026-10-01T08:00:00Z' });
+  byId.set('pcx-next-year', { ...order, id: 'pcx-next-year', date: '2027-09-12T08:00:00Z' });
+  await syncAccount(db, fakeProvider(['pcx-review', 'pcx-order', 'pcx-next-year'], []), 'user@example.com'); // newest-first, like Gmail
+  const rows = await listWarranties(db, 'complete');
+  assert.deepEqual(rows.map((w) => [w.product_name, w.purchase_date, w.warranty_start_date]), [
+    ['Gembird MA-DA1-05 asztali tartó konzol', '2026-09-12', '2026-09-12'], // earliest mail wins
+    ['Gembird MA-DA1-05 asztali tartó konzol', '2027-09-12', '2027-09-12'], // a year later: a new purchase
+  ]);
+  const sources = db.raw.prepare('SELECT COUNT(*) n FROM sources WHERE warranty_id = ?').get(rows[0].id) as { n: number };
+  assert.equal(sources.n, 2);
 });

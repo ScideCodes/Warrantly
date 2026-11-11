@@ -59,7 +59,7 @@
     }
   },
   {
-    "name": "pcx order (HU) is skipped: order/pickup notices are not warranty documents (items still extracted)",
+    "name": "pcx order (HU) states \"24 hó gar.\" per item, complete",
     "message": {
       "id": "pcx-order",
       "from": "pcx@pcx.hu",
@@ -78,8 +78,8 @@
       ]
     },
     "expect": {
-      "kind": "ignored",
-      "status": "ignored",
+      "kind": "purchase",
+      "status": "complete",
       "storeName": "PCX Webáruház",
       "orderNumber": "260901/900001",
       "deliveredDate": null,
