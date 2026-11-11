@@ -5,7 +5,9 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
 
 ## Status
 
-Build step 1 of the plan (Gmail fetch + parsing prototype) is done. No app yet.
+- Step 1 (Gmail fetch + parsing prototype): done.
+- Step 2 (Expo app, English/Hungarian, username screen): done. Routes live in `src/app`.
+  The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns
   `complete`, `needs_input` or `ignored`, plus kind `purchase` / `return` / `ignored`.
@@ -16,12 +18,22 @@ Build step 1 of the plan (Gmail fetch + parsing prototype) is done. No app yet.
   `expo-auth-session`. `htmlToText` turns shop HTML into text that keeps the table layout.
   `fetchAndParse` runs one sync pass. HTML fixtures in `src/mail/fixtures` are real, anonymized.
 
-## Run
+## Run on an Android phone
 
-Needs Node 22.18 or newer (runs TypeScript directly).
+1. Install **Expo Go** from Google Play (it must support Expo SDK 58).
+2. On your computer (Node 22.18 or newer):
+
+   ```sh
+   npm install
+   npx expo start
+   ```
+3. Scan the QR code with Expo Go. Phone and computer must be on the same Wi-Fi
+   (or run `npx expo start --tunnel`).
+
+## Checks
 
 ```sh
-npm install
-npm test
+npm test            # parser, Gmail adapter, translation key parity
 npm run typecheck
+npx expo lint
 ```
