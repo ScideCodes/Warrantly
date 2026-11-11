@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ export default function EditWarranty() {
   const [form, setForm] = useState<Form>(fromWarranty(null));
   const [errors, setErrors] = useState<FormField[]>([]);
   const [remember, setRemember] = useState(false);
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
 
   useEffect(() => {
     if (!id) return;
