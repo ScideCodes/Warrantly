@@ -102,7 +102,10 @@
     "notes": "Megjegyzés",
     "fullName": "Teljes terméknév",
     "testReminder": "Próba emlékeztető 5 másodperc múlva",
-    "noPermission": "A Warrantly értesítései ki vannak kapcsolva. Kapcsold be az Android beállításokban."
+    "noPermission": "A Warrantly értesítései ki vannak kapcsolva. Kapcsold be az Android beállításokban.",
+    "claim": "Garanciális igény bejelentése",
+    "claimNoEmail": "Nincs mentett e-mail cím az üzlethez. Hívd fel vagy nyisd meg a fenti weboldalt, vagy add meg a címet a Szerkesztésben.",
+    "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon."
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
@@ -200,5 +203,18 @@
     "restoreBody": "Ennek a fióknak a leválasztásakor ({{date}}) mentés készült. Visszaállítod a garanciáit?",
     "restore": "Visszaállítás",
     "skip": "Kihagyás"
+  },
+  "claim": {
+    "subject": "Garanciális igény: {{product}}",
+    "greeting": "Tisztelt Ügyfélszolgálat!",
+    "intro": "Garanciális igényt szeretnék bejelenteni az alábbi termékre:",
+    "product": "Termék",
+    "purchaseDate": "Vásárlás dátuma",
+    "orderNumber": "Rendelésszám",
+    "serialNumber": "Sorozatszám",
+    "validUntil": "A garancia érvényes",
+    "problem": "A hiba leírása",
+    "problemPlaceholder": "[Írd le itt a hibát]",
+    "thanks": "Köszönettel:"
   }
 }
