@@ -4,7 +4,7 @@ import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Swit
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { getDb } from '@/db/client';
-import { addManual, getWarranty, saveStoreRule, updateWarranty, type Warranty } from '@/db/repo.ts';
+import { addManual, getWarranty, listAccounts, saveStoreRule, updateWarranty, type Account, type Warranty } from '@/db/repo.ts';
 import { colors } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
@@ -35,17 +35,20 @@ export default function EditWarranty() {
   const [form, setForm] = useState<Form>(fromWarranty(null));
   const [errors, setErrors] = useState<FormField[]>([]);
   const [remember, setRemember] = useState(false);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [accountId, setAccountId] = useState<number | null>(null); // null = the Manual tab
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
 
   useEffect(() => {
-    if (!id) return;
-    void getDb()
-      .then((db) => getWarranty(db, Number(id)))
-      .then((w) => {
-        setExisting(w);
-        setForm(fromWarranty(w));
-      });
+    void getDb().then(async (db) => {
+      setAccounts(await listAccounts(db));
+      if (!id) return;
+      const w = await getWarranty(db, Number(id));
+      setExisting(w);
+      setForm(fromWarranty(w));
+      setAccountId(w?.account_id ?? null);
+    });
   }, [id]);
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
@@ -59,6 +62,7 @@ export default function EditWarranty() {
     }
     const opt = (s: string) => s.trim() || null;
     const input = {
+      account_id: accountId,
       product_name: form.product_name.trim(),
       store_name: form.store_name.trim(),
       purchase_date: form.purchase_date,
@@ -177,6 +181,30 @@ export default function EditWarranty() {
             {errors.includes('warranty_months') && <Text style={styles.error}>{t('form.errMonths')}</Text>}
           </View>
 
+          {accounts.length > 0 && (!existing || existing.origin === 'manual') && (
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('form.saveTo')}</Text>
+              <View style={styles.wrapChips}>
+                {[null, ...accounts.map((a) => a.id)].map((aid) => {
+                  const selected = accountId === aid;
+                  return (
+                    <Pressable
+                      key={String(aid)}
+                      style={[styles.chip, styles.chipWide, selected && styles.chipSelected]}
+                      onPress={() => setAccountId(aid)}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                    >
+                      <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>
+                        {aid === null ? t('home.tabManual') : accounts.find((a) => a.id === aid)!.email}
+                      </Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
           {existing?.store_domain && (
             <View style={styles.switchRow}>
               <Text style={styles.switchLabel}>{t('form.remember', { store: existing.store_name })}</Text>
@@ -215,6 +243,8 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
   chipTextSelected: { color: colors.onPrimary },
+  wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chipWide: { paddingHorizontal: 14, maxWidth: '100%' },
   monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },
   dateInput: { justifyContent: 'center' },
   dateText: { fontSize: 16, color: colors.text },

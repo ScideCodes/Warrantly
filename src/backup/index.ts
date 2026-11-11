@@ -1,6 +1,6 @@
 import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync, getRandomBytes } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
-import type { Db } from '@/db/repo.ts';
+import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
 import { ensureDriveAccess, getAccessToken } from '@/google';
 import { applySnapshot, getSetting, setSetting, settingsSnapshot } from '@/settings';
 import { driveClient, uploadAndPrune } from './drive.ts';
@@ -80,4 +80,34 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
   await restoreDb(db, data);
   applySnapshot(data.settings);
   if (derived) SecureStore.setItem(KEY, JSON.stringify(derived)); // keep backing up with the same password
+}
+
+// --- Disconnect / reconnect an account (section 15) ---
+
+// Encrypted with the backup key (so a backup password must exist), kept on the phone, and also uploaded
+// when automatic backup is on. Then the account's warranties are removed. Manual entries stay.
+export async function disconnectAccount(db: Db, account: Account, now = new Date()): Promise<void> {
+  const stored = storedKey();
+  if (!stored) throw new Error('No backup password set');
+  const rows = await dumpAccount(db, account.id);
+  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [] }, settings: {} };
+  const text = await seal(aead, fromBase64(stored.key), stored.kdf, payload);
+  await saveDisconnectBackup(db, account.email, text, now.toISOString());
+  if (getSetting('backup_enabled') === '1' && (await ensureDriveAccess(false))) {
+    await drive().upload(`warrantly-disconnect-${account.email}-${now.toISOString().replace(/[:.]/g, '-')}.json`, text).catch(() => {}); // the copy on the phone is enough
+  }
+  await deleteAccount(db, account.id);
+}
+
+export async function disconnectBackupDate(db: Db, email: string): Promise<string | null> {
+  return (await getDisconnectBackup(db, email))?.created_at ?? null;
+}
+
+export async function restoreDisconnected(db: Db, account: Account): Promise<void> {
+  const saved = await getDisconnectBackup(db, account.email);
+  const stored = storedKey();
+  if (!saved || !stored) throw new Error('No backup for this account');
+  const data = await unseal(aead, saved.envelope, async () => fromBase64(stored.key));
+  const rows: AccountRows = { account: data.tables.accounts[0], warranties: data.tables.warranties, sources: data.tables.sources };
+  await restoreAccount(db, account.id, rows);
 }

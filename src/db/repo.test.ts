@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addManual, deleteWarranty, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addManual, deleteAccount, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 4);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 5);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -73,6 +73,7 @@ test('manual add, edit, store rule, ignore and delete', async () => {
   const db = nodeDb();
   await migrate(db);
   const input = {
+    account_id: null,
     product_name: 'Acme Kettle', store_name: 'Example', purchase_date: '2026-11-01', warranty_start_date: '2026-11-03',
     warranty_months: 36, order_number: null, serial_number: 'SN1', contact_email: null, contact_phone: null, website_url: null, notes: 'gift',
   };
@@ -116,4 +117,35 @@ test('mails about the same product from one shop merge into one warranty', async
   ]);
   const sources = db.raw.prepare('SELECT COUNT(*) n FROM sources WHERE warranty_id = ?').get(rows[0].id) as { n: number };
   assert.equal(sources.n, 2);
+});
+
+test('disconnect removes one account only; reconnect restores it under the new account id', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  await syncAccount(db, fakeProvider(['pcx-order', 'synthetic-en-warranty'], []), 'work@example.com');
+  await syncAccount(db, fakeProvider(['conrad-order-rule'], []), 'home@example.com');
+  const manualId = await addManual(db, {
+    account_id: null, product_name: 'Kettle', store_name: 'Shop', purchase_date: '2026-01-01', warranty_start_date: '2026-01-01',
+    warranty_months: 24, order_number: null, serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null,
+  });
+  const work = (await listAccounts(db)).find((a) => a.email === 'work@example.com')!;
+  const count = (sql: string, ...p: (string | number)[]) => (db.raw.prepare(sql).get(...p) as { n: number }).n;
+  const workWarranties = count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', work.id);
+  assert.equal(workWarranties, 2);
+
+  const rows = await dumpAccount(db, work.id);
+  await deleteAccount(db, work.id);
+  assert.deepEqual((await listAccounts(db)).map((a) => a.email), ['home@example.com']);
+  assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id IS NULL AND id = ?', manualId), 1); // manual kept
+  assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = (SELECT id FROM accounts WHERE email = ?)', 'home@example.com'), 1);
+
+  // Reconnect: a new account row, then the backup comes back under it with fresh ids.
+  const again = await upsertAccount(db, 'work@example.com');
+  assert.notEqual(again.id, work.id);
+  await restoreAccount(db, again.id, rows);
+  assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);
+  assert.equal(count('SELECT COUNT(*) n FROM sources s JOIN warranties w ON w.id = s.warranty_id WHERE s.account_id = ?', again.id), 2);
+  // The mails are known again, so the next sync does not import them twice.
+  await syncAccount(db, fakeProvider(['pcx-order', 'synthetic-en-warranty'], []), 'work@example.com');
+  assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);
 });

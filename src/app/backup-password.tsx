@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { router, Stack } from 'expo-router';
+import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { runBackup, setBackupPassword } from '@/backup';
@@ -9,9 +9,11 @@ import { colors } from '@/theme';
 
 const MIN_PASSWORD = 8;
 
-// Turn on backup: choose the password the backup is encrypted with (section 17).
+// Choose the password backups are encrypted with (section 17). With purpose=disconnect it only sets the
+// password (needed before disconnecting an account, section 15) and leaves automatic backup as it is.
 export default function BackupPassword() {
   const { t } = useTranslation();
+  const { purpose } = useLocalSearchParams<{ purpose?: string }>();
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,8 +24,10 @@ export default function BackupPassword() {
     if (password !== repeat) return setError(t('backupPassword.errMatch'));
     setBusy(true);
     await setBackupPassword(password); // a few seconds: the key is derived with scrypt
-    setSetting('backup_enabled', '1');
-    await runBackup(await getDb(), true).catch(() => {}); // a failure shows in Settings; backup stays on
+    if (purpose !== 'disconnect') {
+      setSetting('backup_enabled', '1');
+      await runBackup(await getDb(), true).catch(() => {}); // a failure shows in Settings; backup stays on
+    }
     router.back();
   }
 
@@ -49,7 +53,7 @@ export default function BackupPassword() {
           </Text>
         )}
         <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={save} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('backupPassword.save')}</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')}</Text>}
         </Pressable>
         {busy && <Text style={styles.hint}>{t('backupPassword.working')}</Text>}
       </ScrollView>

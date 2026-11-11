@@ -1,39 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Redirect, useFocusEffect } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
+import { addGmailAccount, syncAllAccounts } from '@/accounts';
+import { runDueBackup } from '@/backup';
 import { WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { listWarranties, type Warranty } from '@/db/repo.ts';
-import { syncAccount } from '@/db/sync.ts';
-import { connectedEmail, connectGmail, getAccessToken } from '@/google';
-import { gmailProvider } from '@/mail/gmail.ts';
-import { runDueBackup } from '@/backup';
+import { listAccounts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
 import { daysUntil, todayYmd } from '@/warranty';
 
-type SyncState =
-  | { kind: 'idle' }
-  | { kind: 'syncing'; done: number; total: number }
-  | { kind: 'partial'; count: number; detail: string }
-  | { kind: 'error'; detail: string };
+type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
+type Filter = 'all' | 'manual' | number; // an account id
 
-// Warranty list (section 13): Active and Expired tabs, sorted by soonest expiry.
+// Warranty list (section 13): one tab per mail account plus Manual (section 15), each with Active and
+// Expired (section 10), sorted by soonest expiry.
 export default function Home() {
   const { t } = useTranslation();
   const name = getUsername();
-  const [email, setEmail] = useState(connectedEmail);
+  const [accounts, setAccounts] = useState<Account[] | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
   const [tab, setTab] = useState<'active' | 'expired'>('active');
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [attention, setAttention] = useState(0);
-  const [sync, setSync] = useState<SyncState>({ kind: 'idle' });
+  const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
   const syncing = useRef(false);
 
   const load = useCallback(async () => {
     const db = await getDb();
+    setAccounts(await listAccounts(db));
     setWarranties(await listWarranties(db, 'complete'));
     setAttention((await listWarranties(db, 'needs_input')).length);
     // Runs on open, after sync and after edits: the rolling reminder window (section 16).
@@ -41,26 +39,15 @@ export default function Home() {
     void runDueBackup(db); // section 17: a due backup runs on app open
   }, []);
 
-  const runSync = useCallback(
-    async (account: string) => {
-      if (syncing.current) return;
-      syncing.current = true;
-      try {
-        const db = await getDb();
-        setSync({ kind: 'syncing', done: 0, total: 0 });
-        const failed = await syncAccount(db, gmailProvider(getAccessToken), account, (done, total) => {
-          setSync({ kind: 'syncing', done, total });
-        });
-        setSync(failed.length ? { kind: 'partial', count: failed.length, detail: failed[0].error } : { kind: 'idle' });
-      } catch (e) {
-        setSync({ kind: 'error', detail: e instanceof Error ? e.message : String(e) });
-      } finally {
-        syncing.current = false;
-        await load();
-      }
-    },
-    [load],
-  );
+  const runSync = useCallback(async () => {
+    if (syncing.current) return;
+    syncing.current = true;
+    const db = await getDb();
+    const problems = await syncAllAccounts(db, (email, done, total) => setSync({ kind: 'syncing', email, done, total }));
+    setSync({ kind: 'idle', problems });
+    syncing.current = false;
+    await load();
+  }, [load]);
 
   // Reload when coming back from another screen; sync once on app open (section 7).
   useFocusEffect(
@@ -69,25 +56,25 @@ export default function Home() {
     }, [load]),
   );
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- runSync sets state only after awaiting the database
-    if (name && email) void runSync(email);
+    if (name) void runSync();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function connect() {
     try {
-      const account = await connectGmail();
-      if (!account) return; // user cancelled the Google dialog
-      setEmail(account);
-      await runSync(account);
+      if (await addGmailAccount(await getDb())) await runSync();
     } catch (e) {
-      setSync({ kind: 'error', detail: e instanceof Error ? e.message : String(e) });
+      setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] });
     }
   }
 
   if (!name) return <Redirect href="/onboarding" />;
 
   const today = todayYmd();
-  const shown = warranties.filter((w) => (daysUntil(w.end_date, today) >= 0) === (tab === 'active'));
+  const hasManual = warranties.some((w) => w.account_id === null);
+  const groups: Filter[] = [...(accounts ?? []).map((a) => a.id), ...(hasManual ? (['manual'] as const) : [])];
+  const inFilter = (w: Warranty) => filter === 'all' || (filter === 'manual' ? w.account_id === null : w.account_id === filter);
+  const shown = warranties.filter((w) => inFilter(w) && (daysUntil(w.end_date, today) >= 0) === (tab === 'active'));
+  const label = (f: Filter) => (f === 'all' ? t('home.tabAll') : f === 'manual' ? t('home.tabManual') : (accounts?.find((a) => a.id === f)?.email ?? ''));
 
   const header = (
     <View style={styles.header}>
@@ -113,15 +100,29 @@ export default function Home() {
           </Pressable>
         </Link>
       )}
-      {sync.kind === 'syncing' && sync.total > 0 && <Text style={styles.status}>{t('home.progress', { done: sync.done, total: sync.total })}</Text>}
-      {sync.kind === 'partial' && <Text style={styles.status}>{t('home.failed', { count: sync.count, detail: sync.detail })}</Text>}
-      {sync.kind === 'error' && (
-        <View style={styles.errorBox}>
-          <Text style={styles.status}>{t('home.error')}</Text>
-          <Text style={styles.detail}>{sync.detail}</Text>
-        </View>
+      {sync.kind === 'syncing' && sync.total > 0 && (
+        <Text style={styles.status}>
+          {sync.email}: {t('home.progress', { done: sync.done, total: sync.total })}
+        </Text>
       )}
-      {(email || warranties.length > 0) && (
+      {sync.kind === 'idle' &&
+        sync.problems.map((p) => (
+          <Text key={p} style={styles.detail}>
+            {p}
+          </Text>
+        ))}
+      {groups.length > 1 && (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityRole="tablist">
+          {(['all', ...groups] as Filter[]).map((f) => (
+            <Pressable key={String(f)} style={[styles.chip, filter === f && styles.chipSelected]} onPress={() => setFilter(f)} accessibilityRole="tab" accessibilityState={{ selected: filter === f }}>
+              <Text style={[styles.chipText, filter === f && styles.chipTextSelected]} numberOfLines={1}>
+                {label(f)}
+              </Text>
+            </Pressable>
+          ))}
+        </ScrollView>
+      )}
+      {(accounts?.length || warranties.length > 0) && (
         <View style={styles.tabs} accessibilityRole="tablist">
           {(['active', 'expired'] as const).map((key) => (
             <Pressable
@@ -139,8 +140,8 @@ export default function Home() {
     </View>
   );
 
-  const empty = email ? (
-    <Text style={styles.empty}>{sync.kind === 'syncing' ? t('home.syncing', { email }) : t(tab === 'active' ? 'home.emptyActive' : 'home.emptyExpired')}</Text>
+  const empty = accounts === null ? undefined : accounts.length ? (
+    <Text style={styles.empty}>{sync.kind === 'syncing' ? t('home.syncing', { email: sync.email }) : t(tab === 'active' ? 'home.emptyActive' : 'home.emptyExpired')}</Text>
   ) : (
     <View style={styles.connect}>
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
@@ -162,8 +163,8 @@ export default function Home() {
         contentContainerStyle={styles.list}
         refreshControl={
           <RefreshControl refreshing={sync.kind === 'syncing'} onRefresh={() => {
-            if (email) void runSync(email);
-          }} enabled={!!email} colors={[colors.primary]} />
+            void runSync();
+          }} enabled={!!accounts?.length} colors={[colors.primary]} />
         }
       />
     </SafeAreaView>
@@ -183,7 +184,11 @@ const styles = StyleSheet.create({
   banner: { backgroundColor: colors.banner, borderRadius: 8, padding: 12, minHeight: 48, justifyContent: 'center' },
   bannerText: { fontSize: 16, fontWeight: '600', color: colors.warning.fg },
   status: { fontSize: 14, color: colors.muted },
-  errorBox: { gap: 4 },
+  chips: { gap: 8 },
+  chip: { minHeight: 36, maxWidth: 220, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
+  chipSelected: { backgroundColor: colors.text, borderColor: colors.text },
+  chipText: { fontSize: 14, color: colors.text },
+  chipTextSelected: { color: colors.background, fontWeight: '600' },
   detail: { fontSize: 12, color: colors.muted },
   tabs: { flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
   tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },

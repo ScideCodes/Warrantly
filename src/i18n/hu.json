@@ -27,7 +27,10 @@
     "emptyExpired": "Nincs lejárt garancia",
     "attention_one": "{{count}} tétel figyelmet igényel",
     "attention_other": "{{count}} tétel figyelmet igényel",
-    "add": "Hozzáadás"
+    "add": "Hozzáadás",
+    "tabAll": "Mind",
+    "tabManual": "Kézi",
+    "reconnect": "Kapcsold össze újra a Beállításokban: {{email}}, hogy tovább szinkronizáljon."
   },
   "warranty": {
     "unknownProduct": "Ismeretlen termék",
@@ -84,7 +87,8 @@
     "errDate": "Adj meg valós dátumot ÉÉÉÉ-HH-NN formában.",
     "errStart": "Adj meg a vásárlás napján vagy utána lévő dátumot, vagy hagyd üresen.",
     "errMonths": "1 és 120 hónap közötti hosszt adj meg.",
-    "pickerFailed": "A naptár nem nyílt meg, írd be a dátumot. ({{detail}})"
+    "pickerFailed": "A naptár nem nyílt meg, írd be a dátumot. ({{detail}})",
+    "saveTo": "Mentés ide"
   },
   "detail": {
     "edit": "Szerkesztés",
@@ -134,7 +138,8 @@
     "changePin": "PIN módosítása",
     "biometric": "Feloldás ujjlenyomattal vagy arccal",
     "reminders": "Lejárati emlékeztetők",
-    "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon."
+    "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon.",
+    "general": "Alkalmazás"
   },
   "backup": {
     "section": "Mentés",
@@ -161,7 +166,8 @@
     "errShort": "Legalább 8 karaktert használj.",
     "errMatch": "A két jelszó nem egyezik.",
     "save": "Mentés bekapcsolása",
-    "working": "Mentés beállítása…"
+    "working": "Mentés beállítása…",
+    "saveOnly": "Jelszó mentése"
   },
   "restore": {
     "title": "Visszaállítás mentésből",
@@ -179,5 +185,20 @@
     "wrong": "Hibás mentési jelszó.",
     "done": "Visszaállítva. Kapcsold össze újra a Gmailt a szinkronizáláshoz.",
     "working": "Visszaállítás…"
+  },
+  "accounts": {
+    "section": "E-mail fiókok",
+    "add": "Gmail fiók hozzáadása",
+    "disconnect": "Leválasztás",
+    "confirmTitle": "Leválasztod: {{email}}?",
+    "confirmBody": "Előbb mentés készül a garanciáiról, aztán törlődnek erről a telefonról. A kézzel felvett tételek maradnak.",
+    "needPassword": "Leválasztás előtt titkosított mentés készül a fiókról. A folytatáshoz állíts be mentési jelszót.",
+    "setPassword": "Jelszó beállítása",
+    "done": "{{email}} leválasztva. A mentés ezen a telefonon van.",
+    "syncing": "Szinkronizálás…",
+    "restoreTitle": "Visszaállítod: {{email}}?",
+    "restoreBody": "Ennek a fióknak a leválasztásakor ({{date}}) mentés készült. Visszaállítod a garanciáit?",
+    "restore": "Visszaállítás",
+    "skip": "Kihagyás"
   }
 }

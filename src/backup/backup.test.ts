@@ -25,6 +25,7 @@ async function seeded() {
   const db = nodeDb();
   await migrate(db);
   await addManual(db, {
+    account_id: null,
     product_name: 'Philips vízforraló', store_name: 'MediaMarkt', purchase_date: '2026-01-15', warranty_start_date: '2026-01-15',
     warranty_months: 36, order_number: null, serial_number: 'SN-1', contact_email: null, contact_phone: null, website_url: null, notes: 'ajándék',
   });

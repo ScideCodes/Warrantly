@@ -27,7 +27,10 @@
     "emptyExpired": "No expired warranties",
     "attention_one": "{{count}} item needs your attention",
     "attention_other": "{{count}} items need your attention",
-    "add": "Add"
+    "add": "Add",
+    "tabAll": "All",
+    "tabManual": "Manual",
+    "reconnect": "Connect {{email}} again in Settings to keep syncing it."
   },
   "warranty": {
     "unknownProduct": "Product not found",
@@ -84,7 +87,8 @@
     "errDate": "Enter a real date as YYYY-MM-DD.",
     "errStart": "Enter a date on or after the purchase date, or leave it empty.",
     "errMonths": "Enter a length between 1 and 120 months.",
-    "pickerFailed": "The calendar could not open, type the date instead. ({{detail}})"
+    "pickerFailed": "The calendar could not open, type the date instead. ({{detail}})",
+    "saveTo": "Save to"
   },
   "detail": {
     "edit": "Edit",
@@ -134,7 +138,8 @@
     "changePin": "Change PIN",
     "biometric": "Unlock with fingerprint or face",
     "reminders": "Expiry reminders",
-    "remindersHint": "90, 60 and 30 days before, then weekly, and on the last day."
+    "remindersHint": "90, 60 and 30 days before, then weekly, and on the last day.",
+    "general": "App"
   },
   "backup": {
     "section": "Backup",
@@ -161,7 +166,8 @@
     "errShort": "Use at least 8 characters.",
     "errMatch": "The passwords don't match.",
     "save": "Turn on backup",
-    "working": "Setting up backup…"
+    "working": "Setting up backup…",
+    "saveOnly": "Save password"
   },
   "restore": {
     "title": "Restore from backup",
@@ -179,5 +185,20 @@
     "wrong": "Wrong backup password.",
     "done": "Restored. Connect Gmail again to keep syncing.",
     "working": "Restoring…"
+  },
+  "accounts": {
+    "section": "Email accounts",
+    "add": "Add Gmail account",
+    "disconnect": "Disconnect",
+    "confirmTitle": "Disconnect {{email}}?",
+    "confirmBody": "Its warranties are backed up first, then removed from this phone. Manual entries stay.",
+    "needPassword": "Disconnecting makes an encrypted backup of the account first. Set a backup password to continue.",
+    "setPassword": "Set password",
+    "done": "{{email}} is disconnected. A backup was saved on this phone.",
+    "syncing": "Syncing…",
+    "restoreTitle": "Restore {{email}}?",
+    "restoreBody": "A backup of this account was made on {{date}} when it was disconnected. Restore its warranties?",
+    "restore": "Restore",
+    "skip": "Skip"
   }
 }
