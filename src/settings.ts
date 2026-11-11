@@ -10,6 +10,13 @@ export const setUsername = (name: string): void => Storage.setItemSync(USERNAME,
 export const getRemindersEnabled = (): boolean => Storage.getItemSync('reminders_enabled') !== '0';
 export const setRemindersEnabled = (on: boolean): void => Storage.setItemSync('reminders_enabled', on ? '1' : '0');
 
+// Widget (section 13): product names hidden by default while the app lock is on. null = follow that default.
+export const getWidgetNames = (): boolean | null => {
+  const v = Storage.getItemSync('widget_names');
+  return v === null ? null : v === '1';
+};
+export const setWidgetNames = (on: boolean): void => Storage.setItemSync('widget_names', on ? '1' : '0');
+
 // Backup settings (section 17). The backup password's key lives in SecureStore, not here.
 export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error'): string | null => Storage.getItemSync(key);
 export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error', value: string): void => Storage.setItemSync(key, value);

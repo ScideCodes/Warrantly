@@ -104,7 +104,9 @@
     "showEmail": "Show original email",
     "hideEmail": "Hide email",
     "noEmail": "The original email is not available.",
-    "later": "Later"
+    "later": "Later",
+    "import": "Import a photo or PDF",
+    "imported": "Document attached. Fill in the details below."
   },
   "detail": {
     "edit": "Edit",
@@ -127,7 +129,8 @@
     "openFailed": "The document could not be opened.",
     "documentMissing": "The document file is no longer on this phone (backups do not include documents yet).",
     "removeDocument": "Remove",
-    "removeDocumentTitle": "Remove this document?"
+    "removeDocumentTitle": "Remove this document?",
+    "attachImport": "Attach a photo or PDF"
   },
   "reminder": {
     "channel": "Warranty reminders",
@@ -164,7 +167,9 @@
     "biometric": "Unlock with fingerprint or face",
     "reminders": "Expiry reminders",
     "remindersHint": "90, 60 and 30 days before, then weekly, and on the last day.",
-    "general": "App"
+    "general": "App",
+    "widgetNames": "Show product names on the widget",
+    "widgetNamesHint": "Anyone who sees your home screen can read them, even with the app lock on."
   },
   "backup": {
     "section": "Backup",
@@ -265,5 +270,12 @@
     "all": "All emails",
     "recommended": "(recommended)",
     "start": "Start"
+  },
+  "widget": {
+    "title": "Next to expire",
+    "hidden": "Your next warranty",
+    "more_one": "+{{count}} more",
+    "more_other": "+{{count}} more",
+    "empty": "No active warranties"
   }
 }

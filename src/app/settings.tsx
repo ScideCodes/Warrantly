@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
@@ -9,7 +9,8 @@ import { getDb } from '@/db/client';
 import { listAccounts, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
-import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting } from '@/settings';
+import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting, setWidgetNames } from '@/settings';
+import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
@@ -21,6 +22,7 @@ export default function Settings() {
   const [biometric, setBiometric] = useState(isBiometricEnabled);
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
+  const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
   const [backupBusy, setBackupBusy] = useState(false);
@@ -33,6 +35,8 @@ export default function Settings() {
   useFocusEffect(
     useCallback(() => {
       setLock(isLockEnabled());
+      setWidgetNamesState(widgetShowsNames()); // the default follows the lock
+      void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
       setBiometric(isBiometricEnabled());
       void biometricAvailable().then(setCanBiometric);
       setBackup(getSetting('backup_enabled') === '1' && hasBackupPassword());
@@ -47,12 +51,20 @@ export default function Settings() {
     await clearLock();
     setLock(false);
     setBiometric(false);
+    setWidgetNamesState(widgetShowsNames());
+    await updateWidget(await getDb());
   }
 
   async function toggleBiometric(on: boolean) {
     if (on && !(await unlockWithBiometrics(t('lock.biometricPrompt'), t('lock.usePin')))) return; // prove it works first
     setBiometricEnabled(on);
     setBiometric(on);
+  }
+
+  async function toggleWidgetNames(on: boolean) {
+    setWidgetNames(on);
+    setWidgetNamesState(on);
+    await updateWidget(await getDb());
   }
 
   async function toggleReminders(on: boolean) {
@@ -169,6 +181,7 @@ export default function Settings() {
         )}
         {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
         {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+        {Platform.OS === 'android' && row(t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
         <Pressable style={styles.row} onPress={() => router.push('/ignored')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('ignored.title')}</Text>
         </Pressable>

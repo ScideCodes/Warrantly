@@ -12,7 +12,7 @@ import { gmailTokenFor } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
 import { colors } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
-import { deleteDocuments, scanDocument } from '@/documents';
+import { deleteDocuments, importDocument, scanDocument } from '@/documents';
 import { parseScanText } from '@/parser/scan.ts';
 import { formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
 
@@ -44,7 +44,7 @@ export default function EditWarranty() {
   const [remember, setRemember] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState<number | null>(null); // null = the Manual tab
-  const [scan, setScan] = useState<{ state: 'idle' | 'busy' | 'done' | 'failed'; detail?: string }>({ state: 'idle' });
+  const [scan, setScan] = useState<{ state: 'idle' | 'busy' | 'done' | 'attached' | 'failed'; detail?: string }>({ state: 'idle' });
   const scannedPdf = useRef<string | null>(null); // deleted again if the form is left without saving
   useEffect(
     () => () => {
@@ -147,11 +147,12 @@ export default function EditWarranty() {
     }
   }
 
-  // Section 18: scan a paper receipt or warranty card; what OCR finds fills the empty fields.
-  async function runScan() {
+  // Section 18: scan a paper receipt or warranty card, or import a photo or PDF; what OCR finds fills the
+  // empty fields (an imported PDF is attached as it is, nothing is read from it).
+  async function runScan(source: typeof scanDocument) {
     setScan({ state: 'busy' });
     try {
-      const result = await scanDocument();
+      const result = await source();
       if (!result) return setScan({ state: 'idle' });
       if (scannedPdf.current) deleteDocuments([scannedPdf.current]); // a second scan replaces the first
       scannedPdf.current = result.localPath;
@@ -164,7 +165,7 @@ export default function EditWarranty() {
         warranty_months: found.warrantyMonths ? String(found.warrantyMonths) : f.warranty_months,
         order_number: f.order_number || found.orderNumber || '',
       }));
-      setScan({ state: 'done' });
+      setScan({ state: result.text ? 'done' : 'attached' });
     } catch (e) {
       setScan({ state: 'failed', detail: e instanceof Error ? e.message : String(e) });
     }
@@ -251,15 +252,20 @@ export default function EditWarranty() {
           )}
           {!existing && (
             <View style={styles.field}>
-              <Pressable style={styles.scanButton} onPress={runScan} disabled={scan.state === 'busy'} accessibilityRole="button">
+              <Pressable style={styles.scanButton} onPress={() => runScan(scanDocument)} disabled={scan.state === 'busy'} accessibilityRole="button">
                 {scan.state === 'busy' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.scanText}>{t('form.scan')}</Text>}
+              </Pressable>
+              <Pressable style={styles.secondary} onPress={() => runScan(importDocument)} disabled={scan.state === 'busy'} accessibilityRole="button">
+                <Text style={styles.secondaryText}>{t('form.import')}</Text>
               </Pressable>
               <Text style={scan.state === 'failed' ? styles.error : styles.hint} accessibilityLiveRegion="polite">
                 {scan.state === 'busy'
                   ? t('form.scanning')
                   : scan.state === 'done'
                     ? t('form.scanned')
-                    : scan.state === 'failed'
+                    : scan.state === 'attached'
+                      ? t('form.imported')
+                      : scan.state === 'failed'
                       ? t('form.scanFailed', { detail: scan.detail })
                       : t('form.scanHint')}
               </Text>

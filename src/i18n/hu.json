@@ -104,7 +104,9 @@
     "showEmail": "Eredeti levél megjelenítése",
     "hideEmail": "Levél elrejtése",
     "noEmail": "Az eredeti levél nem érhető el.",
-    "later": "Később"
+    "later": "Később",
+    "import": "Fotó vagy PDF importálása",
+    "imported": "Dokumentum csatolva. Töltsd ki lent az adatokat."
   },
   "detail": {
     "edit": "Szerkesztés",
@@ -127,7 +129,8 @@
     "openFailed": "A dokumentum nem nyitható meg.",
     "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat).",
     "removeDocument": "Eltávolítás",
-    "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?"
+    "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?",
+    "attachImport": "Fotó vagy PDF csatolása"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
@@ -164,7 +167,9 @@
     "biometric": "Feloldás ujjlenyomattal vagy arccal",
     "reminders": "Lejárati emlékeztetők",
     "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon.",
-    "general": "Alkalmazás"
+    "general": "Alkalmazás",
+    "widgetNames": "Terméknevek a widgeten",
+    "widgetNamesHint": "Bárki láthatja őket a kezdőképernyőn, alkalmazászár mellett is."
   },
   "backup": {
     "section": "Mentés",
@@ -265,5 +270,12 @@
     "all": "Összes levél",
     "recommended": "(ajánlott)",
     "start": "Indítás"
+  },
+  "widget": {
+    "title": "Hamarosan lejár",
+    "hidden": "Következő garancia",
+    "more_one": "+{{count}} további",
+    "more_other": "+{{count}} további",
+    "empty": "Nincs aktív garancia"
   }
 }

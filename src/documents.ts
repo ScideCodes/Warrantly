@@ -1,3 +1,4 @@
+import * as DocumentPicker from 'expo-document-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
@@ -20,12 +21,29 @@ const fileFor = (localPath: string) => new File(folder(), localPath);
 export async function scanDocument(): Promise<{ text: string; localPath: string } | null> {
   const { status, scannedImages } = await DocumentScanner.scanDocument({ croppedImageQuality: 80 });
   if (status !== ScanDocumentResponseStatus.Success || !scannedImages?.length) return null;
+  return imagesToPdf(scannedImages.map((uri) => ({ uri, mimeType: 'image/jpeg' })));
+}
 
-  const text = (await Promise.all(scannedImages.map((uri) => extractTextFromImage(uri)))).map((lines) => lines.join('\n')).join('\n');
+// A photo or PDF already on the phone (gallery, Downloads, Drive). Photos go through the same OCR and PDF
+// step as scans; a PDF is kept as it is and fills nothing in (text = ''). Returns null if the user backs out.
+export async function importDocument(): Promise<{ text: string; localPath: string } | null> {
+  const picked = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
+  if (picked.canceled || !picked.assets.length) return null;
+  const { uri, name, mimeType } = picked.assets[0];
+  if (mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) {
+    const pdf = new File(folder(), `import-${Date.now()}.pdf`);
+    await new File(uri).copy(pdf);
+    return { text: '', localPath: pdf.name };
+  }
+  return imagesToPdf([{ uri, mimeType: mimeType ?? 'image/jpeg' }]);
+}
+
+async function imagesToPdf(images: { uri: string; mimeType: string }[]): Promise<{ text: string; localPath: string }> {
+  const text = (await Promise.all(images.map(({ uri }) => extractTextFromImage(uri)))).map((lines) => lines.join('\n')).join('\n');
 
   // One A4 page per photo. Images are inlined: print HTML cannot load local files on every platform.
-  const pages = scannedImages
-    .map((uri) => `<div style="page-break-after:always;text-align:center"><img style="max-width:100%;max-height:100vh" src="data:image/jpeg;base64,${new File(uri).base64Sync()}"/></div>`)
+  const pages = images
+    .map(({ uri, mimeType }) => `<div style="page-break-after:always;text-align:center"><img style="max-width:100%;max-height:100vh" src="data:${mimeType};base64,${new File(uri).base64Sync()}"/></div>`)
     .join('');
   const { uri } = await Print.printToFileAsync({ html: `<html><body style="margin:0">${pages}</body></html>`, width: 595, height: 842 });
   const pdf = new File(uri);

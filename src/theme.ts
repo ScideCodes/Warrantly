@@ -13,4 +13,4 @@ export const colors = {
   soon: { fg: '#991B1B', bg: '#FEE2E2' },
   expired: { fg: '#374151', bg: '#F3F4F6' },
   banner: '#FEF3C7',
-};
+} as const;
