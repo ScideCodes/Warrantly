@@ -7,7 +7,7 @@ import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { runDueBackup } from '@/backup';
 import { WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { listAccounts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
+import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
@@ -36,7 +36,7 @@ export default function Home() {
     const db = await getDb();
     setAccounts(await listAccounts(db));
     setWarranties(await listWarranties(db, 'complete'));
-    setAttention((await listWarranties(db, 'needs_input')).length);
+    setAttention((await listWarranties(db, 'needs_input')).length + (await listReturnPrompts(db)).length);
     // Runs on open, after sync and after edits: the rolling reminder window (section 16).
     rescheduleReminders(db).catch((e) => console.warn('reminders', e)); // must not break the list
     void runDueBackup(db); // section 17: a due backup runs on app open

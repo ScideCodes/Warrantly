@@ -92,6 +92,19 @@ const MIGRATIONS = [
   // v7: mail PDFs are downloaded now (build step 4); this marks accounts whose earlier mails were
   // already checked for PDFs once.
   `ALTER TABLE accounts ADD COLUMN docs_backfilled INTEGER NOT NULL DEFAULT 0;`,
+  // v8: return / refund / cancellation mails (section 11), matched to a warranty after each sync.
+  // state: unmatched (no warranty found yet), asked (card in Needs your attention), deleted, kept.
+  `CREATE TABLE returns (
+     id INTEGER PRIMARY KEY,
+     account_id INTEGER NOT NULL REFERENCES accounts(id),
+     message_id TEXT NOT NULL,
+     store_domain TEXT NOT NULL,
+     order_number TEXT,
+     products TEXT NOT NULL DEFAULT '[]',
+     received_at TEXT NOT NULL,
+     warranty_id INTEGER REFERENCES warranties(id),
+     state TEXT NOT NULL DEFAULT 'unmatched'
+   );`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -164,6 +177,12 @@ export async function saveResult(db: Db, accountId: number, r: ParseResult, now 
       ids.push(res.lastInsertRowId);
     }
     if (!products.length) await insertSource(db, accountId, null, r);
+    if (r.kind === 'return') {
+      await db.runAsync(
+        'INSERT INTO returns (account_id, message_id, store_domain, order_number, products, received_at) VALUES (?, ?, ?, ?, ?, ?)',
+        [accountId, r.messageId, r.storeDomain, r.orderNumber, JSON.stringify(r.items.map((i) => i.name)), r.receivedAt],
+      );
+    }
   });
   return ids;
 }
@@ -449,4 +468,61 @@ export async function restoreIgnored(db: Db, id: number): Promise<void> {
   await db.runAsync(`UPDATE warranties SET status = ?, missing_fields = ?, updated_at = ? WHERE id = ?`, [
     missing.length ? 'needs_input' : 'complete', JSON.stringify(missing), new Date().toISOString(), id,
   ]);
+}
+
+// --- Returns and refunds (section 11) ---
+
+// Gmail lists newest mail first, so a refund often arrives before its purchase in the same sync; match
+// after every sync instead. Order number + store first, else store + product within 60 days before the
+// return. Unmatched returns stay quiet (section 11: "if no matching warranty is found, it is ignored").
+export async function matchReturns(db: Db, accountId: number): Promise<void> {
+  const pending = await db.getAllAsync<{ id: number; store_domain: string; order_number: string | null; products: string; received_at: string }>(
+    `SELECT id, store_domain, order_number, products, received_at FROM returns WHERE account_id = ? AND state = 'unmatched'`,
+    [accountId],
+  );
+  for (const r of pending) {
+    const candidates = await db.getAllAsync<{ id: number; order_number: string | null; product_name: string | null; purchase_date: string }>(
+      `SELECT id, order_number, product_name, purchase_date FROM warranties WHERE account_id = ? AND store_domain = ? AND status != 'ignored'`,
+      [accountId, r.store_domain],
+    );
+    const products: string[] = JSON.parse(r.products);
+    const day = r.received_at.slice(0, 10);
+    const byOrder = r.order_number ? candidates.filter((w) => w.order_number && normalize(w.order_number) === normalize(r.order_number!)) : [];
+    const byProduct = candidates.filter(
+      (w) => w.product_name && products.includes(w.product_name) && w.purchase_date <= day && daysBetween(w.purchase_date, day) <= 60,
+    );
+    const hits = byOrder.length ? byOrder : byProduct;
+    if (!hits.length) continue;
+    await db.runAsync(`UPDATE returns SET warranty_id = ?, state = 'asked' WHERE id = ?`, [hits[0].id, r.id]);
+    for (const w of hits.slice(1)) {
+      await db.runAsync(
+        `INSERT INTO returns (account_id, message_id, store_domain, order_number, products, received_at, warranty_id, state)
+         SELECT account_id, message_id, store_domain, order_number, products, received_at, ?, 'asked' FROM returns WHERE id = ?`,
+        [w.id, r.id],
+      );
+    }
+  }
+}
+
+const daysBetween = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+
+export interface ReturnPrompt {
+  id: number;
+  warranty_id: number;
+  product_name: string | null;
+  store_name: string;
+  received_at: string;
+}
+
+// Open questions: the warranty still exists and the user has not answered.
+export async function listReturnPrompts(db: Db): Promise<ReturnPrompt[]> {
+  return db.getAllAsync<ReturnPrompt>(
+    `SELECT r.id, r.warranty_id, w.product_name, w.store_name, r.received_at FROM returns r JOIN warranties w ON w.id = r.warranty_id
+      WHERE r.state = 'asked' ORDER BY r.received_at DESC`,
+    [],
+  );
+}
+
+export async function answerReturn(db: Db, id: number, answer: 'deleted' | 'kept'): Promise<void> {
+  await db.runAsync('UPDATE returns SET state = ? WHERE id = ?', [answer, id]);
 }

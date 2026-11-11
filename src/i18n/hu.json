@@ -236,5 +236,11 @@
     "hint": "Levelek, amelyeket a Warrantly kihagyott, vagy amelyeket nem garanciának jelöltél. Állítsd vissza, és egészítsd ki a „Figyelmet igényel” listában.",
     "empty": "Nincs kihagyott levél.",
     "restore": "Visszaállítás"
+  },
+  "returns": {
+    "title": "Visszaküldted, vagy visszatérítették?",
+    "body": "A(z) {{store}} {{date}} napon visszaküldésről, visszatérítésről vagy lemondásról írt ezzel kapcsolatban: {{product}}. Törlöd ezt a garanciát?",
+    "delete": "Garancia törlése",
+    "keep": "Megtartás"
   }
 }

@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addAttachment, addManual, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addAttachment, addManual, answerReturn, listReturnPrompts, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 7);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 8);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -221,4 +221,32 @@ test('ignored mails are listed with their subject and can be restored for review
     [null, '["productName","warrantyMonths"]'],
   ].sort());
   assert.deepEqual(await listIgnored(db), []);
+});
+
+test('a refund mail asks about its warranty, also when it arrives before the purchase', async () => {
+  const purchase: MailMessage = {
+    id: 'merlin-order', from: 'info@merlinhardver.hu', fromName: 'Merlinhardver', to: ['user@example.com'],
+    subject: 'Rendelés visszaigazolása', date: '2026-08-12T18:39:00Z', attachments: [],
+    text: 'Azonosító: 20260801_0001\n\nJonsbo D300 - fekete (D300 BLACK) 24 hó gar. 1 db 37.643 Ft',
+  };
+  byId.set('merlin-order', purchase);
+  const db = nodeDb();
+  await migrate(db);
+  // Newest first, like Gmail: the cancellation (2026-08-25) is read before the order (2026-08-12).
+  await syncAccount(db, fakeProvider(['merlin-cancel', 'merlin-order'], []), 'user@example.com');
+  const prompts = await listReturnPrompts(db);
+  assert.deepEqual(prompts.map((p) => [p.product_name, p.store_name]), [['Jonsbo D300 - fekete (D300 BLACK)', 'Merlinhardver']]);
+
+  await answerReturn(db, prompts[0].id, 'kept');
+  assert.deepEqual(await listReturnPrompts(db), []);
+  assert.equal((await listWarranties(db, 'complete')).length, 1); // kept: nothing deleted
+  await syncAccount(db, fakeProvider([], []), 'user@example.com');
+  assert.deepEqual(await listReturnPrompts(db), []); // an answered question is not asked again
+});
+
+test('a refund with no matching warranty stays quiet', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  await syncAccount(db, fakeProvider(['merlin-cancel'], []), 'user@example.com');
+  assert.deepEqual(await listReturnPrompts(db), []);
 });
