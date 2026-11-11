@@ -111,7 +111,8 @@
     "imported": "Document attached. Fill in the details below.",
     "category": "Category",
     "price": "Price",
-    "currency": "Currency"
+    "currency": "Currency",
+    "coverage": "Warranty type"
   },
   "detail": {
     "edit": "Edit",
@@ -136,7 +137,9 @@
     "removeDocumentTitle": "Remove this document?",
     "attachImport": "Attach a photo or PDF",
     "returnBy": "Return by",
-    "returnHint": "14-day right of withdrawal"
+    "returnHint": "14-day right of withdrawal",
+    "otherCovers": "Other warranties for this purchase",
+    "addCover": "Add another warranty (e.g. extended plan)"
   },
   "reminder": {
     "channel": "Warranty reminders",
@@ -308,5 +311,10 @@
     "home": "Home",
     "tools": "Tools",
     "other": "Other"
+  },
+  "coverage": {
+    "standard": "Standard",
+    "store": "Store warranty",
+    "extended": "Extended plan"
   }
 }

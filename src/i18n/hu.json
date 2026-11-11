@@ -111,7 +111,8 @@
     "imported": "Dokumentum csatolva. Töltsd ki lent az adatokat.",
     "category": "Kategória",
     "price": "Ár",
-    "currency": "Pénznem"
+    "currency": "Pénznem",
+    "coverage": "Garancia típusa"
   },
   "detail": {
     "edit": "Szerkesztés",
@@ -136,7 +137,9 @@
     "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?",
     "attachImport": "Fotó vagy PDF csatolása",
     "returnBy": "Visszaküldés eddig",
-    "returnHint": "14 napos elállási jog"
+    "returnHint": "14 napos elállási jog",
+    "otherCovers": "További garanciák ehhez a vásárláshoz",
+    "addCover": "Újabb garancia hozzáadása (pl. kiterjesztett)"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
@@ -308,5 +311,10 @@
     "home": "Otthon",
     "tools": "Szerszám",
     "other": "Egyéb"
+  },
+  "coverage": {
+    "standard": "Alap",
+    "store": "Bolti garancia",
+    "extended": "Kiterjesztett"
   }
 }

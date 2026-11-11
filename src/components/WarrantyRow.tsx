@@ -56,7 +56,8 @@ export function WarrantyRow({ warranty: w, to }: { warranty: Warranty; to?: Href
           {product}
         </Text>
         <Text style={styles.meta}>
-          {w.store_name} · {t('warranty.purchased', { ago: agoLabel(t, w.purchase_date, today) })}
+          {w.store_name} · {w.coverage ? `${t(`coverage.${w.coverage}`)} · ` : ''}
+          {t('warranty.purchased', { ago: agoLabel(t, w.purchase_date, today) })}
         </Text>
       </View>
       <View style={[styles.pill, { backgroundColor: pill.bg }]}>

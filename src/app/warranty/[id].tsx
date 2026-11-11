@@ -3,9 +3,9 @@ import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router
 import { goBack } from '@/nav';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel } from '@/components/WarrantyRow';
+import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
+import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, otherCovers, type Attachment, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, importDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
@@ -19,12 +19,15 @@ export default function WarrantyDetail() {
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
   const [docs, setDocs] = useState<Attachment[]>([]);
+  const [others, setOthers] = useState<Warranty[]>([]);
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
       void getDb().then(async (db) => {
-        setW(await getWarranty(db, Number(id)));
+        const found = await getWarranty(db, Number(id));
+        setW(found);
         setDocs(await listAttachments(db, Number(id)));
+        setOthers(found ? await otherCovers(db, found) : []);
       });
     }, [id]),
   );
@@ -113,6 +116,7 @@ export default function WarrantyDetail() {
         <Field label={t('warranty.store')} value={w.store_name} />
         <Field label={t('warranty.purchaseDate')} value={`${date(w.purchase_date)} (${agoLabel(t, w.purchase_date, today)})`} />
         <Field label={t('warranty.startDate')} value={suggested(date(w.warranty_start_date), w.start_is_suggested)} />
+        {w.coverage && <Field label={t('form.coverage')} value={t(`coverage.${w.coverage}`)} />}
         <Field label={t('warranty.length')} value={lengthLabel(t, w)} />
         <Field label={t('warranty.endDate')} value={date(w.end_date)} />
         {(() => {
@@ -148,6 +152,21 @@ export default function WarrantyDetail() {
           </Pressable>
           </View>
         ))}
+        {others.length > 0 && (
+          <View>
+            <Text style={styles.label}>{t('detail.otherCovers')}</Text>
+            {others.map((o) => (
+              <WarrantyRow key={o.id} warranty={o} />
+            ))}
+          </View>
+        )}
+        <Pressable
+          style={styles.secondary}
+          onPress={() => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } })}
+          accessibilityRole="button"
+        >
+          <Text style={styles.secondaryText}>{t('detail.addCover')}</Text>
+        </Pressable>
         {/* Any number of documents: invoice, warranty card, repair sheet. */}
         <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
           <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
