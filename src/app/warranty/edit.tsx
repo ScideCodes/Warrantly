@@ -15,10 +15,13 @@ import { colors } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { deleteDocuments, importDocument, scanDocument } from '@/documents';
 import { parseScanText } from '@/parser/scan.ts';
-import { formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
+import { getLocales } from 'expo-localization';
+import { CATEGORIES, formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [12, 24, 36];
-type Form = Record<FormField | 'order_number' | 'serial_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes', string>;
+type Form = Record<FormField | 'order_number' | 'serial_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
+
+const localCurrency = () => getLocales()[0]?.currencyCode ?? 'EUR';
 
 const fromWarranty = (w: Warranty | null): Form => ({
   product_name: w?.product_name ?? '',
@@ -32,6 +35,9 @@ const fromWarranty = (w: Warranty | null): Form => ({
   contact_phone: w?.contact_phone ?? '',
   website_url: w?.website_url ?? '',
   notes: w?.notes ?? '',
+  price: w?.price != null ? String(w.price) : '',
+  currency: w?.currency ?? localCurrency(),
+  category: w?.category ?? '',
 });
 
 // Manual add, and edit of any warranty (section 9 resolve view, section 18 manual add).
@@ -107,6 +113,10 @@ export default function EditWarranty() {
       contact_phone: opt(form.contact_phone),
       website_url: opt(form.website_url),
       notes: opt(form.notes),
+      // "105 263" or "49,90" as typed; anything that is not a number is left empty.
+      price: form.price.trim() && Number.isFinite(Number(form.price.replace(/\s/g, '').replace(',', '.'))) ? Number(form.price.replace(/\s/g, '').replace(',', '.')) : null,
+      currency: form.price.trim() ? form.currency.trim().toUpperCase() || localCurrency() : null,
+      category: opt(form.category),
     };
     const db = await getDb();
     if (existing) await updateWarranty(db, existing.id, input);
@@ -348,6 +358,29 @@ export default function EditWarranty() {
             </View>
           )}
 
+          <View style={styles.field}>
+            <Text style={styles.label}>{t('form.category')}</Text>
+            <View style={styles.wrapChips}>
+              {CATEGORIES.map((c) => {
+                const selected = form.category === c;
+                return (
+                  <Pressable
+                    key={c}
+                    style={[styles.chip, selected && styles.chipSelected]}
+                    onPress={() => set('category')(selected ? '' : c)}
+                    accessibilityRole="radio"
+                    accessibilityState={{ selected }}
+                  >
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{t(`category.${c}`)}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+          <View style={styles.priceRow}>
+            <View style={styles.flex}>{field('price', t('form.price'), { keyboard: 'decimal-pad' })}</View>
+            <View style={styles.currency}>{field('currency', t('form.currency'), { keyboard: 'default' })}</View>
+          </View>
           {field('order_number', t('form.orderNumber'))}
           {field('serial_number', t('form.serial'))}
           {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
@@ -375,6 +408,8 @@ export default function EditWarranty() {
 }
 
 const styles = StyleSheet.create({
+  priceRow: { flexDirection: 'row', gap: 12 },
+  currency: { width: 96 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 16, paddingBottom: 48 },
   field: { gap: 6 },

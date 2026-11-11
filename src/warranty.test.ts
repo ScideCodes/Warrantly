@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderPlan, returnDeadline, shortName, urgency, type ListFilter } from './warranty.ts';
+import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderPlan, returnDeadline, shortName, totalValue, urgency, type ListFilter } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -78,7 +78,7 @@ test('reminderPlan: 90/60/30, weekly, expiry day; from today on; nearest first; 
 test('filterWarranties: tab, account, store, expiring soon, accent-insensitive search', () => {
   const today = '2026-11-11';
   const list = [
-    { id: 1, product_name: 'Philips vízforraló HD9350', store_name: 'MediaMarkt', end_date: '2026-11-30', account_id: null },
+    { id: 1, product_name: 'Philips vízforraló HD9350', store_name: 'MediaMarkt', end_date: '2026-11-30', account_id: null, category: 'appliances' },
     { id: 2, product_name: 'Gembird WM-55ST-04 fali tartó', store_name: 'PCX', end_date: '2028-01-01', account_id: 7 },
     { id: 3, product_name: null, store_name: 'Conrad HU', end_date: '2026-10-01', account_id: 7 },
   ];
@@ -93,9 +93,16 @@ test('filterWarranties: tab, account, store, expiring soon, accent-insensitive s
   assert.deepEqual(ids({ account: 'manual' }), [1]);
   assert.deepEqual(ids({ store: 'PCX' }), [2]);
   assert.deepEqual(ids({ tab: 'expired', query: 'conrad' }), [3]);
+  assert.deepEqual(ids({ category: 'appliances' }), [1]);
 });
 
 test('returnDeadline: 14 days from delivery, mail (online) purchases only', () => {
   assert.equal(returnDeadline({ origin: 'gmail', warranty_start_date: '2026-11-11' }), '2026-11-25');
   assert.equal(returnDeadline({ origin: 'manual', warranty_start_date: '2026-11-11' }), null);
+});
+
+test('totalValue sums prices per currency and skips items without one', () => {
+  assert.deepEqual(totalValue([
+    { price: 6090, currency: 'HUF' }, { price: 37643, currency: 'HUF' }, { price: 49.9, currency: 'EUR' }, { price: null, currency: 'HUF' },
+  ]), { HUF: 43733, EUR: 49.9 });
 });

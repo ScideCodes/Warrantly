@@ -34,7 +34,8 @@
     "search": "Search product or store",
     "soon": "Expiring within 30 days",
     "noMatch": "Nothing matches. Clear the search or filters.",
-    "updateReady": "Update ready: tap to restart Warrantly"
+    "updateReady": "Update ready: tap to restart Warrantly",
+    "total": "Total value: {{total}}"
   },
   "warranty": {
     "unknownProduct": "Product not found",
@@ -107,7 +108,10 @@
     "noEmail": "The original email is not available.",
     "later": "Later",
     "import": "Import a photo or PDF",
-    "imported": "Document attached. Fill in the details below."
+    "imported": "Document attached. Fill in the details below.",
+    "category": "Category",
+    "price": "Price",
+    "currency": "Currency"
   },
   "detail": {
     "edit": "Edit",
@@ -295,5 +299,14 @@
     "share": "Open in another app",
     "failed": "Could not show the document: {{detail}}",
     "page": "Page {{page}} of {{count}}"
+  },
+  "category": {
+    "electronics": "Electronics",
+    "computers": "Computers",
+    "phones": "Phones",
+    "appliances": "Appliances",
+    "home": "Home",
+    "tools": "Tools",
+    "other": "Other"
   }
 }

@@ -119,15 +119,26 @@ function addDays(ymd: string, days: number): string {
 const PLAIN: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ö: 'o', ő: 'o', ú: 'u', ü: 'u', ű: 'u', ä: 'a', ß: 'ss' };
 export const plain = (s: string): string => s.toLowerCase().replace(/[áéíóöőúüűäß]/g, (c) => PLAIN[c]);
 
+// Fixed categories (keys; names are translated). Stored on the warranty as the key.
+export const CATEGORIES = ['electronics', 'computers', 'phones', 'appliances', 'home', 'tools', 'other'] as const;
+
+// Sum of prices per currency, e.g. { HUF: 105263, EUR: 49.9 }. Items without a price are left out.
+export function totalValue(list: { price: number | null; currency: string | null }[]): Record<string, number> {
+  const sums: Record<string, number> = {};
+  for (const w of list) if (w.price !== null && w.currency) sums[w.currency] = (sums[w.currency] ?? 0) + w.price;
+  return sums;
+}
+
 export interface ListFilter {
   query: string;
   store: string | null;
+  category?: string | null;
   soon: boolean; // expiring within 30 days
   account: 'all' | 'manual' | number;
   tab: 'active' | 'expired';
 }
 
-export function filterWarranties<W extends { product_name: string | null; store_name: string; end_date: string; account_id: number | null }>(
+export function filterWarranties<W extends { product_name: string | null; store_name: string; end_date: string; account_id: number | null; category?: string | null }>(
   list: W[],
   f: ListFilter,
   today: string,
@@ -138,6 +149,7 @@ export function filterWarranties<W extends { product_name: string | null; store_
     if ((days >= 0) !== (f.tab === 'active')) return false;
     if (f.account !== 'all' && (f.account === 'manual' ? w.account_id !== null : w.account_id !== f.account)) return false;
     if (f.store && w.store_name !== f.store) return false;
+    if (f.category && w.category !== f.category) return false;
     if (f.soon && (days < 0 || days > 30)) return false;
     const text = plain(`${w.product_name ?? ''} ${w.store_name}`);
     return words.every((word) => text.includes(word));

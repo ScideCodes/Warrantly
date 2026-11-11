@@ -34,7 +34,8 @@
     "search": "Termék vagy üzlet keresése",
     "soon": "30 napon belül lejár",
     "noMatch": "Nincs találat. Töröld a keresést vagy a szűrőket.",
-    "updateReady": "Frissítés kész: koppints az újraindításhoz"
+    "updateReady": "Frissítés kész: koppints az újraindításhoz",
+    "total": "Összérték: {{total}}"
   },
   "warranty": {
     "unknownProduct": "Ismeretlen termék",
@@ -107,7 +108,10 @@
     "noEmail": "Az eredeti levél nem érhető el.",
     "later": "Később",
     "import": "Fotó vagy PDF importálása",
-    "imported": "Dokumentum csatolva. Töltsd ki lent az adatokat."
+    "imported": "Dokumentum csatolva. Töltsd ki lent az adatokat.",
+    "category": "Kategória",
+    "price": "Ár",
+    "currency": "Pénznem"
   },
   "detail": {
     "edit": "Szerkesztés",
@@ -295,5 +299,14 @@
     "share": "Megnyitás másik appban",
     "failed": "A dokumentum nem jeleníthető meg: {{detail}}",
     "page": "{{page}}. oldal / {{count}}"
+  },
+  "category": {
+    "electronics": "Elektronika",
+    "computers": "Számítógép",
+    "phones": "Telefon",
+    "appliances": "Háztartási gép",
+    "home": "Otthon",
+    "tools": "Szerszám",
+    "other": "Egyéb"
   }
 }
