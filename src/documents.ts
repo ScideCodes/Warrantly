@@ -33,6 +33,8 @@ export async function scanDocument(): Promise<{ text: string; localPath: string 
   return { text, localPath: pdf.name };
 }
 
+export const documentExists = (localPath: string): boolean => fileFor(localPath).exists;
+
 export function deleteDocuments(localPaths: string[]): void {
   for (const p of localPaths) {
     const f = fileFor(p);
