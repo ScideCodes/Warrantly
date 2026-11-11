@@ -30,13 +30,28 @@
         "expo-localization",
         {
           "supportsRTL": false,
-          "supportedLocales": ["en", "hu"]
+          "supportedLocales": [
+            "en",
+            "hu"
+          ]
         }
       ],
       "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "owner": "scide-warrantly",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/9e085868-1858-4d15-bfab-c596c6a222ab"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "9e085868-1858-4d15-bfab-c596c6a222ab"
+      }
     }
   }
 }
