@@ -12,7 +12,7 @@ import { colors } from '@/theme';
 
 type SyncState =
   | { kind: 'idle' }
-  | { kind: 'syncing'; email: string }
+  | { kind: 'syncing'; email: string; done: number; total: number }
   | { kind: 'done'; results: ParseResult[]; failed: SyncResult['failed'] }
   | { kind: 'error'; detail: string };
 
@@ -29,10 +29,12 @@ export default function Home() {
     try {
       const email = connectedEmail() ?? (await connectGmail());
       if (!email) return; // user cancelled the Google dialog
-      setSync({ kind: 'syncing', email });
+      setSync({ kind: 'syncing', email, done: 0, total: 0 });
       const after = new Date();
       after.setMonth(after.getMonth() - FIRST_SYNC_MONTHS);
-      const { results, failed } = await fetchAndParse(gmailProvider(getAccessToken), after);
+      const { results, failed } = await fetchAndParse(gmailProvider(getAccessToken), after, {}, (done, total) =>
+        setSync({ kind: 'syncing', email, done, total }),
+      );
       setSync({ kind: 'done', failed, results: results.sort((a, b) => b.purchaseDate.localeCompare(a.purchaseDate)) });
     } catch (e) {
       setSync({ kind: 'error', detail: e instanceof Error ? e.message : String(e) });
@@ -75,6 +77,7 @@ export default function Home() {
           <>
             <ActivityIndicator size="large" color={colors.primary} />
             <Text style={styles.body}>{t('home.syncing', { email: sync.email })}</Text>
+            {sync.total > 0 && <Text style={styles.detail}>{t('home.progress', { done: sync.done, total: sync.total })}</Text>}
           </>
         ) : (
           <>

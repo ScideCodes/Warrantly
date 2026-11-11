@@ -16,9 +16,16 @@ export interface SyncResult {
 
 // One sync pass: fetch every new candidate and parse it. Sequential on purpose, to stay
 // well under the Gmail per-user rate limit. One unreadable mail never stops the whole sync.
-export async function fetchAndParse(provider: MailProvider, after: Date | null, storeRules: StoreRules = {}): Promise<SyncResult> {
+export async function fetchAndParse(
+  provider: MailProvider,
+  after: Date | null,
+  storeRules: StoreRules = {},
+  onProgress?: (done: number, total: number) => void,
+): Promise<SyncResult> {
   const sync: SyncResult = { results: [], failed: [] };
-  for (const id of await provider.listMessageIds(after)) {
+  const ids = await provider.listMessageIds(after);
+  for (const [i, id] of ids.entries()) {
+    onProgress?.(i, ids.length);
     try {
       sync.results.push(parseEmail(await provider.getMessage(id), storeRules));
     } catch (e) {
