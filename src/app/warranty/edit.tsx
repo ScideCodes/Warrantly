@@ -1,10 +1,15 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { getDb } from '@/db/client';
-import { addAttachment, addManual, getWarranty, listAccounts, saveStoreRule, updateWarranty, type Account, type Warranty } from '@/db/repo.ts';
+import {
+  addAttachment, addManual, applyLengthToStore, getWarranty, ignoreWarranty, listAccounts, nextNeedsInput, saveStoreRule, sourceOf,
+  storeItemsMissingLength, updateWarranty, type Account, type Warranty,
+} from '@/db/repo.ts';
+import { gmailTokenFor } from '@/google';
+import { gmailProvider } from '@/mail/gmail.ts';
 import { colors } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { deleteDocuments, scanDocument } from '@/documents';
@@ -49,6 +54,8 @@ export default function EditWarranty() {
   );
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
+  const [mail, setMail] = useState<{ state: 'hidden' | 'loading' | 'shown'; text?: string }>({ state: 'hidden' });
+  const resolving = existing?.status === 'needs_input'; // section 9 resolve view
 
   useEffect(() => {
     void getDb().then(async (db) => {
@@ -58,6 +65,10 @@ export default function EditWarranty() {
       setExisting(w);
       setForm(fromWarranty(w));
       setAccountId(w?.account_id ?? null);
+      // "Next" reuses this screen with a new id: start the item fresh.
+      setErrors([]);
+      setRemember(false);
+      setMail({ state: 'hidden' });
     });
   }, [id]);
 
@@ -93,7 +104,47 @@ export default function EditWarranty() {
       scannedPdf.current = null; // saved: keep the file
     }
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
-    router.back();
+    if (!resolving) return router.back();
+    // Section 9 batch help: offer the same length to this store's other items that are missing it.
+    const others = existing?.store_domain ? await storeItemsMissingLength(db, existing.store_domain, existing.id) : 0;
+    if (others && (await askApply(input.warranty_months, others, input.store_name))) {
+      await applyLengthToStore(db, existing!.store_domain!, input.warranty_months, existing!.id);
+    }
+    await goNext();
+  }
+
+  const askApply = (months: number, count: number, store: string) =>
+    new Promise<boolean>((resolve) =>
+      Alert.alert(t('attention.applyTitle', { months, count, store }), undefined, [
+        { text: t('attention.applyNo'), style: 'cancel', onPress: () => resolve(false) },
+        { text: t('attention.applyYes'), onPress: () => resolve(true) },
+      ]),
+    );
+
+  // Section 9: move through the items quickly; back to the list when none are left.
+  async function goNext() {
+    const next = existing ? await nextNeedsInput(await getDb(), existing.id) : null;
+    if (next) router.replace({ pathname: '/warranty/edit', params: { id: String(next) } });
+    else router.back();
+  }
+
+  async function notWarranty() {
+    await ignoreWarranty(await getDb(), existing!.id);
+    await goNext();
+  }
+
+  // Section 9 source viewer: the mail is not stored on the phone, so fetch it from Gmail when asked.
+  async function toggleMail() {
+    if (mail.state !== 'hidden') return setMail({ state: 'hidden' });
+    setMail({ state: 'loading' });
+    try {
+      const src = await sourceOf(await getDb(), existing!.id);
+      if (!src) throw new Error(t('form.noEmail'));
+      const message = await gmailProvider(gmailTokenFor(src.email)).getMessage(src.message_id);
+      setMail({ state: 'shown', text: `${message.subject}\n\n${message.text}` });
+    } catch (e) {
+      setMail({ state: 'shown', text: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   // Section 18: scan a paper receipt or warranty card; what OCR finds fills the empty fields.
@@ -184,6 +235,20 @@ export default function EditWarranty() {
       <Stack.Screen options={{ headerShown: true, title: t(id ? 'form.titleEdit' : 'form.titleAdd') }} />
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {resolving && existing?.origin === 'gmail' && (
+            <View style={styles.field}>
+              <Pressable style={styles.secondary} onPress={toggleMail} accessibilityRole="button">
+                {mail.state === 'loading' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t(mail.state === 'shown' ? 'form.hideEmail' : 'form.showEmail')}</Text>}
+              </Pressable>
+              {mail.state === 'shown' && (
+                <ScrollView style={styles.mailBox} nestedScrollEnabled>
+                  <Text style={styles.mailText} selectable>
+                    {mail.text}
+                  </Text>
+                </ScrollView>
+              )}
+            </View>
+          )}
           {!existing && (
             <View style={styles.field}>
               <Pressable style={styles.scanButton} onPress={runScan} disabled={scan.state === 'busy'} accessibilityRole="button">
@@ -275,6 +340,16 @@ export default function EditWarranty() {
           <Pressable style={styles.button} onPress={save} accessibilityRole="button">
             <Text style={styles.buttonText}>{t('form.save')}</Text>
           </Pressable>
+          {resolving && (
+            <View style={styles.resolveRow}>
+              <Pressable style={[styles.secondary, styles.flex]} onPress={goNext} accessibilityRole="button">
+                <Text style={styles.secondaryText}>{t('form.later')}</Text>
+              </Pressable>
+              <Pressable style={[styles.secondary, styles.flex]} onPress={notWarranty} accessibilityRole="button">
+                <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
+              </Pressable>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </>
@@ -296,6 +371,12 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
   chipTextSelected: { color: colors.onPrimary },
+  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  secondaryText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  mailBox: { maxHeight: 280, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12 },
+  mailText: { fontSize: 13, lineHeight: 19, color: colors.text },
+  resolveRow: { flexDirection: 'row', gap: 12 },
+  flex: { flex: 1 },
   scanButton: { minHeight: 56, borderRadius: 8, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   scanText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

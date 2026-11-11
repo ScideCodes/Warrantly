@@ -65,7 +65,11 @@
   },
   "attention": {
     "title": "Needs your attention",
-    "empty": "All caught up"
+    "empty": "All caught up",
+    "applyTitle_one": "Use {{months}} months for {{count}} more item from {{store}}?",
+    "applyTitle_other": "Use {{months}} months for {{count}} more items from {{store}}?",
+    "applyYes": "Apply to all",
+    "applyNo": "Only this one"
   },
   "form": {
     "titleAdd": "Add warranty",
@@ -96,7 +100,11 @@
     "scanHint": "Take photos of the receipt or warranty card. Warrantly reads them on this phone and fills in what it finds.",
     "scanning": "Reading the document…",
     "scanned": "Document attached. Check the details below; scans can misread.",
-    "scanFailed": "Scanning failed: {{detail}}"
+    "scanFailed": "Scanning failed: {{detail}}",
+    "showEmail": "Show original email",
+    "hideEmail": "Hide email",
+    "noEmail": "The original email is not available.",
+    "later": "Later"
   },
   "detail": {
     "edit": "Edit",
