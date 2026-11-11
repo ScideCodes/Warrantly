@@ -184,13 +184,20 @@
     "changePin": "PIN módosítása",
     "biometric": "Feloldás ujjlenyomattal vagy arccal",
     "reminders": "Lejárati emlékeztetők",
-    "remindersHint": "90, 60 és 30 nappal előtte, utána hetente, és az utolsó napon.",
+    "remindersHint": "Minden garancia lejárata előtt. Lent választhatod ki, mikor.",
     "general": "Alkalmazás",
     "widgetNames": "Terméknevek a widgeten",
     "widgetNamesHint": "Bárki láthatja őket a kezdőképernyőn, alkalmazászár mellett is.",
     "version": "Warrantly {{version}}",
     "returnReminders": "Elállási határidő emlékeztető",
-    "returnRemindersHint": "Online rendelést a kézhezvételtől 14 napig küldhetsz vissza (EU). 2 nappal előtte szól."
+    "returnRemindersHint": "Online rendelést a kézhezvételtől 14 napig küldhetsz vissza (EU). 2 nappal előtte szól.",
+    "reminderWhen": "Emlékeztess",
+    "reminderTime": "Időpont",
+    "group_90": "90 nappal előtte",
+    "group_60": "60 nappal előtte",
+    "group_30": "30 nappal előtte",
+    "group_weekly": "Hetente az utolsó hónapban",
+    "group_0": "Az utolsó napon"
   },
   "backup": {
     "section": "Mentés",

@@ -76,7 +76,12 @@ export function shortName(name: string): string {
 }
 
 // Expiry reminders (section 16): 90, 60 and 30 days before, then weekly until expiry, and on the day.
-const REMINDER_DAYS = [90, 60, 30, 23, 16, 9, 2, 0];
+// Each group can be switched off in Settings.
+export const REMINDER_GROUPS = { '90': [90], '60': [60], '30': [30], weekly: [23, 16, 9, 2], '0': [0] } as const;
+export type ReminderGroup = keyof typeof REMINDER_GROUPS;
+export const ALL_GROUPS: ReminderGroup[] = ['90', '60', '30', 'weekly', '0']; // listed, not Object.keys: number-like keys sort first
+export const reminderDays = (groups: readonly ReminderGroup[]): number[] => groups.flatMap((g) => REMINDER_GROUPS[g]);
+const REMINDER_DAYS = reminderDays(ALL_GROUPS);
 
 export interface Reminder {
   warrantyId: number;
@@ -96,10 +101,15 @@ export const returnDeadline = (w: { origin: string; warranty_start_date: string 
 // keeps at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling
 // window). Today's are included: the caller drops them once their time of day has passed.
 // `return_by` adds one reminder two days before the return window closes.
-export function reminderPlan(warranties: { id: number; end_date: string; return_by?: string | null }[], today: string, limit = 60): Reminder[] {
+export function reminderPlan(
+  warranties: { id: number; end_date: string; return_by?: string | null }[],
+  today: string,
+  limit = 60,
+  days: number[] = REMINDER_DAYS,
+): Reminder[] {
   return warranties
     .flatMap((w): Reminder[] => [
-      ...REMINDER_DAYS.map((daysLeft) => ({ warrantyId: w.id, kind: 'expiry' as const, daysLeft, date: addDays(w.end_date, -daysLeft) })),
+      ...days.map((daysLeft) => ({ warrantyId: w.id, kind: 'expiry' as const, daysLeft, date: addDays(w.end_date, -daysLeft) })),
       ...(w.return_by ? [{ warrantyId: w.id, kind: 'return' as const, daysLeft: RETURN_WARNING, date: addDays(w.return_by, -RETURN_WARNING) }] : []),
     ].filter((r) => r.date >= today))
     .sort((a, b) => a.date.localeCompare(b.date) || a.warrantyId - b.warrantyId)

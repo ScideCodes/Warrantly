@@ -184,13 +184,20 @@
     "changePin": "Change PIN",
     "biometric": "Unlock with fingerprint or face",
     "reminders": "Expiry reminders",
-    "remindersHint": "90, 60 and 30 days before, then weekly, and on the last day.",
+    "remindersHint": "Before each warranty ends. Choose which ones below.",
     "general": "App",
     "widgetNames": "Show product names on the widget",
     "widgetNamesHint": "Anyone who sees your home screen can read them, even with the app lock on.",
     "version": "Warrantly {{version}}",
     "returnReminders": "Return-window reminders",
-    "returnRemindersHint": "Online orders can be returned within 14 days of delivery (EU). Reminds you 2 days before that ends."
+    "returnRemindersHint": "Online orders can be returned within 14 days of delivery (EU). Reminds you 2 days before that ends.",
+    "reminderWhen": "Remind me",
+    "reminderTime": "At",
+    "group_90": "90 days before",
+    "group_60": "60 days before",
+    "group_30": "30 days before",
+    "group_weekly": "Weekly in the last month",
+    "group_0": "On the last day"
   },
   "backup": {
     "section": "Backup",

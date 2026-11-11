@@ -5,10 +5,9 @@ import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
-import { getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
-import { reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
+import { getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
+import { reminderDays, reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
 
-const REMINDER_HOUR = 9;
 
 // Show reminders that arrive while the app is open, too.
 Notifications.setNotificationHandler({
@@ -41,13 +40,14 @@ async function reschedule(db: Db): Promise<void> {
   const now = new Date();
   const returns = getReturnRemindersEnabled();
   const items = warranties.map((w) => ({ ...w, return_by: returns ? returnDeadline(w) : null }));
-  const jobs = (getRemindersEnabled() ? reminderPlan(items, todayYmd(now)) : [])
+  const hour = getReminderHour();
+  const jobs = (getRemindersEnabled() ? reminderPlan(items, todayYmd(now), 60, reminderDays(getReminderGroups())) : [])
     .map((r) => {
       const [y, m, d] = r.date.split('-').map(Number);
       const w = byId.get(r.warrantyId)!;
       return {
         content: r.kind === 'return' ? returnContent(w) : content(w, r.daysLeft),
-        date: new Date(y, m - 1, d, REMINDER_HOUR),
+        date: new Date(y, m - 1, d, hour),
         channelId: r.kind === 'expiry' && r.daysLeft === 0 ? 'expiry' : 'reminders',
       };
     })

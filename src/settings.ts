@@ -1,4 +1,5 @@
 import Storage from 'expo-sqlite/kv-store';
+import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 
 // Local-only settings (brainstorm section 12 "settings"), stored in SQLite on the phone.
 const USERNAME = 'username';
@@ -9,6 +10,12 @@ export const setUsername = (name: string): void => Storage.setItemSync(USERNAME,
 // Expiry reminders are on by default (section 16).
 export const getRemindersEnabled = (): boolean => Storage.getItemSync('reminders_enabled') !== '0';
 export const setRemindersEnabled = (on: boolean): void => Storage.setItemSync('reminders_enabled', on ? '1' : '0');
+
+// Reminder time of day (hour) and which reminders (groups from warranty.ts), section 16.
+export const getReminderHour = (): number => Number(Storage.getItemSync('reminder_hour') ?? 9);
+export const setReminderHour = (hour: number): void => Storage.setItemSync('reminder_hour', String(hour));
+export const getReminderGroups = (): ReminderGroup[] => JSON.parse(Storage.getItemSync('reminder_groups') ?? 'null') ?? ALL_GROUPS;
+export const setReminderGroups = (groups: ReminderGroup[]): void => Storage.setItemSync('reminder_groups', JSON.stringify(groups));
 
 // Return-window reminders (EU 14-day withdrawal) are on by default.
 export const getReturnRemindersEnabled = (): boolean => Storage.getItemSync('return_reminders') !== '0';
@@ -25,7 +32,7 @@ export const setWidgetNames = (on: boolean | null): void => void (on === null ? 
 export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account'): string | null => Storage.getItemSync(key);
 export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account', value: string): void => Storage.setItemSync(key, value);
 // What a backup carries besides the database.
-export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), reminders_enabled: Storage.getItemSync('reminders_enabled') });
+export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), reminder_hour: Storage.getItemSync('reminder_hour'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled') });
 export function applySnapshot(s: Record<string, string | null>): void {
-  for (const [k, v] of Object.entries(s)) if ((k === 'username' || k === 'reminders_enabled') && v !== null) Storage.setItemSync(k, v);
+  for (const [k, v] of Object.entries(s)) if (['username', 'reminders_enabled', 'reminder_hour', 'reminder_groups', 'return_reminders'].includes(k) && v !== null) Storage.setItemSync(k, v);
 }

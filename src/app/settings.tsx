@@ -13,9 +13,12 @@ import { restartIntoUpdate, versionLine } from '@/appUpdate';
 import { deleteAllData, sharePdf, shareText } from '@/dataTools';
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
-import { getRemindersEnabled, getReturnRemindersEnabled, getSetting, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
+import { getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderHour, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
+import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
+
+const HOURS = [8, 9, 12, 18, 20];
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 
@@ -27,6 +30,8 @@ export default function Settings() {
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
+  const [hour, setHour] = useState(getReminderHour);
+  const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
@@ -77,6 +82,19 @@ export default function Settings() {
   async function toggleReturnReminders(on: boolean) {
     setReturnRemindersEnabled(on);
     setReturnReminders(on);
+    await rescheduleReminders(await getDb());
+  }
+
+  async function chooseHour(h: number) {
+    setReminderHour(h);
+    setHour(h);
+    await rescheduleReminders(await getDb());
+  }
+
+  async function toggleGroup(g: ReminderGroup) {
+    const next = groups.includes(g) ? groups.filter((x) => x !== g) : ALL_GROUPS.filter((x) => x === g || groups.includes(x));
+    setReminderGroups(next);
+    setGroups(next);
     await rescheduleReminders(await getDb());
   }
 
@@ -248,6 +266,38 @@ export default function Settings() {
         )}
         {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
         {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+        {reminders && (
+          <View style={styles.block}>
+            <Text style={styles.label}>{t('settings.reminderWhen')}</Text>
+            <View style={styles.chips}>
+              {ALL_GROUPS.map((g) => (
+                <Pressable
+                  key={g}
+                  style={[styles.chip, groups.includes(g) && styles.chipSelected]}
+                  onPress={() => toggleGroup(g)}
+                  accessibilityRole="checkbox"
+                  accessibilityState={{ checked: groups.includes(g) }}
+                >
+                  <Text style={[styles.chipText, groups.includes(g) && styles.chipTextSelected]}>{t(`settings.group_${g}`)}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.label}>{t('settings.reminderTime')}</Text>
+            <View style={styles.chips}>
+              {HOURS.map((h) => (
+                <Pressable
+                  key={h}
+                  style={[styles.chip, hour === h && styles.chipSelected]}
+                  onPress={() => chooseHour(h)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: hour === h }}
+                >
+                  <Text style={[styles.chipText, hour === h && styles.chipTextSelected]}>{new Date(2026, 0, 1, h).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
         {reminders && row(t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
         {Platform.OS === 'android' && row(t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
         <Pressable style={styles.row} onPress={() => router.push('/ignored')} accessibilityRole="button">

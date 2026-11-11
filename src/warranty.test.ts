@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderPlan, returnDeadline, shortName, totalValue, urgency, type ListFilter } from './warranty.ts';
+import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderDays, reminderPlan, returnDeadline, shortName, totalValue, urgency, type ListFilter } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -105,4 +105,10 @@ test('totalValue sums prices per currency and skips items without one', () => {
   assert.deepEqual(totalValue([
     { price: 6090, currency: 'HUF' }, { price: 37643, currency: 'HUF' }, { price: 49.9, currency: 'EUR' }, { price: null, currency: 'HUF' },
   ]), { HUF: 43733, EUR: 49.9 });
+});
+
+test('reminder groups: only the chosen ones are planned', () => {
+  assert.deepEqual(reminderDays(['30', '0']), [30, 0]);
+  const plan = reminderPlan([{ id: 1, end_date: '2027-03-01' }], '2026-11-11', 60, reminderDays(['weekly']));
+  assert.deepEqual(plan.map((r) => r.daysLeft), [23, 16, 9, 2]);
 });

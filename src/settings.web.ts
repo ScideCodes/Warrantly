@@ -1,8 +1,16 @@
+import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
+
 // Web is only used for screen previews; expo-sqlite's sync API needs extra web setup.
 export const getUsername = (): string | null => localStorage.getItem('username');
 export const setUsername = (name: string): void => localStorage.setItem('username', name);
 export const getRemindersEnabled = (): boolean => localStorage.getItem('reminders_enabled') !== '0';
 export const setRemindersEnabled = (on: boolean): void => localStorage.setItem('reminders_enabled', on ? '1' : '0');
+
+// Reminder time of day (hour) and which reminders (groups from warranty.ts), section 16.
+export const getReminderHour = (): number => Number(localStorage.getItem('reminder_hour') ?? 9);
+export const setReminderHour = (hour: number): void => localStorage.setItem('reminder_hour', String(hour));
+export const getReminderGroups = (): ReminderGroup[] => JSON.parse(localStorage.getItem('reminder_groups') ?? 'null') ?? ALL_GROUPS;
+export const setReminderGroups = (groups: ReminderGroup[]): void => localStorage.setItem('reminder_groups', JSON.stringify(groups));
 
 // Return-window reminders (EU 14-day withdrawal) are on by default.
 export const getReturnRemindersEnabled = (): boolean => localStorage.getItem('return_reminders') !== '0';
@@ -19,7 +27,7 @@ export const setWidgetNames = (on: boolean | null): void => (on === null ? local
 export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account'): string | null => localStorage.getItem(key);
 export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account', value: string): void => localStorage.setItem(key, value);
 // What a backup carries besides the database.
-export const settingsSnapshot = (): Record<string, string | null> => ({ username: localStorage.getItem('username'), reminders_enabled: localStorage.getItem('reminders_enabled') });
+export const settingsSnapshot = (): Record<string, string | null> => ({ username: localStorage.getItem('username'), reminder_hour: localStorage.getItem('reminder_hour'), reminder_groups: localStorage.getItem('reminder_groups'), return_reminders: localStorage.getItem('return_reminders'), reminders_enabled: localStorage.getItem('reminders_enabled') });
 export function applySnapshot(s: Record<string, string | null>): void {
-  for (const [k, v] of Object.entries(s)) if ((k === 'username' || k === 'reminders_enabled') && v !== null) localStorage.setItem(k, v);
+  for (const [k, v] of Object.entries(s)) if (['username', 'reminders_enabled', 'reminder_hour', 'reminder_groups', 'return_reminders'].includes(k) && v !== null) localStorage.setItem(k, v);
 }
