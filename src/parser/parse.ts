@@ -135,7 +135,7 @@ export function findItems(text: string): { name: string; months: number | null }
       const name =
         tagged?.[1] ??
         seg.match(/^\d+\s*x\s+(.+)$/i)?.[1] ??
-        seg.match(/^(.+?)\s*×\s*\d+$/)?.[1] ??
+        seg.match(/^(.+?)\s*×\s*\d+\b/)?.[1] ?? // a variant line ("Black / XL") may follow
         seg.match(new RegExp(`^(.+?)\\s+\\d+\\s*(?:${lang.quantityUnit})\\b`, 'i'))?.[1];
       if (!name || !isProductName(name)) continue;
       found.set(name.trim(), tagged ? toMonths(tagged[2], tagged[3], lang) : null);

@@ -3,6 +3,7 @@
 // To add a language, add one entry to LANGUAGES.
 
 export interface LanguageKeywords {
+  searchTerms: string[]; // Gmail search words that find candidate mails (section 7)
   purchase: RegExp; // order, invoice, receipt words
   returned: RegExp; // cancellation, refund, return words (specific phrases, not footer links)
   delivered: RegExp; // goods arrived or were picked up
@@ -14,6 +15,7 @@ export interface LanguageKeywords {
 }
 
 const en: LanguageKeywords = {
+  searchTerms: ['warranty', 'guarantee', 'receipt', 'invoice', '"order confirmation"', '"your order"', 'refund', 'cancelled'],
   purchase: /\b(order|invoice|receipt|purchase)\b/i,
   returned:
     /\b(refund(ed)? (has been|was) (issued|approved|processed)|refund (has been|was) approved|order (has been|was) (cancel+ed)|cancel+ation confirmed|return (has been|was) (received|accepted))\b|\bissued a refund\b/i,
@@ -26,6 +28,7 @@ const en: LanguageKeywords = {
 };
 
 const hu: LanguageKeywords = {
+  searchTerms: ['garancia', 'jótállás', 'számla', 'rendelés', 'megrendelés', 'visszatérítés', 'törölve'],
   purchase: /(megrendel|rendelés|számla|számlá|vásárl|nyugta|bizonylat)/i,
   returned:
     /(új állapota:\s*törölve|rendelés(ed|ét|e)? (törölve|törölték|töröltük|lemondva)|visszatérít|stornó|elállás(od|i nyilatkozat)? (elfogad|feldolgoz))/i,
