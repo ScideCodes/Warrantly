@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, urgency } from './warranty.ts';
+import { ago, daysUntil, endDate, formErrors, isValidYmd, urgency } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -26,4 +26,16 @@ test('ago picks days, months or years', () => {
   assert.deepEqual(ago('2026-09-12', '2026-11-11'), { unit: 'months', count: 1 });
   assert.deepEqual(ago('2024-11-12', '2026-11-11'), { unit: 'years', count: 1 });
   assert.deepEqual(ago('2024-11-11', '2026-11-11'), { unit: 'years', count: 2 });
+});
+
+test('form validation', () => {
+  const ok = { product_name: 'Kettle', store_name: 'Shop', purchase_date: '2026-11-01', warranty_start_date: '', warranty_months: '24' };
+  assert.deepEqual(formErrors(ok), []);
+  assert.deepEqual(formErrors({ ...ok, warranty_start_date: '2026-11-03' }), []);
+  assert.deepEqual(formErrors({ product_name: ' ', store_name: '', purchase_date: '2026-02-30', warranty_start_date: 'x', warranty_months: '0' }), [
+    'product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months',
+  ]);
+  assert.deepEqual(formErrors({ ...ok, warranty_start_date: '2026-10-01' }), ['warranty_start_date']); // before purchase
+  assert.deepEqual(formErrors({ ...ok, warranty_months: '12.5' }), ['warranty_months']);
+  assert.equal(isValidYmd('2028-02-29'), true);
 });

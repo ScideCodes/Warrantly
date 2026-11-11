@@ -142,8 +142,10 @@ function insertSource(db: Db, accountId: number, warrantyId: number | null, r: P
 
 export interface WarrantyRow {
   id: number;
+  origin: 'gmail' | 'manual' | 'scan';
   product_name: string | null;
   store_name: string;
+  store_domain: string | null;
   purchase_date: string;
   warranty_start_date: string;
   start_is_suggested: number;
@@ -153,6 +155,8 @@ export interface WarrantyRow {
   contact_email: string | null;
   contact_phone: string | null;
   website_url: string | null;
+  serial_number: string | null;
+  notes: string | null;
   status: 'complete' | 'needs_input' | 'ignored';
   missing_fields: string;
 }
@@ -169,4 +173,64 @@ export async function listWarranties(db: Db, status: 'complete' | 'needs_input')
 export async function getWarranty(db: Db, id: number): Promise<Warranty | null> {
   const row = await db.getFirstAsync<WarrantyRow>('SELECT * FROM warranties WHERE id = ?', [id]);
   return row && withEnd(row);
+}
+
+// What the add/edit form saves (section 18 "Manual add"). Saved values count as confirmed.
+export interface WarrantyInput {
+  product_name: string;
+  store_name: string;
+  purchase_date: string;
+  warranty_start_date: string;
+  warranty_months: number;
+  order_number: string | null;
+  serial_number: string | null;
+  contact_email: string | null;
+  contact_phone: string | null;
+  website_url: string | null;
+  notes: string | null;
+}
+const FIELDS = ['product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
+  'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes'] as const;
+
+// shortcut: manual entries get no account (the general "Manual" tab, section 15); choosing an account
+// tab comes with multiple accounts in build step 7.
+export async function addManual(db: Db, w: WarrantyInput, now = new Date().toISOString()): Promise<number> {
+  const res = await db.runAsync(
+    `INSERT INTO warranties (origin, ${FIELDS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
+     VALUES ('manual', ${FIELDS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
+    [...FIELDS.map((f) => w[f]), now, now],
+  );
+  return res.lastInsertRowId;
+}
+
+// Editing confirms the item: suggested labels go, and a needs-input item becomes complete.
+export async function updateWarranty(db: Db, id: number, w: WarrantyInput, now = new Date().toISOString()): Promise<void> {
+  await db.runAsync(
+    `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, start_is_suggested = 0, length_is_suggested = 0,
+       status = 'complete', missing_fields = '[]', updated_at = ? WHERE id = ?`,
+    [...FIELDS.map((f) => w[f]), now, id],
+  );
+}
+
+// "Remember this for [store]" (section 8): later mails from this shop get this length.
+export async function saveStoreRule(db: Db, storeDomain: string, months: number): Promise<void> {
+  await db.runAsync(
+    `INSERT INTO store_rules (store_domain, default_warranty_months) VALUES (?, ?)
+     ON CONFLICT(store_domain) DO UPDATE SET default_warranty_months = excluded.default_warranty_months`,
+    [storeDomain, months],
+  );
+}
+
+// "Not a warranty" (section 9): hidden, kept for the Ignored screen.
+export async function ignoreWarranty(db: Db, id: number): Promise<void> {
+  await db.runAsync(`UPDATE warranties SET status = 'ignored', updated_at = ? WHERE id = ?`, [new Date().toISOString(), id]);
+}
+
+// Delete (section 10). The source rows stay as the hidden marker, so the next sync does not add
+// the mail back; they just stop pointing at the deleted record.
+export async function deleteWarranty(db: Db, id: number): Promise<void> {
+  await db.withTransactionAsync(async () => {
+    await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
+    await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
+  });
 }

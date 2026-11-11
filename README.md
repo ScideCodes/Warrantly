@@ -10,6 +10,8 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
 - Step 3 (local database, warranty list and detail, days-left logic): done. `src/db` holds the
   SQLite schema and sync; `src/warranty.ts` the date logic. DB tests run the same SQL on Node's
   built-in SQLite.
+- Step 5 (manual add and edit, resolving "Needs your attention", store rules, ignore, delete): done.
+  Mail import keeps warranty documents only (subject or PDF name says garancia/jótállás/warranty).
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns

@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
-import { Stack, useLocalSearchParams } from 'expo-router';
-import { Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useState } from 'react';
+import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { getWarranty, type Warranty } from '@/db/repo.ts';
+import { deleteWarranty, getWarranty, ignoreWarranty, type Warranty } from '@/db/repo.ts';
 import { colors } from '@/theme';
 import { daysUntil, todayYmd, urgency } from '@/warranty';
 
@@ -13,11 +13,14 @@ export default function WarrantyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
-  useEffect(() => {
-    void getDb()
-      .then((db) => getWarranty(db, Number(id)))
-      .then(setW);
-  }, [id]);
+  // Reload on focus so changes made in the edit screen show up.
+  useFocusEffect(
+    useCallback(() => {
+      void getDb()
+        .then((db) => getWarranty(db, Number(id)))
+        .then(setW);
+    }, [id]),
+  );
 
   if (!w) return <Stack.Screen options={{ headerShown: true, title: '' }} />;
 
@@ -26,13 +29,43 @@ export default function WarrantyDetail() {
   const pill = colors[urgency(days)];
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
+  const product = w.product_name ?? t('warranty.unknownProduct');
+
+  async function notWarranty() {
+    await ignoreWarranty(await getDb(), w!.id);
+    router.back();
+  }
+
+  function confirmDelete() {
+    Alert.alert(t('detail.deleteTitle', { product }), t('detail.deleteBody'), [
+      { text: t('detail.cancel'), style: 'cancel' },
+      {
+        text: t('detail.deleteConfirm'),
+        style: 'destructive',
+        onPress: async () => {
+          await deleteWarranty(await getDb(), w!.id);
+          router.back();
+        },
+      },
+    ]);
+  }
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: w.store_name }} />
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: w.store_name,
+          headerRight: () => (
+            <Pressable onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })} accessibilityRole="button" hitSlop={12}>
+              <Text style={styles.headerButton}>{t('detail.edit')}</Text>
+            </Pressable>
+          ),
+        }}
+      />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
         <Text style={styles.title} accessibilityRole="header">
-          {w.product_name ?? t('warranty.unknownProduct')}
+          {product}
         </Text>
         <View style={[styles.pill, { backgroundColor: pill.bg }]}>
           <Text style={[styles.pillText, { color: pill.fg }]}>{daysLabel(t, days)}</Text>
@@ -48,6 +81,19 @@ export default function WarrantyDetail() {
         {w.contact_email && <Field label={t('warranty.contact')} value={w.contact_email} url={`mailto:${w.contact_email}`} />}
         {w.contact_phone && <Field label={t('warranty.contact')} value={w.contact_phone} url={`tel:${w.contact_phone.replace(/[^\d+]/g, '')}`} />}
         {w.website_url && <Field label={t('warranty.website')} value={w.website_url.replace(/^https:\/\//, '')} url={w.website_url} />}
+        {w.serial_number && <Field label={t('detail.serial')} value={w.serial_number} />}
+        {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
+
+        {w.status === 'needs_input' && (
+          <Pressable style={styles.secondary} onPress={notWarranty} accessibilityRole="button">
+            <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
+          </Pressable>
+        )}
+        {days < 0 && (
+          <Pressable style={styles.secondary} onPress={confirmDelete} accessibilityRole="button">
+            <Text style={[styles.secondaryText, styles.danger]}>{t('detail.delete')}</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </>
   );
@@ -80,4 +126,8 @@ const styles = StyleSheet.create({
   label: { fontSize: 13, color: colors.muted },
   value: { fontSize: 16, color: colors.text },
   link: { color: colors.primary },
+  headerButton: { fontSize: 16, fontWeight: '600', color: colors.primary, paddingHorizontal: 8 },
+  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  danger: { color: colors.soon.fg },
 });
