@@ -96,7 +96,7 @@
     }
   },
   {
-    "name": "pcx invoice on pickup (HU), details only in PDF",
+    "name": "pcx invoice on pickup (HU) is skipped: invoices are not warranty documents",
     "message": {
       "id": "pcx-invoice",
       "from": "pcx@pcx.hu",
@@ -123,18 +123,9 @@
       ]
     },
     "expect": {
-      "kind": "purchase",
-      "status": "needs_input",
-      "orderNumber": null,
-      "deliveredDate": "2026-09-15",
-      "missingFields": [
-        "productName",
-        "warrantyMonths"
-      ],
-      "pdfAttachments": [
-        "PBK000001-2026.pdf",
-        "260901-900001.pdf"
-      ]
+      "kind": "ignored",
+      "status": "ignored",
+      "missingFields": []
     }
   },
   {
@@ -167,7 +158,7 @@
     }
   },
   {
-    "name": "invoice with a remembered store rule becomes complete (real Conrad item lines, invoice subject)",
+    "name": "warranty card with a remembered store rule becomes complete (real Conrad item lines, synthetic warranty subject)",
     "storeRules": {
       "conrad.hu": {
         "defaultWarrantyMonths": 12
@@ -180,7 +171,7 @@
       "to": [
         "user@example.com"
       ],
-      "subject": "Conrad Electronic Számla (9780000001, 590000001)",
+      "subject": "Jótállási jegy - Conrad Electronic (9780000001)",
       "date": "2026-08-24T19:45:53Z",
       "text": "| Ügyfélszám Megrendelés száma | 0590000001 2010000001 |\n| Jonsbo VC-20 Videokártya tartó 1 db [](#) | Egységár: 6090 Ft Mennyiség: 1 Darab Ár: 6090 Ft |",
       "attachments": []
@@ -198,7 +189,7 @@
     }
   },
   {
-    "name": "conrad invoice (HU), body has nothing, PDF only",
+    "name": "conrad invoice (HU) is skipped: invoices are not warranty documents",
     "message": {
       "id": "conrad-invoice",
       "from": "vevoszolgalat@conrad.hu",
@@ -217,16 +208,9 @@
       ]
     },
     "expect": {
-      "kind": "purchase",
-      "status": "needs_input",
-      "missingFields": [
-        "productName",
-        "warrantyMonths"
-      ],
-      "pdfAttachments": [
-        "9780000001.pdf"
-      ],
-      "contactEmail": "vevoszolgalat@conrad.hu"
+      "kind": "ignored",
+      "status": "ignored",
+      "missingFields": []
     }
   },
   {
@@ -291,7 +275,7 @@
       "to": [
         "user@example.com"
       ],
-      "subject": "Your receipt for order 55501",
+      "subject": "Your warranty certificate for order 55501",
       "date": "2026-03-02T09:00:00Z",
       "text": "Thanks for shopping with us.\n\nOrder number: 55501\n\n| 1x Acme Kettle 1.7L | $39.00 |\n| 1x Shipping | $5.00 |\n\nYour Acme Kettle comes with a 2-year warranty.\nQuestions? Call +1 555 010 0199.",
       "attachments": []
@@ -386,6 +370,25 @@
       "subject": "Tájékoztatás az üzleti feltételek változásáról",
       "date": "2026-10-20T08:00:00Z",
       "text": "Kedves Vásárlónk! Tájékoztatunk, hogy az ÁSZF megváltozik. A változás a jövőbeni rendelésekre vonatkozik.",
+      "attachments": []
+    },
+    "expect": {
+      "kind": "ignored",
+      "status": "ignored"
+    }
+  },
+  {
+    "name": "PCX warranty repair update (HU) is skipped: claim/repair mail, not a warranty document",
+    "message": {
+      "id": "pcx-repair",
+      "from": "garancia@pcx.hu",
+      "fromName": "PCX Garancia",
+      "to": [
+        "user@example.com"
+      ],
+      "subject": "Garancia CSERE",
+      "date": "2023-07-28T15:14:03Z",
+      "text": "Kedves Teszt Elek! Értesítünk, hogy a jótállás keretei között leadott termék garanciális ügyintézése lezárult, melyet a Garancia menüpont alatt ellenőrizhetsz. Azonosító: 230701/900001",
       "attachments": []
     },
     "expect": {

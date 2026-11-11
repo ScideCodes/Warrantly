@@ -30,9 +30,11 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
     return { name, warrantyMonths: null, warrantySource: null };
   });
 
-  // Only invoices, receipts and warranty documents count, judged by the subject or a PDF's name
-  // (bodies of order confirmations mention "számla" too). They also need something concrete.
-  const isDocument = LANGUAGES.some((l) => l.document.test(msg.subject) || pdfAttachments.some((f) => l.document.test(f)));
+  // Only warranty documents count, judged by the subject or a PDF's name (invoice bodies mention
+  // "garancia" too), minus claim and repair updates. They also need something concrete.
+  const isDocument =
+    LANGUAGES.some((l) => l.document.test(msg.subject) || pdfAttachments.some((f) => l.document.test(f))) &&
+    !LANGUAGES.some((l) => l.repair.test(msg.subject));
   const isPurchase = isDocument && (orderNumber || items.length || pdfAttachments.length);
   if (kind === 'purchase' && !isPurchase) kind = 'ignored';
 

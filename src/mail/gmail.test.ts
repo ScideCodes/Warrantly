@@ -51,7 +51,7 @@ const apiMessage: GmailApiMessage = {
     headers: [
       { name: 'From', value: 'PCX Webáruház <pcx@pcx.hu>' },
       { name: 'To', value: 'Teszt Elek <user@example.com>' },
-      { name: 'Subject', value: 'Számla - Rendelés' },
+      { name: 'Subject', value: 'Jótállási jegy' },
     ],
     parts: [
       { mimeType: 'multipart/alternative', parts: [
