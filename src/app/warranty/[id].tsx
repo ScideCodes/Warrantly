@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
-import { deleteDocuments, documentExists, importDocument, openDocument, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, importDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
@@ -127,7 +127,7 @@ export default function WarrantyDetail() {
             style={[styles.secondary, styles.docOpen]}
             onPress={() =>
               documentExists(d.local_path)
-                ? openDocument(d.local_path).catch((e) => Alert.alert(t('detail.openFailed'), e instanceof Error ? e.message : String(e)))
+                ? router.push({ pathname: '/document', params: { path: d.local_path, title: product } })
                 : Alert.alert(t('detail.documentMissing'))
             }
             accessibilityRole="button"

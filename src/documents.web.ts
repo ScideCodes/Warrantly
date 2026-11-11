@@ -7,6 +7,7 @@ export const importDocument = async (): Promise<{ text: string; localPath: strin
 export const mailDocuments = { save: async (_bytes: Uint8Array, _filename: string): Promise<string> => '' };
 export const readDocument = async (_localPath: string): Promise<Uint8Array> => new Uint8Array();
 export const writeDocument = async (_localPath: string, _bytes: Uint8Array): Promise<void> => {};
+export const documentUri = (_localPath: string): string => '';
 export const documentExists = (_localPath: string): boolean => false;
 export const deleteDocuments = (_localPaths: string[]): void => {};
 export const openDocument = async (_localPath: string): Promise<void> => {};

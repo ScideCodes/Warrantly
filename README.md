@@ -26,6 +26,8 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
 - Step 9b (app 0.6.0): import a photo or PDF from the phone (`expo-document-picker`), and an Android
   home-screen widget (`src/widget.tsx`, `react-native-android-widget`) with the next warranty to expire.
   The widget's handler runs headless, so `index.ts` registers it next to Expo Router's entry.
+- App 0.7.0: documents open in the app (`src/app/document.tsx`). `modules/pdf-pages` is a small local
+  Expo module that draws PDF pages with Android's PdfRenderer; zoom is 100/200/300% buttons.
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns

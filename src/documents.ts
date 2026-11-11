@@ -70,6 +70,7 @@ export async function writeDocument(localPath: string, bytes: Uint8Array): Promi
 }
 
 export const documentExists = (localPath: string): boolean => fileFor(localPath).exists;
+export const documentUri = (localPath: string): string => fileFor(localPath).uri;
 
 export function deleteDocuments(localPaths: string[]): void {
   for (const p of localPaths) {

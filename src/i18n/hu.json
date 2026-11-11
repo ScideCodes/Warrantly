@@ -126,7 +126,6 @@
     "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon.",
     "openDocument": "Dokumentum megnyitása",
     "attachScan": "Dokumentum beolvasása és csatolása",
-    "openFailed": "A dokumentum nem nyitható meg.",
     "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat).",
     "removeDocument": "Eltávolítás",
     "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?",
@@ -277,5 +276,13 @@
     "more_one": "+{{count}} további",
     "more_other": "+{{count}} további",
     "empty": "Nincs aktív garancia"
+  },
+  "viewer": {
+    "title": "Dokumentum",
+    "zoomIn": "Nagyítás",
+    "zoomOut": "Kicsinyítés",
+    "share": "Megnyitás másik appban",
+    "failed": "A dokumentum nem jeleníthető meg: {{detail}}",
+    "page": "{{page}}. oldal / {{count}}"
   }
 }
