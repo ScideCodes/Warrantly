@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, type Attachment, type Warranty } from '@/db/repo.ts';
-import { deleteDocuments, documentExists, openDocument, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, importDocument, openDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
@@ -53,10 +53,11 @@ export default function WarrantyDetail() {
     ]);
   }
 
-  // Any warranty can get a scanned document later, e.g. the paper invoice of a mail-imported purchase.
-  async function attachScan() {
+  // Any warranty can get a document later (scanned, or a photo or PDF from the phone), e.g. the paper
+  // invoice of a mail-imported purchase.
+  async function attach(source: typeof scanDocument) {
     try {
-      const result = await scanDocument();
+      const result = await source();
       if (!result) return;
       const db = await getDb();
       await addAttachment(db, w!.id, `${product}.pdf`, result.localPath);
@@ -139,9 +140,14 @@ export default function WarrantyDetail() {
           </View>
         ))}
         {!docs.length && (
-          <Pressable style={styles.secondary} onPress={attachScan} accessibilityRole="button">
-            <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
-          </Pressable>
+          <>
+            <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
+              <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
+            </Pressable>
+            <Pressable style={styles.secondary} onPress={() => attach(importDocument)} accessibilityRole="button">
+              <Text style={styles.secondaryText}>{t('detail.attachImport')}</Text>
+            </Pressable>
+          </>
         )}
         {days >= 0 && (
           // Section 20: not offered once the warranty has expired.

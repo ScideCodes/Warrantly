@@ -12,6 +12,7 @@ import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
 import { filterWarranties, todayYmd } from '@/warranty';
+import { updateWidget } from '@/widget';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
 type Filter = 'all' | 'manual' | number; // an account id
@@ -40,6 +41,7 @@ export default function Home() {
     // Runs on open, after sync and after edits: the rolling reminder window (section 16).
     rescheduleReminders(db).catch((e) => console.warn('reminders', e)); // must not break the list
     void runDueBackup(db); // section 17: a due backup runs on app open
+    updateWidget(db).catch((e) => console.warn('widget', e)); // section 13
   }, []);
 
   const runSync = useCallback(async () => {
