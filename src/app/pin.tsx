@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { router, Stack } from 'expo-router';
+import { Stack } from 'expo-router';
+import { goBack } from '@/nav';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PinPad } from '@/components/PinPad';
@@ -21,7 +22,7 @@ export default function PinSetup() {
     if (next.length < first.length) return setValue(next);
     if (next === first) {
       setPin(next);
-      return router.back();
+      return goBack();
     }
     setFirst(null);
     setValue('');

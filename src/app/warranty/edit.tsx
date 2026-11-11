@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/nav';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
@@ -74,6 +75,7 @@ export default function EditWarranty() {
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
+  const saving = useRef(false);
   async function save() {
     const found = formErrors(form);
     setErrors(found);
@@ -81,6 +83,16 @@ export default function EditWarranty() {
       scroll.current?.scrollTo({ y: 0 }); // the required fields are at the top
       return;
     }
+    if (saving.current) return; // a double tap would add the warranty twice
+    saving.current = true;
+    try {
+      await persist();
+    } finally {
+      saving.current = false;
+    }
+  }
+
+  async function persist() {
     const opt = (s: string) => s.trim() || null;
     const input = {
       account_id: accountId,
@@ -104,7 +116,7 @@ export default function EditWarranty() {
       scannedPdf.current = null; // saved: keep the file
     }
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
-    if (!resolving) return router.back();
+    if (!resolving) return goBack();
     // Section 9 batch help: offer the same length to this store's other items that are missing it.
     const others = existing?.store_domain ? await storeItemsMissingLength(db, existing.store_domain, existing.id) : 0;
     if (others && (await askApply(input.warranty_months, others, input.store_name))) {
@@ -125,7 +137,7 @@ export default function EditWarranty() {
   async function goNext() {
     const next = existing ? await nextNeedsInput(await getDb(), existing.id) : null;
     if (next) router.replace({ pathname: '/warranty/edit', params: { id: String(next) } });
-    else router.back();
+    else goBack();
   }
 
   async function notWarranty() {

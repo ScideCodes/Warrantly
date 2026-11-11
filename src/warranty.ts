@@ -85,12 +85,13 @@ export interface Reminder {
   daysLeft: number;
 }
 
-// The nearest `limit` future reminders over all warranties. Only these are scheduled, because iOS keeps
-// at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling window).
+// The nearest `limit` reminders from today on, over all warranties. Only these are scheduled, because iOS
+// keeps at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling
+// window). Today's are included: the caller drops them once their time of day has passed.
 export function reminderPlan(warranties: { id: number; end_date: string }[], today: string, limit = 60): Reminder[] {
   return warranties
     .flatMap((w) =>
-      REMINDER_DAYS.map((daysLeft) => ({ warrantyId: w.id, daysLeft, date: addDays(w.end_date, -daysLeft) })).filter((r) => r.date > today),
+      REMINDER_DAYS.map((daysLeft) => ({ warrantyId: w.id, daysLeft, date: addDays(w.end_date, -daysLeft) })).filter((r) => r.date >= today),
     )
     .sort((a, b) => a.date.localeCompare(b.date) || a.warrantyId - b.warrantyId)
     .slice(0, limit);

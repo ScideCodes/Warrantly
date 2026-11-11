@@ -23,12 +23,12 @@ const ymd = (y: number, m: number, d: number) =>
 // First plausible date not in the future: "2026.01.15", "2026. 01. 15.", "2026-01-15", "15/01/2026",
 // "15.01.2026", "Jan 15, 2026", "2026. jan. 15.".
 export function findDate(text: string, today: string): string | null {
-  const found: string[] = [];
-  for (const m of text.matchAll(/\b(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\b/g)) found.push(ymd(+m[1], +m[2], +m[3]) ?? '');
-  for (const m of text.matchAll(/\b(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]\s*(20\d{2})\b/g)) found.push(ymd(+m[3], +m[2], +m[1]) ?? '');
-  for (const m of text.matchAll(/\b([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]{3,5})\.?\s+(\d{1,2}),?\s+(20\d{2})\b/g)) found.push(ymd(+m[3], MONTHS[m[1].toLowerCase()] ?? 0, +m[2]) ?? '');
-  for (const m of text.matchAll(/\b(20\d{2})\.\s*([a-záéíóöőúüű]{3,5})\.?\s*(\d{1,2})\b/gi)) found.push(ymd(+m[1], MONTHS[m[2].toLowerCase()] ?? 0, +m[3]) ?? '');
-  return found.filter((d) => d && d <= today).sort((a, b) => text.indexOf(a) - text.indexOf(b))[0] ?? null;
+  const found: { date: string | null; at: number }[] = [];
+  for (const m of text.matchAll(/\b(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\b/g)) found.push({ date: ymd(+m[1], +m[2], +m[3]), at: m.index });
+  for (const m of text.matchAll(/\b(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]\s*(20\d{2})\b/g)) found.push({ date: ymd(+m[3], +m[2], +m[1]), at: m.index });
+  for (const m of text.matchAll(/\b([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]{3,5})\.?\s+(\d{1,2}),?\s+(20\d{2})\b/g)) found.push({ date: ymd(+m[3], MONTHS[m[1].toLowerCase()] ?? 0, +m[2]), at: m.index });
+  for (const m of text.matchAll(/\b(20\d{2})\.\s*([a-záéíóöőúüű]{3,5})\.?\s*(\d{1,2})\b/gi)) found.push({ date: ymd(+m[1], MONTHS[m[2].toLowerCase()] ?? 0, +m[3]), at: m.index });
+  return found.filter((f) => f.date && f.date <= today).sort((a, b) => a.at - b.at)[0]?.date ?? null;
 }
 
 // The shop's name is usually printed first; skip lines that are only numbers, dates or addresses.

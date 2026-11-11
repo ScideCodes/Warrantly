@@ -35,21 +35,22 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
 - English and Hungarian keyword sets live in `src/parser/keywords.ts`, one entry per language.
 - Test fixtures in `src/parser/fixtures/emails.json` are real emails, anonymized.
 - `src/mail`: the mail layer. `MailProvider` is the provider interface (list, read, download
-  attachment); `gmailProvider` implements it on the Gmail REST API with an access token from
-  `expo-auth-session`. `htmlToText` turns shop HTML into text that keeps the table layout.
+  attachment); `gmailProvider` implements it on the Gmail REST API with a per-account access token
+  (`src/google.ts`). `htmlToText` turns shop HTML into text that keeps the table layout.
   `fetchAndParse` runs one sync pass. HTML fixtures in `src/mail/fixtures` are real, anonymized.
 
 ## Run on an Android phone
 
-1. Install **Expo Go** from Google Play (it must support Expo SDK 58).
-2. On your computer (Node 22.18 or newer):
+The app uses native modules (Google sign-in, document scanner, widget), so Expo Go cannot run it.
+Build an APK in the cloud and install it:
 
-   ```sh
-   npm install
-   npx expo start
-   ```
-3. Scan the QR code with Expo Go. Phone and computer must be on the same Wi-Fi
-   (or run `npx expo start --tunnel`).
+```sh
+npm install
+npx eas-cli@latest build --platform android --profile preview
+```
+
+JavaScript-only changes reach an installed build over the air (`npx eas-cli@latest update --channel preview`).
+A change that adds native code needs a new `version` in `app.json` and a new build.
 
 ## Checks
 

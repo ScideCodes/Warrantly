@@ -103,9 +103,13 @@ export default function Settings() {
         style: 'destructive',
         onPress: async () => {
           const db = await getDb();
-          await disconnectAccount(db, account);
+          try {
+            await disconnectAccount(db, account);
+            Alert.alert(t('accounts.done', { email: account.email }));
+          } catch (e) {
+            Alert.alert(e instanceof Error ? e.message : String(e));
+          }
           setAccounts(await listAccounts(db));
-          Alert.alert(t('accounts.done', { email: account.email }));
         },
       },
     ]);

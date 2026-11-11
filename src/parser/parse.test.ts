@@ -23,3 +23,16 @@ test('warranty length formats', () => {
   assert.equal(findWarrantyMonths('30 napos pénzvisszafizetési garancia'), null);
   assert.equal(findWarrantyMonths('no length here'), null);
 });
+
+test('the purchase date is the calendar day on the phone, not in UTC', () => {
+  const tz = process.env.TZ;
+  process.env.TZ = 'Europe/Budapest';
+  try {
+    // 23:30 UTC is 00:30 the next day in Budapest.
+    const msg: MailMessage = { id: 'm', from: 'shop@example.com', to: [], subject: 'Garancia', date: '2026-01-15T23:30:00Z', text: '', attachments: [] };
+    assert.equal(parseEmail(msg).purchaseDate, '2026-01-16');
+  } finally {
+    if (tz === undefined) delete process.env.TZ;
+    else process.env.TZ = tz;
+  }
+});

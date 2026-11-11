@@ -113,14 +113,19 @@ export async function disconnectAccount(db: Db, account: Account, now = new Date
   const stored = storedKey();
   if (!stored) throw new Error('No backup password set');
   const rows = await dumpAccount(db, account.id);
-  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: [] }, settings: {} };
+  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: rows.attachments!.filter(keptOnDisconnect), returns: [] }, settings: {} };
   const text = await seal(aead, fromBase64(stored.key), stored.kdf, payload);
   await saveDisconnectBackup(db, account.email, text, now.toISOString());
   if (getSetting('backup_enabled') === '1' && (await ensureDriveAccess(false))) {
     await drive().upload(`warrantly-disconnect-${account.email}-${now.toISOString().replace(/[:.]/g, '-')}.json`, text).catch(() => {}); // the copy on the phone is enough
   }
-  deleteDocuments(await deleteAccount(db, account.id)); // its downloaded PDFs go too
+  // Downloaded mail PDFs go too (a restore downloads them again). Scans and imports exist nowhere else,
+  // so their files stay for the restore.
+  // shortcut: those files stay on the phone if the account is never restored; clean up when that matters.
+  deleteDocuments((await deleteAccount(db, account.id)).filter((f) => f.startsWith('mail-')));
 }
+
+const keptOnDisconnect = (a: Record<string, unknown>) => !String(a.local_path).startsWith('mail-');
 
 export async function disconnectBackupDate(db: Db, email: string): Promise<string | null> {
   return (await getDisconnectBackup(db, email))?.created_at ?? null;
@@ -131,6 +136,6 @@ export async function restoreDisconnected(db: Db, account: Account): Promise<voi
   const stored = storedKey();
   if (!saved || !stored) throw new Error('No backup for this account');
   const data = await unseal(aead, saved.envelope, async () => fromBase64(stored.key));
-  const rows: AccountRows = { account: data.tables.accounts[0], warranties: data.tables.warranties, sources: data.tables.sources };
+  const rows: AccountRows = { account: data.tables.accounts[0], warranties: data.tables.warranties, sources: data.tables.sources, attachments: data.tables.attachments };
   await restoreAccount(db, account.id, rows);
 }
