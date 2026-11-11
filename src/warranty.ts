@@ -65,15 +65,14 @@ export function formErrors(f: { product_name: string; store_name: string; purcha
 
 // Shop product names are long: "Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)". For the list,
 // drop bracketed codes and a trailing "12+" (from "12+12 hó gar."), cut at the first " - ", " / ", " | "
-// or ", " when two words remain, then stop after the model code (first word with a digit, "D300") if it
-// comes within 5 words; otherwise show 4 words and "…". The full name stays in the database.
+// or ", " when two words remain, then keep at most 3 words, stopping early after the model code (first
+// word with a digit, "D300"). The full name stays in the database and on the detail screen.
 export function shortName(name: string): string {
   const base = name.replace(/\s*[([][^)\]]*[)\]]/g, '').replace(/\s+\d+\+$/, '').trim();
   const head = base.split(/\s+[-–|/]\s+|,\s+/)[0].trim();
   const words = (head.split(/\s+/).length >= 2 ? head : base).split(/\s+/);
   const model = words.findIndex((w) => /\d/.test(w));
-  if (model >= 0 && model < 5) return words.slice(0, model + 1).join(' ');
-  return words.length > 5 ? `${words.slice(0, 4).join(' ')}…` : words.join(' ');
+  return words.slice(0, model >= 0 && model < 3 ? model + 1 : 3).join(' ');
 }
 
 // Expiry reminders (section 16): 90, 60 and 30 days before, then weekly until expiry, and on the day.

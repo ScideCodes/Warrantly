@@ -9,6 +9,7 @@ import { getDb } from '@/db/client';
 import { listAccounts, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
+import { versionLine } from '@/appUpdate';
 import { chooseBackupAccount } from '@/google';
 import { getRemindersEnabled, getSetting, setRemindersEnabled, setSetting, setWidgetNames } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
@@ -257,6 +258,9 @@ export default function Settings() {
         <Pressable style={styles.row} onPress={() => router.push('/restore')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('backup.restore')}</Text>
         </Pressable>
+        <Text style={styles.version} selectable>
+          {t('settings.version', { version: versionLine(i18n.language) })}
+        </Text>
       </ScrollView>
     </>
   );
@@ -281,6 +285,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 15, color: colors.text },
   chipTextSelected: { color: colors.onPrimary, fontWeight: '600' },
   error: { fontSize: 14, color: colors.soon.fg },
+  version: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 32 },
   secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
 });
