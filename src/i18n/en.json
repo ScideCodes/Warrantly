@@ -126,7 +126,6 @@
     "noMailApp": "No email app found on this phone.",
     "openDocument": "Open document",
     "attachScan": "Scan and attach a document",
-    "openFailed": "The document could not be opened.",
     "documentMissing": "The document file is no longer on this phone (backups do not include documents yet).",
     "removeDocument": "Remove",
     "removeDocumentTitle": "Remove this document?",
@@ -277,5 +276,13 @@
     "more_one": "+{{count}} more",
     "more_other": "+{{count}} more",
     "empty": "No active warranties"
+  },
+  "viewer": {
+    "title": "Document",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out",
+    "share": "Open in another app",
+    "failed": "Could not show the document: {{detail}}",
+    "page": "Page {{page}} of {{count}}"
   }
 }
