@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
-import { KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { getDb } from '@/db/client';
-import { addManual, getWarranty, listAccounts, saveStoreRule, updateWarranty, type Account, type Warranty } from '@/db/repo.ts';
+import { addAttachment, addManual, getWarranty, listAccounts, saveStoreRule, updateWarranty, type Account, type Warranty } from '@/db/repo.ts';
 import { colors } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
+import { deleteDocuments, scanDocument } from '@/documents';
+import { parseScanText } from '@/parser/scan.ts';
 import { formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [12, 24, 36];
@@ -37,6 +39,14 @@ export default function EditWarranty() {
   const [remember, setRemember] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountId, setAccountId] = useState<number | null>(null); // null = the Manual tab
+  const [scan, setScan] = useState<{ state: 'idle' | 'busy' | 'done' | 'failed'; detail?: string }>({ state: 'idle' });
+  const scannedPdf = useRef<string | null>(null); // deleted again if the form is left without saving
+  useEffect(
+    () => () => {
+      if (scannedPdf.current) deleteDocuments([scannedPdf.current]);
+    },
+    [],
+  );
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
 
@@ -77,9 +87,36 @@ export default function EditWarranty() {
     };
     const db = await getDb();
     if (existing) await updateWarranty(db, existing.id, input);
-    else await addManual(db, input);
+    else {
+      const id = await addManual(db, input, scannedPdf.current ? 'scan' : 'manual');
+      if (scannedPdf.current) await addAttachment(db, id, `${input.product_name}.pdf`, scannedPdf.current);
+      scannedPdf.current = null; // saved: keep the file
+    }
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
     router.back();
+  }
+
+  // Section 18: scan a paper receipt or warranty card; what OCR finds fills the empty fields.
+  async function runScan() {
+    setScan({ state: 'busy' });
+    try {
+      const result = await scanDocument();
+      if (!result) return setScan({ state: 'idle' });
+      if (scannedPdf.current) deleteDocuments([scannedPdf.current]); // a second scan replaces the first
+      scannedPdf.current = result.localPath;
+      const found = parseScanText(result.text, todayYmd());
+      setForm((f) => ({
+        ...f,
+        product_name: f.product_name || found.productName || '',
+        store_name: f.store_name || found.storeName || '',
+        purchase_date: found.purchaseDate ?? f.purchase_date,
+        warranty_months: found.warrantyMonths ? String(found.warrantyMonths) : f.warranty_months,
+        order_number: f.order_number || found.orderNumber || '',
+      }));
+      setScan({ state: 'done' });
+    } catch (e) {
+      setScan({ state: 'failed', detail: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   const pickDate = (key: 'purchase_date' | 'warranty_start_date') => {
@@ -147,6 +184,22 @@ export default function EditWarranty() {
       <Stack.Screen options={{ headerShown: true, title: t(id ? 'form.titleEdit' : 'form.titleAdd') }} />
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          {!existing && (
+            <View style={styles.field}>
+              <Pressable style={styles.scanButton} onPress={runScan} disabled={scan.state === 'busy'} accessibilityRole="button">
+                {scan.state === 'busy' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.scanText}>{t('form.scan')}</Text>}
+              </Pressable>
+              <Text style={scan.state === 'failed' ? styles.error : styles.hint} accessibilityLiveRegion="polite">
+                {scan.state === 'busy'
+                  ? t('form.scanning')
+                  : scan.state === 'done'
+                    ? t('form.scanned')
+                    : scan.state === 'failed'
+                      ? t('form.scanFailed', { detail: scan.detail })
+                      : t('form.scanHint')}
+              </Text>
+            </View>
+          )}
           {field('product_name', t('form.product'), { error: t('form.errProduct') })}
           {field('store_name', t('form.store'), { error: t('form.errStore') })}
           {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
@@ -243,6 +296,8 @@ const styles = StyleSheet.create({
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
   chipTextSelected: { color: colors.onPrimary },
+  scanButton: { minHeight: 56, borderRadius: 8, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  scanText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipWide: { paddingHorizontal: 14, maxWidth: '100%' },
   monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },

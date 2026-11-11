@@ -80,6 +80,15 @@ const MIGRATIONS = [
      created_at TEXT NOT NULL,
      envelope TEXT NOT NULL
    );`,
+  // v6: documents kept with a warranty, e.g. the PDF of a scanned receipt (section 12 "attachments").
+  // local_path is the file name inside the app's attachments folder, which survives a moved app folder.
+  `CREATE TABLE attachments (
+     id INTEGER PRIMARY KEY,
+     warranty_id INTEGER NOT NULL REFERENCES warranties(id),
+     source_id INTEGER REFERENCES sources(id),
+     filename TEXT NOT NULL,
+     local_path TEXT NOT NULL
+   );`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -231,11 +240,11 @@ const FIELDS = ['account_id', 'product_name', 'store_name', 'purchase_date', 'wa
   'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes'] as const;
 
 // Manual entries go to the tab the user picks: an account, or null for the general "Manual" tab (section 15).
-export async function addManual(db: Db, w: WarrantyInput, now = new Date().toISOString()): Promise<number> {
+export async function addManual(db: Db, w: WarrantyInput, origin: 'manual' | 'scan' = 'manual', now = new Date().toISOString()): Promise<number> {
   const res = await db.runAsync(
     `INSERT INTO warranties (origin, ${FIELDS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
-     VALUES ('manual', ${FIELDS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
-    [...FIELDS.map((f) => w[f]), now, now],
+     VALUES (?, ${FIELDS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
+    [origin, ...FIELDS.map((f) => w[f]), now, now],
   );
   return res.lastInsertRowId;
 }
@@ -264,12 +273,30 @@ export async function ignoreWarranty(db: Db, id: number): Promise<void> {
 }
 
 // Delete (section 10). The source rows stay as the hidden marker, so the next sync does not add
-// the mail back; they just stop pointing at the deleted record.
-export async function deleteWarranty(db: Db, id: number): Promise<void> {
+// the mail back; they just stop pointing at the deleted record. Returns the attachment files the
+// caller must delete from disk.
+export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
+  const files = (await listAttachments(db, id)).map((a) => a.local_path);
   await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
     await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
     await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
   });
+  return files;
+}
+
+export interface Attachment {
+  id: number;
+  filename: string;
+  local_path: string;
+}
+
+export async function addAttachment(db: Db, warrantyId: number, filename: string, localPath: string): Promise<void> {
+  await db.runAsync('INSERT INTO attachments (warranty_id, filename, local_path) VALUES (?, ?, ?)', [warrantyId, filename, localPath]);
+}
+
+export async function listAttachments(db: Db, warrantyId: number): Promise<Attachment[]> {
+  return db.getAllAsync('SELECT id, filename, local_path FROM attachments WHERE warranty_id = ? ORDER BY id', [warrantyId]);
 }
 
 // --- Disconnecting and reconnecting an account (section 15) ---
@@ -291,6 +318,7 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
 // Removes the account's warranties and mail markers. Manual and scanned entries are not affected.
 export async function deleteAccount(db: Db, accountId: number): Promise<void> {
   await db.withTransactionAsync(async () => {
+    await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
     await db.runAsync('DELETE FROM sources WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM warranties WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM accounts WHERE id = ?', [accountId]);

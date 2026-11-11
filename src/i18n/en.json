@@ -88,7 +88,12 @@
     "errStart": "Enter a date on or after the purchase date, or leave it empty.",
     "errMonths": "Enter a length between 1 and 120 months.",
     "pickerFailed": "The calendar could not open, type the date instead. ({{detail}})",
-    "saveTo": "Save to"
+    "saveTo": "Save to",
+    "scan": "Scan document",
+    "scanHint": "Take photos of the receipt or warranty card. Warrantly reads them on this phone and fills in what it finds.",
+    "scanning": "Reading the document…",
+    "scanned": "Document attached. Check the details below; scans can misread.",
+    "scanFailed": "Scanning failed: {{detail}}"
   },
   "detail": {
     "edit": "Edit",
@@ -105,7 +110,8 @@
     "noPermission": "Notifications are turned off for Warrantly. Turn them on in Android settings.",
     "claim": "Claim warranty",
     "claimNoEmail": "No store email saved. Call or open the website above, or add the email with Edit.",
-    "noMailApp": "No email app found on this phone."
+    "noMailApp": "No email app found on this phone.",
+    "openDocument": "Open document"
   },
   "reminder": {
     "channel": "Warranty reminders",
