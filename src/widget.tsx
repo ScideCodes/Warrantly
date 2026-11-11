@@ -28,7 +28,8 @@ function NextExpiry({ next, active }: { next: Warranty | null; active: number })
     >
       <TextWidget text={t('widget.title')} style={{ fontSize: 12, color: colors.muted }} />
       {next ? (
-        <>
+        // No <></> here: the library walks this tree itself and cannot handle fragments.
+        <FlexWidget style={{ flexDirection: 'column' }}>
           <TextWidget
             text={widgetShowsNames() ? displayName(t, next) : t('widget.hidden')}
             style={{ fontSize: 16, fontWeight: '600', color: colors.text }}
@@ -37,9 +38,9 @@ function NextExpiry({ next, active }: { next: Warranty | null; active: number })
           />
           <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
             <TextWidget text={daysLabel(t, days)} style={{ fontSize: 13, fontWeight: '600', color: pill.fg, backgroundColor: pill.bg, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }} />
-            {active > 1 && <TextWidget text={`  ${t('widget.more', { count: active - 1 })}`} style={{ fontSize: 12, color: colors.muted }} />}
+            {active > 1 ? <TextWidget text={`  ${t('widget.more', { count: active - 1 })}`} style={{ fontSize: 12, color: colors.muted }} /> : null}
           </FlexWidget>
-        </>
+        </FlexWidget>
       ) : (
         <TextWidget text={t('widget.empty')} style={{ fontSize: 14, color: colors.text }} />
       )}
