@@ -1,5 +1,6 @@
 import { DEFAULT_WARRANTY_MONTHS, IGNORED_SENDERS, LANGUAGES, type LanguageKeywords } from './keywords.ts';
 import type { Item, Kind, MailMessage, ParseResult, RequiredField, Status, StoreRules } from './types.ts';
+import { todayYmd } from '../warranty.ts';
 
 const NOREPLY = /no-?reply|do-?not-?reply/i;
 
@@ -9,7 +10,7 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
   const text = cleanText(msg.text);
   const all = `${msg.subject}\n${text}`;
   const storeDomain = registrableDomain(msg.from);
-  const purchaseDate = msg.date.slice(0, 10);
+  const purchaseDate = todayYmd(new Date(msg.date)); // the phone's calendar day: a mail at 00:30 is not "yesterday" (UTC)
   const orderNumber = findOrderNumber(msg.subject) ?? findOrderNumber(text);
   const pdfAttachments = msg.attachments
     .filter((a) => a.mimeType === 'application/pdf' || /\.pdf$/i.test(a.filename))

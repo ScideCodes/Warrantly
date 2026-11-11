@@ -11,6 +11,7 @@ test('findDate reads common receipt formats and ignores future dates', () => {
   assert.equal(findDate('Teljesítés: 2026. márc. 4.', today), '2026-03-04');
   assert.equal(findDate('Garancia vége: 2029.01.15  Vásárlás: 2026.01.15', today), '2026-01-15'); // future skipped
   assert.equal(findDate('Tel: 06 1 234 5678', today), null);
+  assert.equal(findDate('Kelt: 15.01.2026  Fizetési határidő: 2026.01.23', today), '2026-01-15'); // first in the text, whatever the format
 });
 
 // Synthetic OCR text shaped like a Hungarian shop receipt with a warranty line.

@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/nav';
 import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, lengthLabel } from '@/components/WarrantyRow';
@@ -69,7 +70,7 @@ export default function WarrantyDetail() {
 
   async function notWarranty() {
     await ignoreWarranty(await getDb(), w!.id);
-    router.back();
+    goBack();
   }
 
   function confirmDelete() {
@@ -80,7 +81,7 @@ export default function WarrantyDetail() {
         style: 'destructive',
         onPress: async () => {
           deleteDocuments(await deleteWarranty(await getDb(), w!.id)); // stored PDFs go too (section 10)
-          router.back();
+          goBack();
         },
       },
     ]);

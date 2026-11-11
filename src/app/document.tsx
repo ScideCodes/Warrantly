@@ -21,7 +21,8 @@ export default function DocumentViewer() {
   useEffect(() => {
     // Twice the screen's pixels, so text stays sharp at 2x zoom; capped to keep each page's bitmap small.
     const px = Math.min(Math.round(PixelRatio.getPixelSizeForLayoutSize(width) * 2), 2400);
-    PdfPages.render(documentUri(path), px)
+    Promise.resolve()
+      .then(() => PdfPages.render(documentUri(path), px)) // documentUri throws on a name that is not a stored document
       .then(setPages)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
   }, [path, width]);

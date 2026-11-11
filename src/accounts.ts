@@ -33,7 +33,16 @@ export async function addGmailAccount(db: Db): Promise<{ email: string; needsRan
 }
 
 // Sync every connected account, one after another. Returns one readable line per problem.
-export async function syncAllAccounts(db: Db, onProgress: (email: string, done: number, total: number) => void): Promise<string[]> {
+// Home, Settings and the range picker can all start a sync; a second one waits for the first, because
+// two at once would read and save the same mails twice.
+let queue: Promise<unknown> = Promise.resolve();
+export function syncAllAccounts(db: Db, onProgress: (email: string, done: number, total: number) => void): Promise<string[]> {
+  const run = queue.then(() => syncAll(db, onProgress));
+  queue = run.catch(() => {});
+  return run;
+}
+
+async function syncAll(db: Db, onProgress: (email: string, done: number, total: number) => void): Promise<string[]> {
   const problems: string[] = [];
   for (const { email } of await listAccounts(db)) {
     try {

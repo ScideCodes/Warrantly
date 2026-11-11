@@ -133,8 +133,10 @@ test('disconnect removes one account only; reconnect restores it under the new a
   const workWarranties = count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', work.id);
   assert.equal(workWarranties, 2);
 
+  const [scanned] = await db.getAllAsync<{ id: number }>('SELECT id FROM warranties WHERE account_id = ? ORDER BY id', [work.id]);
+  await addAttachment(db, scanned.id, 'Receipt.pdf', 'scan-1.pdf'); // a paper receipt scanned onto a mail warranty
   const rows = await dumpAccount(db, work.id);
-  await deleteAccount(db, work.id);
+  assert.deepEqual(await deleteAccount(db, work.id), ['scan-1.pdf']);
   assert.deepEqual((await listAccounts(db)).map((a) => a.email), ['home@example.com']);
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id IS NULL AND id = ?', manualId), 1); // manual kept
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = (SELECT id FROM accounts WHERE email = ?)', 'home@example.com'), 1);
@@ -145,6 +147,9 @@ test('disconnect removes one account only; reconnect restores it under the new a
   await restoreAccount(db, again.id, rows);
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);
   assert.equal(count('SELECT COUNT(*) n FROM sources s JOIN warranties w ON w.id = s.warranty_id WHERE s.account_id = ?', again.id), 2);
+  // The scanned document is attached again; mail PDFs are fetched again by the next sync.
+  assert.equal(count('SELECT COUNT(*) n FROM attachments a JOIN warranties w ON w.id = a.warranty_id WHERE w.account_id = ? AND a.local_path = ?', again.id, 'scan-1.pdf'), 1);
+  assert.equal(count('SELECT docs_backfilled n FROM accounts WHERE id = ?', again.id), 0);
   // The mails are known again, so the next sync does not import them twice.
   await syncAccount(db, fakeProvider(['pcx-order', 'synthetic-en-warranty'], []), 'work@example.com');
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);
@@ -188,6 +193,7 @@ test('mail PDFs: invoice PDF named after the order lands on that warranty, once;
   await syncAccount(db, provider(['pcx-invoice-d', 'pcx-order-d', 'other-invoice']), 'user@example.com');
   const [w] = await listWarranties(db, 'complete');
   assert.deepEqual(await listAttachments(db, w.id), []);
+  await db.runAsync('UPDATE accounts SET docs_backfilled = 0', []); // accounts from before PDFs were downloaded
 
   // New app: nothing new in Gmail, but the one-time pass reads the old mails for PDFs.
   await syncAccount(db, provider([]), 'user@example.com', undefined, new Date(), docs);
@@ -200,7 +206,10 @@ test('mail PDFs: invoice PDF named after the order lands on that warranty, once;
   // Fresh install with the new app: attached during the first sync already.
   const db2 = nodeDb();
   await migrate(db2);
-  await syncAccount(db2, provider(['pcx-invoice-d', 'pcx-order-d']), 'user@example.com', undefined, new Date(), docs);
+  let reads = 0;
+  const counting = provider(['pcx-invoice-d', 'pcx-order-d']);
+  await syncAccount(db2, { ...counting, getMessage: (id) => (reads++, counting.getMessage(id)) }, 'user@example.com', undefined, new Date(), docs);
+  assert.equal(reads, 2); // each mail is read once: no backfill pass for a new account
   const [w2] = await listWarranties(db2, 'complete');
   assert.deepEqual((await listAttachments(db2, w2.id)).map((a) => a.filename), ['260901-900001.pdf']);
 });
@@ -242,6 +251,24 @@ test('a refund mail asks about its warranty, also when it arrives before the pur
   assert.equal((await listWarranties(db, 'complete')).length, 1); // kept: nothing deleted
   await syncAccount(db, fakeProvider([], []), 'user@example.com');
   assert.deepEqual(await listReturnPrompts(db), []); // an answered question is not asked again
+});
+
+test('deleting a warranty or its account removes the open refund question', async () => {
+  for (const remove of ['warranty', 'account'] as const) {
+    const db = nodeDb();
+    await migrate(db);
+    await syncAccount(db, fakeProvider(['merlin-cancel', 'merlin-order'], []), 'user@example.com');
+    const [prompt] = await listReturnPrompts(db);
+    if (remove === 'warranty') await deleteWarranty(db, prompt.warranty_id);
+    else await deleteAccount(db, (await listAccounts(db))[0].id);
+    // SQLite reuses ids: the next warranty gets the deleted one's id and must not inherit the question.
+    const id = await addManual(db, {
+      account_id: null, product_name: 'Kettle', store_name: 'Shop', purchase_date: '2026-01-01', warranty_start_date: '2026-01-01',
+      warranty_months: 24, order_number: null, serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null,
+    });
+    assert.equal(id, prompt.warranty_id);
+    assert.deepEqual(await listReturnPrompts(db), []);
+  }
 });
 
 test('a refund with no matching warranty stays quiet', async () => {

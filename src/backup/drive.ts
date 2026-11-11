@@ -37,6 +37,7 @@ export function driveClient(getToken: () => Promise<string>, fetchFn: typeof fet
     return (await created.json()).id;
   }
 
+  // shortcut: one page of 1000 files (5 backups + one file per document); page through when a user can have more.
   async function list(): Promise<DriveFile[]> {
     const parent = await folderId();
     const res = await call(`${API}/files?q=${q(`'${parent}' in parents and trashed = false`)}&orderBy=createdTime desc&pageSize=1000&fields=files(id,name,createdTime)`);

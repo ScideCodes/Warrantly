@@ -131,7 +131,8 @@ export async function listAccounts(db: Db): Promise<Account[]> {
 }
 
 export async function upsertAccount(db: Db, email: string): Promise<Account> {
-  await db.runAsync(`INSERT INTO accounts (provider, email) VALUES ('gmail', ?) ON CONFLICT(email) DO NOTHING`, [email]);
+  // docs_backfilled = 1: a new account's PDFs are attached while its mail is synced, so it needs no second pass.
+  await db.runAsync(`INSERT INTO accounts (provider, email, docs_backfilled) VALUES ('gmail', ?, 1) ON CONFLICT(email) DO NOTHING`, [email]);
   return (await db.getFirstAsync<Account>('SELECT id, email, last_synced_at, first_sync_days FROM accounts WHERE email = ?', [email]))!;
 }
 
@@ -318,6 +319,8 @@ export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
   const files = (await listAttachments(db, id)).map((a) => a.local_path);
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
+    // SQLite reuses ids: a return question left behind would later show up on an unrelated new warranty.
+    await db.runAsync('DELETE FROM returns WHERE warranty_id = ?', [id]);
     await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
     await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
   });
@@ -351,6 +354,7 @@ export interface AccountRows {
   account: Record<string, unknown>;
   warranties: Record<string, unknown>[];
   sources: Record<string, unknown>[];
+  attachments?: Record<string, unknown>[]; // missing in disconnect backups made before documents were kept
 }
 
 export async function dumpAccount(db: Db, accountId: number): Promise<AccountRows> {
@@ -358,6 +362,7 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
     account: (await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM accounts WHERE id = ?', [accountId]))!,
     warranties: await db.getAllAsync('SELECT * FROM warranties WHERE account_id = ?', [accountId]),
     sources: await db.getAllAsync('SELECT * FROM sources WHERE account_id = ?', [accountId]),
+    attachments: await db.getAllAsync('SELECT * FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]),
   };
 }
 
@@ -370,6 +375,7 @@ export async function deleteAccount(db: Db, accountId: number): Promise<string[]
   );
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
+    await db.runAsync('DELETE FROM returns WHERE account_id = ?', [accountId]); // see deleteWarranty: ids are reused
     await db.runAsync('DELETE FROM sources WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM warranties WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM accounts WHERE id = ?', [accountId]);
@@ -378,7 +384,8 @@ export async function deleteAccount(db: Db, accountId: number): Promise<string[]
 }
 
 // Puts a disconnect backup back under the (re)connected account. Rows get new ids, so nothing added
-// since then can collide; sources follow their warranty.
+// since then can collide; sources and documents follow their warranty. Mail PDFs are not in the backup:
+// docs_backfilled = 0 makes the next sync download them again.
 export async function restoreAccount(db: Db, accountId: number, rows: AccountRows): Promise<void> {
   const insert = async (table: string, row: Record<string, unknown>) => {
     const cols = Object.keys(row);
@@ -391,7 +398,11 @@ export async function restoreAccount(db: Db, accountId: number, rows: AccountRow
     for (const { id: _id, ...src } of rows.sources) {
       await insert('sources', { ...src, account_id: accountId, warranty_id: src.warranty_id == null ? null : (ids.get(src.warranty_id) ?? null) });
     }
-    await db.runAsync('UPDATE accounts SET last_synced_at = ? WHERE id = ?', [rows.account.last_synced_at as string | null, accountId]);
+    for (const { id: _id, source_id: _source, ...a } of rows.attachments ?? []) {
+      const warrantyId = ids.get(a.warranty_id);
+      if (warrantyId) await insert('attachments', { ...a, warranty_id: warrantyId });
+    }
+    await db.runAsync('UPDATE accounts SET last_synced_at = ?, docs_backfilled = 0 WHERE id = ?', [rows.account.last_synced_at as string | null, accountId]);
   });
 }
 

@@ -1,5 +1,6 @@
 import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse } from 'react-native-nitro-google-signin';
 import GoogleAccountToken from '../modules/google-account-token';
+import { getSetting, setSetting } from '@/settings';
 
 // Public identifier of the "Warrantly Web" OAuth client (not a secret). Credential Manager needs
 // it on Android; the Android client (package + SHA-1) is matched by Google automatically.
@@ -45,18 +46,23 @@ export const needsReconnect = (e: unknown): boolean => (e as { code?: string })?
 let cached: { token: string; at: number } | null = null;
 
 // Backups go to Google Drive (section 17). `interactive: false` (automatic backups) never shows a dialog.
+// The account that granted Drive access is remembered: "the signed-in user" changes whenever another
+// Gmail account is connected, and backups must keep going to the same Drive.
 export async function ensureDriveAccess(interactive: boolean): Promise<boolean> {
-  const user = GoogleOneTapSignIn.getCurrentUser();
-  if (user?.scopes.includes(DRIVE_FILE)) return true;
-  if (!interactive) return false;
-  if (!user) {
-    await GoogleOneTapSignIn.checkPlayServices();
-    let res = await GoogleOneTapSignIn.signIn();
-    if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn();
-    if (!isSuccessResponse(res)) return false;
+  if (getSetting('backup_account')) return true;
+  if (!GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) {
+    if (!interactive) return false;
+    if (!GoogleOneTapSignIn.getCurrentUser()) {
+      await GoogleOneTapSignIn.checkPlayServices();
+      let res = await GoogleOneTapSignIn.signIn();
+      if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn();
+      if (!isSuccessResponse(res)) return false;
+    }
+    await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
+    cached = null; // the cached token was issued before Drive access was granted
   }
-  await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
-  cached = null; // the cached token was issued before Drive access was granted
+  const email = GoogleOneTapSignIn.getCurrentUser()?.user.email;
+  if (email) setSetting('backup_account', email);
   return true;
 }
 
@@ -68,7 +74,20 @@ export async function getAccessToken(expired?: string): Promise<string> {
     cached = null;
   }
   if (!cached || Date.now() - cached.at > 45 * 60_000) {
-    cached = { token: (await GoogleOneTapSignIn.getTokens()).accessToken, at: Date.now() };
+    cached = { token: await driveToken(), at: Date.now() };
   }
   return cached.token;
+}
+
+// The backup account's token; the signed-in user's token is the fallback (and what older installs used).
+async function driveToken(): Promise<string> {
+  const account = getSetting('backup_account');
+  if (account) {
+    try {
+      return await GoogleAccountToken.getToken(account, [DRIVE_FILE]);
+    } catch {
+      // fall through
+    }
+  }
+  return (await GoogleOneTapSignIn.getTokens()).accessToken;
 }

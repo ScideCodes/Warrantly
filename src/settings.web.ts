@@ -12,8 +12,8 @@ export const getWidgetNames = (): boolean | null => {
 export const setWidgetNames = (on: boolean): void => localStorage.setItem('widget_names', on ? '1' : '0');
 
 // Backup settings (section 17). The backup password's key lives in SecureStore, not here.
-export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error'): string | null => localStorage.getItem(key);
-export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error', value: string): void => localStorage.setItem(key, value);
+export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account'): string | null => localStorage.getItem(key);
+export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account', value: string): void => localStorage.setItem(key, value);
 // What a backup carries besides the database.
 export const settingsSnapshot = (): Record<string, string | null> => ({ username: localStorage.getItem('username'), reminders_enabled: localStorage.getItem('reminders_enabled') });
 export function applySnapshot(s: Record<string, string | null>): void {

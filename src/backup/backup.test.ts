@@ -31,6 +31,8 @@ async function seeded() {
   });
   await saveStoreRule(db, 'pcx.hu', 24);
   await addAttachment(db, 1, 'Philips.pdf', 'scan-1.pdf');
+  await db.runAsync(`INSERT INTO accounts (id, provider, email) VALUES (1, 'gmail', 'user@example.com')`, []);
+  await db.runAsync(`INSERT INTO returns (account_id, message_id, store_domain, received_at, warranty_id, state) VALUES (1, 'm1', 'mediamarkt.hu', '2026-02-01T10:00:00Z', 1, 'asked')`, []);
   return db;
 }
 
@@ -44,10 +46,13 @@ test('backup round trip: dump, encrypt, decrypt, restore on a fresh phone', asyn
   const target = nodeDb();
   await migrate(target);
   await addManual(target, { ...(await source.getFirstAsync<any>('SELECT * FROM warranties', []))!, product_name: 'will be replaced' });
+  // A refund question on the old data must not survive and point at a restored warranty with the same id.
+  await target.runAsync(`INSERT INTO accounts (id, provider, email) VALUES (9, 'gmail', 'old@example.com')`, []);
+  await target.runAsync(`INSERT INTO returns (account_id, message_id, store_domain, received_at, warranty_id, state) VALUES (9, 'stale', 'x.hu', '2026-01-01T10:00:00Z', 1, 'asked')`, []);
   const data = await unseal(nodeAead, text, (k) => deriveKey('correct horse', k));
   assert.equal(data.settings.username, 'Elek');
   await restoreDb(target, data);
-  for (const t of ['warranties', 'store_rules', 'attachments']) {
+  for (const t of ['warranties', 'store_rules', 'attachments', 'returns']) {
     assert.deepEqual(await target.getAllAsync(`SELECT * FROM ${t}`, []), await source.getAllAsync(`SELECT * FROM ${t}`, []), t);
   }
 });

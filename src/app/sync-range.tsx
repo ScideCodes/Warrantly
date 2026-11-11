@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/nav';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { syncAllAccounts } from '@/accounts';
 import { getDb } from '@/db/client';
-import { setSyncRange, upsertAccount } from '@/db/repo.ts';
+import { listAccounts, setSyncRange } from '@/db/repo.ts';
 import { colors } from '@/theme';
 
 // Section 7: how far back to look, asked after connecting an account (and from "Scan older emails").
@@ -24,20 +25,30 @@ export default function SyncRange() {
   const { t } = useTranslation();
   const [days, setDays] = useState(730);
   const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
+  // Only a connected account: this screen can also be opened by a link, which must not create one.
+  const account = async () => (await listAccounts(await getDb())).find((a) => a.email === email);
   useEffect(() => {
-    void getDb()
-      .then((db) => upsertAccount(db, email))
-      .then((a) => a.first_sync_days !== null && setDays(a.first_sync_days));
-  }, [email]);
+    void account().then((a) => (a ? a.first_sync_days !== null && setDays(a.first_sync_days) : goBack()));
+  }, [email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function start() {
-    const db = await getDb();
-    await setSyncRange(db, (await upsertAccount(db, email)).id, days);
+    const a = await account();
+    if (!a) return goBack();
+    setBusy(true);
     setStatus(t('accounts.syncing'));
-    const problems = await syncAllAccounts(db, (mail, done, total) => setStatus(`${mail}: ${t('home.progress', { done, total })}`));
-    if (problems.length) return setStatus(problems.join('\n'));
-    router.back();
+    try {
+      const db = await getDb();
+      await setSyncRange(db, a.id, days);
+      const problems = await syncAllAccounts(db, (mail, done, total) => setStatus(`${mail}: ${t('home.progress', { done, total })}`));
+      if (!problems.length) return goBack();
+      setStatus(problems.join('\n')); // stays on screen; Start can be tapped again
+    } catch (e) {
+      setStatus(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
   }
 
   return (
@@ -51,7 +62,7 @@ export default function SyncRange() {
               key={o.key}
               style={[styles.option, days === o.days && styles.selected]}
               onPress={() => setDays(o.days)}
-              disabled={status !== null}
+              disabled={busy}
               accessibilityRole="radio"
               accessibilityState={{ selected: days === o.days }}
             >
@@ -62,8 +73,8 @@ export default function SyncRange() {
             </Pressable>
           ))}
         </View>
-        <Pressable style={styles.button} onPress={start} disabled={status !== null} accessibilityRole="button">
-          {status ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('range.start')}</Text>}
+        <Pressable style={styles.button} onPress={start} disabled={busy} accessibilityRole="button">
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('range.start')}</Text>}
         </Pressable>
         {status && (
           <Text style={styles.status} accessibilityLiveRegion="polite">

@@ -14,7 +14,12 @@ const folder = () => {
   if (!dir.exists) dir.create();
   return dir;
 };
-const fileFor = (localPath: string) => new File(folder(), localPath);
+// Stored names are plain file names. The viewer gets its name from a route parameter, which a link can
+// set, so anything path-like is refused: it must not reach other files of the app.
+const fileFor = (localPath: string) => {
+  if (!/^[\w.-]+$/.test(localPath) || localPath.includes('..')) throw new Error('Not a document');
+  return new File(folder(), localPath);
+};
 
 // Google's ML Kit scanner handles the camera, edges, cropping and several pages; ML Kit text recognition
 // then reads the pages on the phone. Returns null if the user backs out.

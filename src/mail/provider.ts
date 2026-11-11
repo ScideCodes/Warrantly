@@ -3,7 +3,7 @@ import type { MailMessage, ParseResult, StoreRules } from '../parser/types.ts';
 
 // One mail account (brainstorm section 15). Gmail first; Outlook and IMAP implement the same three calls.
 export interface MailProvider {
-  // Ids of candidate purchase/warranty mails newer than `after` (null = the whole mailbox).
+  // Ids of candidate purchase/warranty mails newer than `after` (null = the whole mailbox), newest first.
   listMessageIds(after: Date | null): Promise<string[]>;
   getMessage(id: string): Promise<MailMessage>;
   getAttachment(messageId: string, attachmentId: string): Promise<Uint8Array>;
@@ -25,7 +25,9 @@ export interface FetchOptions {
 // well under the Gmail per-user rate limit. One unreadable mail never stops the whole sync.
 export async function fetchAndParse(provider: MailProvider, after: Date | null, opts: FetchOptions = {}): Promise<SyncResult> {
   const sync: SyncResult = { results: [], failed: [] };
-  const ids = (await provider.listMessageIds(after)).filter((id) => !opts.skip?.has(id));
+  // Providers list newest first. Read oldest first, so an order is saved before the invoice PDF or the
+  // refund that follows it and those find their warranty.
+  const ids = (await provider.listMessageIds(after)).filter((id) => !opts.skip?.has(id)).reverse();
   for (const [i, id] of ids.entries()) {
     opts.onProgress?.(i, ids.length);
     let result: ParseResult;

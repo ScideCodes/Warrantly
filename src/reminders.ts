@@ -25,28 +25,40 @@ async function ensureChannels() {
 }
 
 // Replace all scheduled reminders with the nearest ones for confirmed warranties (rolling window).
-export async function rescheduleReminders(db: Db): Promise<void> {
-  const warranties = await listWarranties(db, 'complete');
-  const plan = getRemindersEnabled() ? reminderPlan(warranties, todayYmd()) : [];
-  await Notifications.cancelAllScheduledNotificationsAsync();
-  if (!plan.length) return;
-  await ensureChannels(); // Android 13 only shows the permission prompt once a channel exists
-  const { granted } = await Notifications.requestPermissionsAsync();
-  if (!granted) return;
+// The home screen calls this on every load. Runs wait for each other (two at once would both cancel and
+// then both schedule, so every reminder would arrive twice), and an unchanged plan is left alone.
+let queue: Promise<void> = Promise.resolve();
+let scheduled = '';
+export function rescheduleReminders(db: Db): Promise<void> {
+  const run = queue.then(() => reschedule(db));
+  queue = run.catch(() => {});
+  return run;
+}
 
+async function reschedule(db: Db): Promise<void> {
+  const warranties = await listWarranties(db, 'complete');
   const byId = new Map(warranties.map((w) => [w.id, w]));
-  for (const r of plan) {
-    const w = byId.get(r.warrantyId)!;
-    const [y, m, d] = r.date.split('-').map(Number);
-    await Notifications.scheduleNotificationAsync({
-      content: content(w, r.daysLeft),
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DATE,
-        date: new Date(y, m - 1, d, REMINDER_HOUR),
-        channelId: r.daysLeft === 0 ? 'expiry' : 'reminders',
-      },
-    });
+  const now = new Date();
+  const jobs = (getRemindersEnabled() ? reminderPlan(warranties, todayYmd(now)) : [])
+    .map((r) => {
+      const [y, m, d] = r.date.split('-').map(Number);
+      return { content: content(byId.get(r.warrantyId)!, r.daysLeft), date: new Date(y, m - 1, d, REMINDER_HOUR), channelId: r.daysLeft === 0 ? 'expiry' : 'reminders' };
+    })
+    .filter((j) => j.date > now); // today's reminder after its hour has already been shown
+  const key = JSON.stringify(jobs);
+  if (key === scheduled) return;
+
+  scheduled = '';
+  await Notifications.cancelAllScheduledNotificationsAsync();
+  if (jobs.length) {
+    await ensureChannels(); // Android 13 only shows the permission prompt once a channel exists
+    const { granted } = await Notifications.requestPermissionsAsync();
+    if (!granted) return;
+    for (const { content, date, channelId } of jobs) {
+      await Notifications.scheduleNotificationAsync({ content, trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId } });
+    }
   }
+  scheduled = key;
 }
 
 function content(w: Warranty, daysLeft: number): Notifications.NotificationContentInput {

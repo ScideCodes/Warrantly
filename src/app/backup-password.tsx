@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams } from 'expo-router';
+import { goBack } from '@/nav';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { runBackup, setBackupPassword } from '@/backup';
@@ -28,7 +29,7 @@ export default function BackupPassword() {
       setSetting('backup_enabled', '1');
       await runBackup(await getDb(), true).catch(() => {}); // a failure shows in Settings; backup stays on
     }
-    router.back();
+    goBack();
   }
 
   const input = (label: string, value: string, onChange: (v: string) => void, id: string) => (

@@ -4,7 +4,8 @@ import type { Db } from '../db/repo.ts';
 // Backup (brainstorm section 17): the database as JSON plus settings, encrypted on the phone with a key
 // from the user's backup password. Google Drive only ever sees the sealed envelope.
 
-const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments'] as const;
+// `returns` points at warranty ids, so it must travel with them (old backups without it restore as empty).
+const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments', 'returns'] as const;
 
 export interface BackupData {
   app: 'warrantly';
