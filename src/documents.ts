@@ -43,6 +43,14 @@ export const mailDocuments = {
   },
 };
 
+// For backups (section 17): documents travel as their own encrypted files.
+export const readDocument = (localPath: string): Promise<Uint8Array> => fileFor(localPath).bytes();
+export async function writeDocument(localPath: string, bytes: Uint8Array): Promise<void> {
+  const file = fileFor(localPath);
+  if (!file.exists) file.create();
+  await file.write(bytes);
+}
+
 export const documentExists = (localPath: string): boolean => fileFor(localPath).exists;
 
 export function deleteDocuments(localPaths: string[]): void {

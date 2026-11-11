@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { test } from 'node:test';
-import { addManual, migrate, saveStoreRule } from '../db/repo.ts';
+import { addAttachment, addManual, migrate, saveStoreRule } from '../db/repo.ts';
 import { nodeDb } from '../db/testDb.ts';
 import { driveClient, uploadAndPrune, FOLDER_NAME } from './drive.ts';
-import { backupDue, deriveKey, dumpDb, readEnvelope, restoreDb, seal, toBase64, unseal, WrongPasswordError, type Aead } from './format.ts';
+import { backupDue, deriveKey, docBackupName, dumpDb, readEnvelope, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
 
 // Same AES-256-GCM as expo-crypto, from node:crypto; tag appended to the ciphertext.
 const nodeAead: Aead = {
@@ -30,6 +30,7 @@ async function seeded() {
     warranty_months: 36, order_number: null, serial_number: 'SN-1', contact_email: null, contact_phone: null, website_url: null, notes: 'ajándék',
   });
   await saveStoreRule(db, 'pcx.hu', 24);
+  await addAttachment(db, 1, 'Philips.pdf', 'scan-1.pdf');
   return db;
 }
 
@@ -46,7 +47,7 @@ test('backup round trip: dump, encrypt, decrypt, restore on a fresh phone', asyn
   const data = await unseal(nodeAead, text, (k) => deriveKey('correct horse', k));
   assert.equal(data.settings.username, 'Elek');
   await restoreDb(target, data);
-  for (const t of ['warranties', 'store_rules']) {
+  for (const t of ['warranties', 'store_rules', 'attachments']) {
     assert.deepEqual(await target.getAllAsync(`SELECT * FROM ${t}`, []), await source.getAllAsync(`SELECT * FROM ${t}`, []), t);
   }
 });
@@ -113,9 +114,22 @@ test('Drive client: one folder, upload, newest first, keep 5', async () => {
   }) as typeof fetch;
 
   const drive = driveClient(async () => 'tok', fakeFetch);
-  for (let i = 1; i <= 7; i++) await uploadAndPrune(drive, `backup-${i}.json`, `{"n":${i}}`);
+  await drive.upload(docBackupName('scan-1.pdf'), 'doc'); // an older document file must survive pruning
+  for (let i = 1; i <= 7; i++) await uploadAndPrune(drive, `warrantly-backup-${i}.json`, `{"n":${i}}`);
   const kept = await drive.list();
-  assert.deepEqual(kept.map((f) => f.name), ['backup-7.json', 'backup-6.json', 'backup-5.json', 'backup-4.json', 'backup-3.json']);
+  assert.deepEqual(kept.map((f) => f.name), [
+    'warrantly-backup-7.json', 'warrantly-backup-6.json', 'warrantly-backup-5.json', 'warrantly-backup-4.json', 'warrantly-backup-3.json', 'doc-scan-1.pdf.enc',
+  ]);
   assert.equal(files.filter((f) => f.mimeType?.includes('folder')).length, 1);
   assert.equal(await drive.download(kept[0].id), '{"n":7}');
+});
+
+test('documents are sealed on their own and only open with the right key', async () => {
+  const key = await deriveKey('right', kdf);
+  const pdf = new Uint8Array([37, 80, 68, 70, 45, 49, 46, 55]); // "%PDF-1.7"
+  const text = await sealBytes(nodeAead, key, pdf);
+  assert.ok(!text.includes('JVBERi')); // not the plain base64 of "%PDF"
+  assert.deepEqual([...(await unsealBytes(nodeAead, key, text))], [...pdf]);
+  await assert.rejects(unsealBytes(nodeAead, await deriveKey('wrong', kdf), text), WrongPasswordError);
+  assert.equal(docBackupName('scan-1.pdf'), 'doc-scan-1.pdf.enc');
 });

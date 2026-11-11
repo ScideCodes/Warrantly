@@ -1,11 +1,14 @@
 import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync, getRandomBytes } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
 import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
-import { deleteDocuments } from '@/documents';
+import { deleteDocuments, documentExists, readDocument, writeDocument } from '@/documents';
 import { ensureDriveAccess, getAccessToken } from '@/google';
 import { applySnapshot, getSetting, setSetting, settingsSnapshot } from '@/settings';
-import { driveClient, uploadAndPrune } from './drive.ts';
-import { backupDue, deriveKey, dumpDb, fromBase64, KDF, restoreDb, seal, toBase64, unseal, type Aead, type BackupInterval, type KdfParams } from './format.ts';
+import { BACKUP_PREFIX, driveClient, uploadAndPrune } from './drive.ts';
+import {
+  backupDue, deriveKey, docBackupName, dumpDb, fromBase64, KDF, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes,
+  type Aead, type BackupInterval, type KdfParams,
+} from './format.ts';
 
 // The key derived from the backup password, so scheduled backups never ask for it (section 17).
 const KEY = 'backup_key';
@@ -37,8 +40,17 @@ export async function runBackup(db: Db, interactive: boolean, now = new Date()):
     const stored = storedKey();
     if (!stored) throw new Error('No backup password set');
     if (!(await ensureDriveAccess(interactive))) throw new Error('Google Drive access is needed');
-    const text = await seal(aead, fromBase64(stored.key), stored.kdf, await dumpDb(db, settingsSnapshot(), now));
-    await uploadAndPrune(drive(), `warrantly-backup-${now.toISOString().replace(/[:.]/g, '-')}.json`, text);
+    const key = fromBase64(stored.key);
+    const data = await dumpDb(db, settingsSnapshot(), now);
+    const d = drive();
+    // Documents first, each uploaded once: a backup never points at a document Drive does not have.
+    const onDrive = new Set((await d.list()).map((f) => f.name));
+    for (const a of data.tables.attachments as { local_path: string }[]) {
+      const name = docBackupName(a.local_path);
+      if (onDrive.has(name) || !documentExists(a.local_path)) continue;
+      await d.upload(name, await sealBytes(aead, key, await readDocument(a.local_path)));
+    }
+    await uploadAndPrune(d, `${BACKUP_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}.json`, await seal(aead, key, stored.kdf, data));
     setSetting('last_backup_at', now.toISOString());
     setSetting('last_backup_error', '');
   } catch (e) {
@@ -61,7 +73,7 @@ export async function runDueBackup(db: Db): Promise<void> {
 
 export async function latestBackup(): Promise<{ id: string; createdTime: string } | null> {
   if (!(await ensureDriveAccess(true))) throw new Error('Google Drive access is needed');
-  return (await drive().list())[0] ?? null;
+  return (await drive().list()).find((f) => f.name.startsWith(BACKUP_PREFIX)) ?? null;
 }
 
 export class PasswordNeededError extends Error {}
@@ -81,6 +93,16 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
   await restoreDb(db, data);
   applySnapshot(data.settings);
   if (derived) SecureStore.setItem(KEY, JSON.stringify(derived)); // keep backing up with the same password
+
+  // Documents this phone does not have yet. One that is missing on Drive is skipped; the detail
+  // screen then says the file is not on this phone.
+  const key = derived ? fromBase64((derived as StoredKey).key) : fromBase64(stored!.key);
+  const files = new Map((await drive().list()).map((f) => [f.name, f.id]));
+  for (const a of (data.tables.attachments ?? []) as { local_path: string }[]) {
+    const id = files.get(docBackupName(a.local_path));
+    if (!id || documentExists(a.local_path)) continue;
+    await writeDocument(a.local_path, await unsealBytes(aead, key, await drive().download(id)));
+  }
 }
 
 // --- Disconnect / reconnect an account (section 15) ---
@@ -91,7 +113,7 @@ export async function disconnectAccount(db: Db, account: Account, now = new Date
   const stored = storedKey();
   if (!stored) throw new Error('No backup password set');
   const rows = await dumpAccount(db, account.id);
-  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [] }, settings: {} };
+  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: [] }, settings: {} };
   const text = await seal(aead, fromBase64(stored.key), stored.kdf, payload);
   await saveDisconnectBackup(db, account.email, text, now.toISOString());
   if (getSetting('backup_enabled') === '1' && (await ensureDriveAccess(false))) {
