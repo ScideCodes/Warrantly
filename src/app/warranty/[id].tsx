@@ -1,11 +1,14 @@
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { addAttachment, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, otherCovers, type Attachment, type Warranty } from '@/db/repo.ts';
+import {
+  addAttachment, addHistory, deleteAttachment, deleteHistory, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, listHistory, otherCovers,
+  type Attachment, type HistoryEntry, type Warranty,
+} from '@/db/repo.ts';
 import { deleteDocuments, documentExists, importDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
@@ -20,6 +23,8 @@ export default function WarrantyDetail() {
   const [w, setW] = useState<Warranty | null>(null);
   const [docs, setDocs] = useState<Attachment[]>([]);
   const [others, setOthers] = useState<Warranty[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [note, setNote] = useState('');
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
@@ -28,6 +33,7 @@ export default function WarrantyDetail() {
         setW(found);
         setDocs(await listAttachments(db, Number(id)));
         setOthers(found ? await otherCovers(db, found) : []);
+        setHistory(await listHistory(db, Number(id)));
       });
     }, [id]),
   );
@@ -70,6 +76,34 @@ export default function WarrantyDetail() {
       Alert.alert(t('form.scanFailed', { detail: e instanceof Error ? e.message : String(e) }));
     }
   }
+
+  // Repairs, claims, calls with the shop: dated notes, newest first.
+  async function addNote() {
+    if (!note.trim()) return;
+    const db = await getDb();
+    await addHistory(db, w!.id, today, note.trim());
+    setNote('');
+    setHistory(await listHistory(db, w!.id));
+  }
+
+  function confirmDeleteNote(h: HistoryEntry) {
+    Alert.alert(t('detail.deleteNote'), h.note, [
+      { text: t('detail.cancel'), style: 'cancel' },
+      {
+        text: t('detail.deleteConfirm'),
+        style: 'destructive',
+        onPress: async () => {
+          const db = await getDb();
+          await deleteHistory(db, h.id);
+          setHistory(await listHistory(db, w!.id));
+        },
+      },
+    ]);
+  }
+
+  // Section 20 helper: the manufacturer's own service is often better than the shop. The brand is the
+  // first word of the product name; the search does the rest.
+  const brand = w.product_name?.trim().split(/\s+/)[0] ?? null;
 
   async function notWarranty() {
     await ignoreWarranty(await getDb(), w!.id);
@@ -152,6 +186,39 @@ export default function WarrantyDetail() {
           </Pressable>
           </View>
         ))}
+        {brand && (
+          <Pressable
+            style={styles.secondary}
+            onPress={() => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`${brand} ${t('detail.supportQuery')}`)}`)}
+            accessibilityRole="link"
+          >
+            <Text style={styles.secondaryText}>{t('detail.brandSupport', { brand })}</Text>
+          </Pressable>
+        )}
+        <View style={styles.history}>
+          <Text style={styles.label}>{t('detail.history')}</Text>
+          {history.map((h) => (
+            <Pressable key={h.id} onLongPress={() => confirmDeleteNote(h)} accessibilityHint={t('detail.deleteNoteHint')}>
+              <Text style={styles.value}>
+                {date(h.date)}: {h.note}
+              </Text>
+            </Pressable>
+          ))}
+          <View style={styles.noteRow}>
+            <TextInput
+              style={styles.noteInput}
+              value={note}
+              onChangeText={setNote}
+              placeholder={t('detail.notePlaceholder')}
+              placeholderTextColor={colors.muted}
+              accessibilityLabel={t('detail.history')}
+              onSubmitEditing={addNote}
+            />
+            <Pressable style={styles.noteAdd} onPress={addNote} accessibilityRole="button">
+              <Text style={styles.secondaryText}>{t('detail.addNote')}</Text>
+            </Pressable>
+          </View>
+        </View>
         {others.length > 0 && (
           <View>
             <Text style={styles.label}>{t('detail.otherCovers')}</Text>
@@ -241,6 +308,10 @@ function Field({ label, value, url }: { label: string; value: string; url?: stri
 }
 
 const styles = StyleSheet.create({
+  history: { gap: 6 },
+  noteRow: { flexDirection: 'row', gap: 8 },
+  noteInput: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
+  noteAdd: { minHeight: 48, minWidth: 64, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 4 },
   title: { fontSize: 24, fontWeight: '700', color: colors.text },

@@ -139,7 +139,14 @@
     "returnBy": "Return by",
     "returnHint": "14-day right of withdrawal",
     "otherCovers": "Other warranties for this purchase",
-    "addCover": "Add another warranty (e.g. extended plan)"
+    "addCover": "Add another warranty (e.g. extended plan)",
+    "history": "History (repairs, claims, notes)",
+    "notePlaceholder": "e.g. Sent for repair",
+    "addNote": "Add",
+    "deleteNote": "Delete this note?",
+    "deleteNoteHint": "Long-press to delete",
+    "brandSupport": "Find {{brand}} support",
+    "supportQuery": "warranty support service"
   },
   "reminder": {
     "channel": "Warranty reminders",
