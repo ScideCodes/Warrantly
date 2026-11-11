@@ -183,12 +183,11 @@ export default function WarrantyDetail() {
             <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
           </Pressable>
         )}
-        {/* Section 10: mail warranties are deleted once expired; the user's own entries any time. */}
-        {(days < 0 || w.origin !== 'gmail') && (
-          <Pressable style={styles.secondary} onPress={confirmDelete} accessibilityRole="button">
-            <Text style={[styles.secondaryText, styles.danger]}>{t('detail.delete')}</Text>
-          </Pressable>
-        )}
+        {/* Any warranty can be deleted (owner's choice, wider than section 10); a deleted mail warranty
+            keeps its source marker, so sync never brings it back. */}
+        <Pressable style={styles.secondary} onPress={confirmDelete} accessibilityRole="button">
+          <Text style={[styles.secondaryText, styles.danger]}>{t('detail.delete')}</Text>
+        </Pressable>
       </ScrollView>
     </>
   );
