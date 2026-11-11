@@ -10,13 +10,13 @@ const html = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import
 const b64url = (s: string, enc: 'utf8' | 'latin1' = 'utf8') => Buffer.from(s, enc).toString('base64url');
 
 // Real HTML bodies (anonymized) must parse the same way the connector's plain text did. These are
-// order confirmations, so they are skipped, but their line items must still be found: invoices use
-// the same extractor.
+// order confirmations: PCX states a warranty length per item, so it counts; the others are skipped,
+// but their line items must still be found.
 const htmlCases = [
   { file: 'alza-order.html', from: 'segito@alza.hu', subject: 'Már dolgozunk rajta. / 1060000001 sz. megr.',
     expect: { orderNumber: '1060000001', items: [{ name: 'Mixing Desk FIFINE SC3', warrantyMonths: null, warrantySource: null }], status: 'ignored' } },
   { file: 'pcx-order.html', from: 'pcx@pcx.hu', subject: 'Rendelés',
-    expect: { orderNumber: '260901/900001', items: [{ name: 'Gembird MA-DA1-05 asztali tartó konzol', warrantyMonths: 24, warrantySource: 'email' }], status: 'ignored' } },
+    expect: { orderNumber: '260901/900001', items: [{ name: 'Gembird MA-DA1-05 asztali tartó konzol', warrantyMonths: 24, warrantySource: 'email' }], status: 'complete' } },
   { file: 'atk-order.html', from: 'cs@atkgear.com', subject: 'Order #ATKGR00001 confirmed',
     expect: { orderNumber: 'ATKGR00001', items: [{ name: 'ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse', warrantyMonths: null, warrantySource: null }], status: 'ignored' } },
 ];

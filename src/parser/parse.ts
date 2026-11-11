@@ -30,12 +30,13 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
     return { name, warrantyMonths: null, warrantySource: null };
   });
 
-  // Only warranty documents count, judged by the subject or a PDF's name (invoice bodies mention
-  // "garancia" too), minus claim and repair updates. They also need something concrete.
+  // A warranty document (by subject or PDF name, not claim/repair updates), or a mail that states a
+  // warranty length for a product ("24 hó gar."). Invoice bodies saying "garancia" alone do not count.
   const isDocument =
     LANGUAGES.some((l) => l.document.test(msg.subject) || pdfAttachments.some((f) => l.document.test(f))) &&
     !LANGUAGES.some((l) => l.repair.test(msg.subject));
-  const isPurchase = isDocument && (orderNumber || items.length || pdfAttachments.length);
+  const statesWarranty = items.some((i) => i.warrantySource === 'email');
+  const isPurchase = (isDocument || statesWarranty) && (orderNumber || items.length || pdfAttachments.length);
   if (kind === 'purchase' && !isPurchase) kind = 'ignored';
 
   const missingFields: RequiredField[] = [];

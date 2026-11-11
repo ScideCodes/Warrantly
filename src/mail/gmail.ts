@@ -19,13 +19,13 @@ export interface GmailApiMessage {
   payload: GmailPart;
 }
 
-// Warranty documents (by subject or PDF name) plus cancellations, minus senders that
+// Warranty documents (by subject or PDF name), mails stating a warranty length, cancellations, minus senders that
 // never sell warranty goods. Narrow on purpose: every fetched mail costs Gmail quota and time.
 const or = (terms: string[]) => terms.join(' OR ');
 export const SEARCH_QUERY =
   `(subject:(${or(LANGUAGES.flatMap((l) => l.documentTerms))}) ` +
   `OR filename:(${or(['garancia', 'jotallas', 'jotallasi', 'warranty', 'guarantee'])}) ` +
-  `OR ${or(LANGUAGES.flatMap((l) => l.returnTerms))}) ` +
+  `OR ${or(LANGUAGES.flatMap((l) => [...l.statedTerms, ...l.returnTerms]))}) ` +
   `-from:(${or([...IGNORED_SENDERS])}) -in:sent`; // forwarded invoices would double up
 
 // `getAccessToken` may cache; it gets the rejected token back after a 401 and must return a fresh one.

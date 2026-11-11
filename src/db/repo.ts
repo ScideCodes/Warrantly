@@ -70,6 +70,10 @@ const MIGRATIONS = [
   `DELETE FROM sources;
    DELETE FROM warranties WHERE origin = 'gmail';
    UPDATE accounts SET last_synced_at = NULL;`,
+  // v4: mails stating a warranty length count too, merged per product. Same reset.
+  `DELETE FROM sources;
+   DELETE FROM warranties WHERE origin = 'gmail';
+   UPDATE accounts SET last_synced_at = NULL;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -115,6 +119,7 @@ export async function saveResult(db: Db, accountId: number, r: ParseResult, now 
   await db.withTransactionAsync(async () => {
     const products = r.kind === 'return' ? [] : r.items.length ? r.items : [null];
     for (const item of products) {
+      if (item && r.kind === 'purchase' && (await mergeIntoExisting(db, accountId, r, item.name))) continue;
       const months = item?.warrantyMonths ?? null;
       const missing = r.kind === 'ignored' ? [] : item ? (months ? [] : ['warrantyMonths']) : r.missingFields;
       const status = r.kind === 'ignored' ? 'ignored' : missing.length ? 'needs_input' : 'complete';
@@ -131,6 +136,27 @@ export async function saveResult(db: Db, accountId: number, r: ParseResult, now 
     }
     if (!products.length) await insertSource(db, accountId, null, r);
   });
+}
+
+// One shop order sends several mails naming the same product (order, packing, pickup, review request).
+// shortcut: same store + same product name within 60 days counts as one purchase, so buying the same
+// item twice in two months merges; upgrade with order numbers in build step 6 (dedupe).
+async function mergeIntoExisting(db: Db, accountId: number, r: ParseResult, product: string): Promise<boolean> {
+  const hit = await db.getFirstAsync<{ id: number }>(
+    `SELECT id FROM warranties WHERE account_id = ? AND store_domain = ? AND product_name = ? AND status != 'ignored'
+       AND abs(julianday(purchase_date) - julianday(?)) <= 60 LIMIT 1`,
+    [accountId, r.storeDomain, product, r.purchaseDate],
+  );
+  if (!hit) return false;
+  // The earliest mail is closest to the purchase; a confirmed start date is left alone.
+  await db.runAsync(
+    `UPDATE warranties SET purchase_date = min(purchase_date, ?),
+       warranty_start_date = CASE WHEN start_is_suggested = 1 THEN min(warranty_start_date, ?) ELSE warranty_start_date END
+     WHERE id = ?`,
+    [r.purchaseDate, r.suggestedStartDate, hit.id],
+  );
+  await insertSource(db, accountId, hit.id, r);
+  return true;
 }
 
 function insertSource(db: Db, accountId: number, warrantyId: number | null, r: ParseResult) {
