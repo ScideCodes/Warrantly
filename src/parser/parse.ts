@@ -46,6 +46,9 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
 
   return {
     messageId: msg.id,
+    subject: msg.subject,
+    sender: msg.from,
+    receivedAt: msg.date,
     kind,
     status,
     storeName: msg.fromName?.trim() || storeDomain,

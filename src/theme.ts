@@ -7,4 +7,10 @@ export const colors = {
   primary: '#1D4ED8', // 6.7:1 with white text
   primaryDisabled: '#93A5D8',
   onPrimary: '#FFFFFF',
+  // Days-left pills: dark text on a light tint, each pair above 4.5:1.
+  ok: { fg: '#166534', bg: '#DCFCE7' },
+  warning: { fg: '#92400E', bg: '#FEF3C7' },
+  soon: { fg: '#991B1B', bg: '#FEE2E2' },
+  expired: { fg: '#374151', bg: '#F3F4F6' },
+  banner: '#FEF3C7',
 };

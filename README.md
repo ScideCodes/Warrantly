@@ -7,6 +7,9 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
 
 - Step 1 (Gmail fetch + parsing prototype): done.
 - Step 2 (Expo app, English/Hungarian, username screen): done. Routes live in `src/app`.
+- Step 3 (local database, warranty list and detail, days-left logic): done. `src/db` holds the
+  SQLite schema and sync; `src/warranty.ts` the date logic. DB tests run the same SQL on Node's
+  built-in SQLite.
   The app follows the phone language; Android 13+ also offers a per-app language in system settings.
 
 - `parseEmail(message, storeRules)` takes a provider-neutral `MailMessage` and returns
