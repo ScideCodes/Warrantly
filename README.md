@@ -21,7 +21,8 @@ days of warranty are left. Everything stays on the device. Full plan: [docs/brai
 - Step 8 (document scan + OCR, claim helper): done in app 0.5.0. ML Kit document scanner and text
   recognition on the phone; `src/parser/scan.ts` turns the text into form suggestions.
 - Step 4 (mail PDFs): sync downloads PDFs and attaches them by purchase mail or order number.
-- Step 9a (search and filters, Ignored screen): done. Store templates and other providers remain.
+- Step 9a (search and filters, Ignored screen): done. Store templates remain. Outlook is skipped for
+  now (Gmail only); it would need a Microsoft app registration.
 - Step 9b (app 0.6.0): import a photo or PDF from the phone (`expo-document-picker`), and an Android
   home-screen widget (`src/widget.tsx`, `react-native-android-widget`) with the next warranty to expire.
   The widget's handler runs headless, so `index.ts` registers it next to Expo Router's entry.
