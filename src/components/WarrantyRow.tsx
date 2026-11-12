@@ -1,8 +1,9 @@
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { Warranty } from '@/db/repo.ts';
+import { documentUriOrNull } from '@/documents';
 import { colors } from '@/theme';
 import { ago, daysUntil, shortName, todayYmd, urgency } from '@/warranty';
 
@@ -51,6 +52,7 @@ export function WarrantyRow({ warranty: w, to }: { warranty: Warranty; to?: Href
 
   return (
     <Pressable style={styles.row} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
+      {w.photo_path && documentUriOrNull(w.photo_path) && <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />}
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={2}>
           {product}
@@ -77,6 +79,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
+  thumb: { width: 44, height: 44, borderRadius: 8 },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 16, fontWeight: '600', color: colors.text },
   meta: { fontSize: 14, color: colors.muted },

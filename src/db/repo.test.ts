@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { importShared, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { importShared, setPhoto, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 10);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 11);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {
@@ -170,7 +170,9 @@ test('scanned entries keep their documents; deleting returns the files to remove
   assert.deepEqual((await listAttachments(db, id)).map((a) => a.local_path), ['1768000000000.pdf']);
   await addAttachment(db, id, 'second.pdf', '1768000000001.pdf');
   assert.equal(await deleteAttachment(db, (await listAttachments(db, id))[1].id), '1768000000001.pdf'); // remove one document
-  assert.deepEqual(await deleteWarranty(db, id), ['1768000000000.pdf']);
+  assert.equal(await setPhoto(db, id, 'photo-1.jpg'), null);
+  assert.equal(await setPhoto(db, id, 'photo-2.jpg'), 'photo-1.jpg'); // replaced: the old file goes
+  assert.deepEqual(await deleteWarranty(db, id), ['1768000000000.pdf', 'photo-2.jpg']);
   assert.deepEqual(await listAttachments(db, id), []);
 });
 

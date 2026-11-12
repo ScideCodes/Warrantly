@@ -45,10 +45,10 @@ export async function runBackup(db: Db, interactive: boolean, now = new Date()):
     const d = drive();
     // Documents first, each uploaded once: a backup never points at a document Drive does not have.
     const onDrive = new Set((await d.list()).map((f) => f.name));
-    for (const a of data.tables.attachments as { local_path: string }[]) {
-      const name = docBackupName(a.local_path);
-      if (onDrive.has(name) || !documentExists(a.local_path)) continue;
-      await d.upload(name, await sealBytes(aead, key, await readDocument(a.local_path)));
+    for (const path of filesOf(data)) {
+      const name = docBackupName(path);
+      if (onDrive.has(name) || !documentExists(path)) continue;
+      await d.upload(name, await sealBytes(aead, key, await readDocument(path)));
     }
     await uploadAndPrune(d, `${BACKUP_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}.json`, await seal(aead, key, stored.kdf, data));
     setSetting('last_backup_at', now.toISOString());
@@ -106,12 +106,18 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
   // screen then says the file is not on this phone.
   const key = derived ? fromBase64((derived as StoredKey).key) : fromBase64(stored!.key);
   const files = new Map((await drive().list()).map((f) => [f.name, f.id]));
-  for (const a of (data.tables.attachments ?? []) as { local_path: string }[]) {
-    const id = files.get(docBackupName(a.local_path));
-    if (!id || documentExists(a.local_path)) continue;
-    await writeDocument(a.local_path, await unsealBytes(aead, key, await drive().download(id)));
+  for (const path of filesOf(data)) {
+    const id = files.get(docBackupName(path));
+    if (!id || documentExists(path)) continue;
+    await writeDocument(path, await unsealBytes(aead, key, await drive().download(id)));
   }
 }
+
+// Every file a backup refers to: documents and product photos.
+const filesOf = (data: { tables: Record<string, Record<string, unknown>[] | undefined> }): string[] => [
+  ...(data.tables.attachments ?? []).map((a) => String(a.local_path)),
+  ...(data.tables.warranties ?? []).flatMap((w) => (typeof w.photo_path === 'string' ? [w.photo_path] : [])),
+];
 
 // --- Disconnect / reconnect an account (section 15) ---
 

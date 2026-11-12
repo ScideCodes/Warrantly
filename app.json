@@ -71,6 +71,14 @@
           ],
           "disableIOS": true
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Warrantly uses your photos to add a picture of a product.",
+          "cameraPermission": "Warrantly uses the camera to photograph a product.",
+          "microphonePermission": false
+        }
       ]
     ],
     "experiments": {

@@ -120,6 +120,8 @@ const MIGRATIONS = [
      date TEXT NOT NULL,
      note TEXT NOT NULL
    );`,
+  // v11: a photo of the product (file name in the attachments folder, like documents).
+  `ALTER TABLE warranties ADD COLUMN photo_path TEXT;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -260,6 +262,7 @@ export interface WarrantyRow {
   currency: string | null;
   category: string | null;
   coverage: 'store' | 'extended' | null;
+  photo_path: string | null;
   status: 'complete' | 'needs_input' | 'ignored';
   missing_fields: string;
 }
@@ -346,7 +349,8 @@ export async function ignoreWarranty(db: Db, id: number): Promise<void> {
 // the mail back; they just stop pointing at the deleted record. Returns the attachment files the
 // caller must delete from disk.
 export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
-  const files = (await listAttachments(db, id)).map((a) => a.local_path);
+  const photo = (await db.getFirstAsync<{ photo_path: string | null }>('SELECT photo_path FROM warranties WHERE id = ?', [id]))?.photo_path;
+  const files = [...(await listAttachments(db, id)).map((a) => a.local_path), ...(photo ? [photo] : [])];
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
     // SQLite reuses ids: a return question left behind would later show up on an unrelated new warranty.
@@ -443,6 +447,13 @@ export interface Attachment {
   local_path: string;
 }
 
+// Returns the previous photo's file, for the caller to delete.
+export async function setPhoto(db: Db, warrantyId: number, photo: string | null): Promise<string | null> {
+  const old = (await db.getFirstAsync<{ photo_path: string | null }>('SELECT photo_path FROM warranties WHERE id = ?', [warrantyId]))?.photo_path ?? null;
+  await db.runAsync('UPDATE warranties SET photo_path = ? WHERE id = ?', [photo, warrantyId]);
+  return old;
+}
+
 export async function addAttachment(db: Db, warrantyId: number, filename: string, localPath: string): Promise<void> {
   await db.runAsync('INSERT INTO attachments (warranty_id, filename, local_path) VALUES (?, ?, ?)', [warrantyId, filename, localPath]);
 }
@@ -479,11 +490,12 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
 }
 
 // Removes the account's warranties and mail markers. Manual and scanned entries are not affected.
-// Returns the attachment files the caller must delete from disk.
+// Returns the attachment and photo files the caller must delete from disk.
 export async function deleteAccount(db: Db, accountId: number): Promise<string[]> {
   const files = await db.getAllAsync<{ local_path: string }>(
-    'SELECT local_path FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)',
-    [accountId],
+    `SELECT local_path FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)
+     UNION ALL SELECT photo_path FROM warranties WHERE account_id = ? AND photo_path IS NOT NULL`,
+    [accountId, accountId],
   );
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
