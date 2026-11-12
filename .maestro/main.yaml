@@ -27,6 +27,7 @@ appId: dev.warrantly.prototype
 - tapOn: { id: "store_name" }
 - inputText: "MediaMarkt"
 - hideKeyboard
+- tapOn: "More details.*"
 - scrollUntilVisible: { element: "Appliances" }
 - waitForAnimationToEnd
 - tapOn: "Appliances"

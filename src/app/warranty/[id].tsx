@@ -208,11 +208,15 @@ export default function WarrantyDetail() {
         <View style={styles.history}>
           <Text style={styles.label}>{t('detail.history')}</Text>
           {history.map((h) => (
-            <Pressable key={h.id} onLongPress={() => confirmDeleteNote(h)} accessibilityHint={t('detail.deleteNoteHint')}>
-              <Text style={styles.value}>
+            <View key={h.id} style={styles.noteItem}>
+              <Text style={[styles.value, styles.flex]}>
                 {date(h.date)}: {h.note}
               </Text>
-            </Pressable>
+              {/* A visible button, not a long-press: hidden gestures are hard to discover. */}
+              <Pressable style={styles.noteDelete} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
+                <Text style={styles.noteDeleteText}>{t('detail.delete')}</Text>
+              </Pressable>
+            </View>
           ))}
           <View style={styles.noteRow}>
             <TextInput
@@ -350,6 +354,10 @@ const styles = StyleSheet.create({
   photoAdd: { fontSize: 15, fontWeight: '600', color: colors.primary, paddingVertical: 8 },
   history: { gap: 6 },
   noteRow: { flexDirection: 'row', gap: 8 },
+  noteItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  flex: { flex: 1 },
+  noteDelete: { minHeight: 48, minWidth: 48, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  noteDeleteText: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
   noteInput: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
   noteAdd: { minHeight: 48, minWidth: 64, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   screen: { flex: 1, backgroundColor: colors.background },
