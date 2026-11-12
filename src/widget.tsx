@@ -6,7 +6,7 @@ import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
 import i18n from '@/i18n';
 import { isLockEnabled } from '@/lock/store';
 import { getWidgetNames } from '@/settings';
-import { colors } from '@/theme';
+import { lightColors as colors } from '@/theme';
 import { daysUntil, todayYmd, urgency } from '@/warranty';
 
 // Home-screen widget (brainstorm section 13): the next warranty to expire and its days left. A tap opens

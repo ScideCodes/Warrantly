@@ -202,7 +202,12 @@
     "language": "Language",
     "lang_system": "Phone language",
     "lang_en": "English",
-    "lang_hu": "Magyar"
+    "lang_hu": "Magyar",
+    "theme": "Appearance",
+    "theme_system": "Like the phone",
+    "theme_light": "Light",
+    "theme_dark": "Dark",
+    "themeRestart": "Close and reopen Warrantly to apply the new look."
   },
   "backup": {
     "section": "Backup",

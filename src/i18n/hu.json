@@ -202,7 +202,12 @@
     "language": "Nyelv",
     "lang_system": "Telefon nyelve",
     "lang_en": "English",
-    "lang_hu": "Magyar"
+    "lang_hu": "Magyar",
+    "theme": "Megjelenés",
+    "theme_system": "Mint a telefon",
+    "theme_light": "Világos",
+    "theme_dark": "Sötét",
+    "themeRestart": "Zárd be és nyisd meg újra a Warrantlyt az új megjelenéshez."
   },
   "backup": {
     "section": "Mentés",
