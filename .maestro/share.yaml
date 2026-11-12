@@ -4,9 +4,9 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "Add warranty", timeout: 60000 }
 - extendedWaitUntil: { visible: "Document attached\\..*", timeout: 60000 }
 - takeScreenshot: 23-shared-into-app
-- tapOn: { below: "Product" }
+- tapOn: { id: "product_name" }
 - inputText: "Shared PDF item"
-- tapOn: { below: "Store" }
+- tapOn: { id: "store_name" }
 - inputText: "Shop"
 - hideKeyboard
 - scrollUntilVisible: { element: "Save warranty" }
