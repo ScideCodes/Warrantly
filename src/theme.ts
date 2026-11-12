@@ -17,6 +17,7 @@ export interface Palette {
   soon: Pill;
   expired: Pill;
   banner: Hex;
+  surface: Hex; // grouped cards (settings sections)
 }
 
 export const lightColors: Palette = {
@@ -33,6 +34,7 @@ export const lightColors: Palette = {
   soon: { fg: '#991B1B', bg: '#FEE2E2' },
   expired: { fg: '#374151', bg: '#F3F4F6' },
   banner: '#FEF3C7',
+  surface: '#F3F4F6',
 };
 
 // Dark mode (section 13): light text on near-black; every text pair stays above 4.5:1.
@@ -49,6 +51,7 @@ const darkColors: Palette = {
   soon: { fg: '#FECACA', bg: '#7F1D1D' },
   expired: { fg: '#E5E7EB', bg: '#374151' },
   banner: '#78350F',
+  surface: '#1F2937',
 };
 
 // Chosen once at start: styles are created when screens load, so a change applies after a restart

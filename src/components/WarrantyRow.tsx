@@ -52,7 +52,14 @@ export function WarrantyRow({ warranty: w, to }: { warranty: Warranty; to?: Href
 
   return (
     <Pressable style={styles.row} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
-      {w.photo_path && documentUriOrNull(w.photo_path) && <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />}
+      {/* Photo if there is one, else the first letter (like a sender in Gmail): rows are easier to tell apart. */}
+      {w.photo_path && documentUriOrNull(w.photo_path) ? (
+        <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />
+      ) : (
+        <View style={styles.letter} importantForAccessibility="no-hide-descendants">
+          <Text style={styles.letterText}>{product.trim().charAt(0).toUpperCase()}</Text>
+        </View>
+      )}
       <View style={styles.text}>
         <Text style={styles.title} numberOfLines={2}>
           {product}
@@ -79,7 +86,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.border,
   },
-  thumb: { width: 44, height: 44, borderRadius: 8 },
+  thumb: { width: 44, height: 44, borderRadius: 22 },
+  letter: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  letterText: { fontSize: 18, fontWeight: '700', color: colors.primary },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 16, fontWeight: '600', color: colors.text },
   meta: { fontSize: 14, color: colors.muted },

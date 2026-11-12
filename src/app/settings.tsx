@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
@@ -15,12 +16,11 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
-import { getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderHour, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
+import { getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 
-const HOURS = [8, 9, 12, 18, 20];
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 
@@ -32,7 +32,7 @@ export default function Settings() {
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
-  const [hour, setHour] = useState(getReminderHour);
+  const [time, setTime] = useState(getReminderTime);
   const [language, setLanguage] = useState(getLanguageSetting);
   const [theme, setTheme] = useState(getThemeSetting);
   const [groups, setGroups] = useState(getReminderGroups);
@@ -103,11 +103,21 @@ export default function Settings() {
     restartIntoUpdate().catch(() => Alert.alert(t('settings.themeRestart')));
   }
 
-  async function chooseHour(h: number) {
-    setReminderHour(h);
-    setHour(h);
-    await rescheduleReminders(await getDb());
+  // Reminder time: Android's own clock picker; elsewhere (web preview) 9:00 and 18:00 alternate.
+  function pickTime() {
+    const save = async (minutes: number) => {
+      setReminderTime(minutes);
+      setTime(minutes);
+      await rescheduleReminders(await getDb());
+    };
+    if (Platform.OS !== 'android') return void save(time === 540 ? 1080 : 540);
+    DateTimePickerAndroid.open({
+      value: new Date(2026, 0, 1, Math.floor(time / 60), time % 60),
+      mode: 'time',
+      onValueChange: (_e, d) => void save(d.getHours() * 60 + d.getMinutes()),
+    });
   }
+  const timeLabel = new Date(2026, 0, 1, Math.floor(time / 60), time % 60).toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' });
 
   async function toggleGroup(g: ReminderGroup) {
     const next = groups.includes(g) ? groups.filter((x) => x !== g) : ALL_GROUPS.filter((x) => x === g || groups.includes(x));
@@ -263,205 +273,192 @@ export default function Settings() {
       <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
     </View>
   );
+  const link = (label: string, onPress: () => void, opts: { hint?: string; danger?: boolean; value?: string } = {}) => (
+    <Pressable style={styles.row} onPress={onPress} accessibilityRole="button">
+      <View style={styles.rowText}>
+        <Text style={[styles.label, opts.danger && styles.dangerLabel]}>{label}</Text>
+        {opts.hint && <Text style={styles.hint}>{opts.hint}</Text>}
+      </View>
+      {opts.value && <Text style={styles.value}>{opts.value}</Text>}
+      {!opts.danger && <Text style={styles.chevron}>›</Text>}
+    </Pressable>
+  );
+  const choices = (label: string, items: { key: string; text: string }[], selected: string, onPick: (key: string) => void) => (
+    <View style={styles.block}>
+      <Text style={styles.label}>{label}</Text>
+      <View style={styles.chips}>
+        {items.map((it) => (
+          <Pressable
+            key={it.key}
+            style={[styles.chip, selected === it.key && styles.chipSelected]}
+            onPress={() => onPick(it.key)}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: selected === it.key }}
+          >
+            <Text style={[styles.chipText, selected === it.key && styles.chipTextSelected]}>{it.text}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+  // One card per topic, with a heading above it, so sections are easy to tell apart.
+  const section = (title: string, body: ReactNode) => (
+    <View style={styles.sectionWrap}>
+      <Text style={styles.section} accessibilityRole="header">
+        {title}
+      </Text>
+      <View style={styles.card}>{body}</View>
+    </View>
+  );
 
   return (
     <>
       <Stack.Screen options={{ headerShown: true, title: t('settings.title') }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <Text style={[styles.section, styles.firstSection]} accessibilityRole="header">
-          {t('accounts.section')}
-        </Text>
-        {accounts.map((a) => (
-          <View key={a.id} style={styles.row}>
-            <Text style={[styles.label, styles.rowText]} numberOfLines={1}>
-              {a.email}
-            </Text>
-            <Pressable
-              onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
-              accessibilityRole="button"
-              accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
-              hitSlop={8}
-            >
-              <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
-            </Pressable>
-            <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
-              <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
-            </Pressable>
-          </View>
-        ))}
-        <Pressable style={styles.row} onPress={addAccount} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>+ {t('accounts.add')}</Text>
-        </Pressable>
-        {accountBusy && <Text style={styles.hint}>{accountBusy}</Text>}
-
-        <Text style={styles.section} accessibilityRole="header">
-          {t('settings.general')}
-        </Text>
-        <View style={styles.block}>
-          <Text style={styles.label}>{t('settings.language')}</Text>
-          <View style={styles.chips}>
-            {['system', ...Object.keys(resources)].map((code) => (
-              <Pressable
-                key={code}
-                style={[styles.chip, language === code && styles.chipSelected]}
-                onPress={() => chooseLanguage(code)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: language === code }}
-              >
-                <Text style={[styles.chipText, language === code && styles.chipTextSelected]}>{t(`settings.lang_${code}`)}</Text>
-              </Pressable>
+        {section(
+          t('accounts.section'),
+          <>
+            {accounts.map((a) => (
+              <View key={a.id} style={styles.row}>
+                <Text style={[styles.label, styles.rowText]} numberOfLines={1}>
+                  {a.email}
+                </Text>
+                <Pressable
+                  onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
+                  hitSlop={8}
+                >
+                  <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
+                </Pressable>
+                <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
+                  <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
+                </Pressable>
+              </View>
             ))}
-          </View>
-        </View>
-        <View style={styles.block}>
-          <Text style={styles.label}>{t('settings.theme')}</Text>
-          <View style={styles.chips}>
-            {['system', 'light', 'dark'].map((code) => (
-              <Pressable
-                key={code}
-                style={[styles.chip, theme === code && styles.chipSelected]}
-                onPress={() => chooseTheme(code)}
-                accessibilityRole="radio"
-                accessibilityState={{ selected: theme === code }}
-              >
-                <Text style={[styles.chipText, theme === code && styles.chipTextSelected]}>{t(`settings.theme_${code}`)}</Text>
-              </Pressable>
-            ))}
-          </View>
-        </View>
-        {row(t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
-        {lock && (
-          <Pressable style={styles.row} onPress={() => router.push('/pin')} accessibilityRole="button">
-            <Text style={[styles.label, styles.link]}>{t('settings.changePin')}</Text>
-          </Pressable>
-        )}
-        {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
-        {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
-        {reminders && (
-          <View style={styles.block}>
-            <Text style={styles.label}>{t('settings.reminderWhen')}</Text>
-            <View style={styles.chips}>
-              {ALL_GROUPS.map((g) => (
-                <Pressable
-                  key={g}
-                  style={[styles.chip, groups.includes(g) && styles.chipSelected]}
-                  onPress={() => toggleGroup(g)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: groups.includes(g) }}
-                >
-                  <Text style={[styles.chipText, groups.includes(g) && styles.chipTextSelected]}>{t(`settings.group_${g}`)}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={styles.label}>{t('settings.reminderTime')}</Text>
-            <View style={styles.chips}>
-              {HOURS.map((h) => (
-                <Pressable
-                  key={h}
-                  style={[styles.chip, hour === h && styles.chipSelected]}
-                  onPress={() => chooseHour(h)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: hour === h }}
-                >
-                  <Text style={[styles.chipText, hour === h && styles.chipTextSelected]}>{new Date(2026, 0, 1, h).toLocaleTimeString(i18n.language, { hour: '2-digit', minute: '2-digit' })}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-        )}
-        {reminders && row(t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
-        {Platform.OS === 'android' && row(t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
-        <Pressable style={styles.row} onPress={() => router.push('/ignored')} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('ignored.title')}</Text>
-        </Pressable>
-
-        <Text style={styles.section} accessibilityRole="header">
-          {t('backup.section')}
-        </Text>
-        {row(t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
-        {backup && (
-          <View style={styles.block}>
-            <Text style={styles.label}>{t('backup.interval')}</Text>
-            <View style={styles.chips}>
-              {INTERVALS.map((i) => (
-                <Pressable
-                  key={i}
-                  style={[styles.chip, interval === i && styles.chipSelected]}
-                  onPress={() => {
-                    setSetting('backup_interval', i);
-                    setIntervalChoice(i);
-                  }}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: interval === i }}
-                >
-                  <Text style={[styles.chipText, interval === i && styles.chipTextSelected]}>{t(`backup.${i}`)}</Text>
-                </Pressable>
-              ))}
-            </View>
-            <Text style={backupError ? styles.error : styles.hint}>
-              {backupBusy
-                ? t('backup.working')
-                : backupError
-                  ? t('backup.failed', { detail: backupError })
-                  : lastBackup
-                    ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
-                    : t('backup.never')}
-            </Text>
-            <Pressable style={styles.secondary} onPress={backupNow} disabled={backupBusy} accessibilityRole="button">
-              {backupBusy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t('backup.now')}</Text>}
+            <Pressable style={styles.row} onPress={addAccount} accessibilityRole="button">
+              <Text style={[styles.label, styles.link]}>+ {t('accounts.add')}</Text>
             </Pressable>
-          </View>
+            {accountBusy && <Text style={[styles.hint, styles.pad]}>{accountBusy}</Text>}
+            {link(t('ignored.title'), () => router.push('/ignored'))}
+          </>,
         )}
-        <View style={styles.row}>
-          <View style={styles.rowText}>
-            <Text style={styles.label}>{t('backup.account')}</Text>
-            <Text style={styles.hint} numberOfLines={1}>
-              {backupAccount ?? t('backup.accountNone')}
-            </Text>
-          </View>
-          <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>
-            <Text style={styles.linkSmall}>{t('backup.change')}</Text>
-          </Pressable>
-        </View>
-        <Pressable style={styles.row} onPress={() => router.push('/restore')} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('backup.restore')}</Text>
-        </Pressable>
-        <Pressable style={styles.row} onPress={() => router.push('/help')} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('help.title')}</Text>
-        </Pressable>
-        <Pressable style={styles.row} onPress={() => void openStorePage().catch(() => {})} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('settings.rate')}</Text>
-        </Pressable>
-        <Pressable style={styles.row} onPress={() => router.push('/privacy')} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('privacy.title')}</Text>
-        </Pressable>
-        <Text style={styles.section} accessibilityRole="header">
-          {t('data.section')}
-        </Text>
-        <Pressable style={styles.row} onPress={() => exportList('pdf')} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('data.exportPdf')}</Text>
-        </Pressable>
-        <Pressable style={styles.row} onPress={() => exportList('csv')} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('data.exportCsv')}</Text>
-        </Pressable>
-        <Pressable style={styles.row} onPress={shareAll} accessibilityRole="button">
-          <View style={styles.rowText}>
-            <Text style={[styles.label, styles.link]}>{t('data.share')}</Text>
-            <Text style={styles.hint}>{t('data.shareHint')}</Text>
-          </View>
-        </Pressable>
-        <Pressable style={styles.row} onPress={importShared} accessibilityRole="button">
-          <Text style={[styles.label, styles.link]}>{t('data.import')}</Text>
-        </Pressable>
-        <Pressable style={styles.row} onPress={exportEverything} accessibilityRole="button">
-          <View style={styles.rowText}>
-            <Text style={[styles.label, styles.link]}>{t('data.exportAll')}</Text>
-            <Text style={styles.hint}>{t('data.exportAllHint')}</Text>
-          </View>
-        </Pressable>
-        <Pressable style={styles.row} onPress={confirmDeleteAll} accessibilityRole="button">
-          <Text style={styles.danger}>{t('data.delete')}</Text>
-        </Pressable>
+
+        {section(
+          t('settings.remindersSection'),
+          <>
+            {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+            {reminders && (
+              <>
+                {ALL_GROUPS.map((g) => (
+                  <Pressable
+                    key={g}
+                    style={styles.row}
+                    onPress={() => toggleGroup(g)}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked: groups.includes(g) }}
+                  >
+                    <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
+                    <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <Text style={styles.checkMark}>✓</Text>}</View>
+                  </Pressable>
+                ))}
+                {link(t('settings.reminderTime'), pickTime, { value: timeLabel })}
+                {row(t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
+              </>
+            )}
+          </>,
+        )}
+
+        {section(
+          t('settings.security'),
+          <>
+            {row(t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
+            {lock && link(t('settings.changePin'), () => router.push('/pin'))}
+            {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
+            {Platform.OS === 'android' && row(t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
+          </>,
+        )}
+
+        {section(
+          t('settings.general'),
+          <>
+            {choices(t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, text: t(`settings.lang_${key}`) })), language, chooseLanguage)}
+            {choices(t('settings.theme'), ['system', 'light', 'dark'].map((key) => ({ key, text: t(`settings.theme_${key}`) })), theme, chooseTheme)}
+          </>,
+        )}
+
+        {section(
+          t('backup.section'),
+          <>
+            {row(t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
+            {backup && (
+              <View style={styles.block}>
+                <Text style={styles.label}>{t('backup.interval')}</Text>
+                <View style={styles.chips}>
+                  {INTERVALS.map((i) => (
+                    <Pressable
+                      key={i}
+                      style={[styles.chip, interval === i && styles.chipSelected]}
+                      onPress={() => {
+                        setSetting('backup_interval', i);
+                        setIntervalChoice(i);
+                      }}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected: interval === i }}
+                    >
+                      <Text style={[styles.chipText, interval === i && styles.chipTextSelected]}>{t(`backup.${i}`)}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+                <Text style={backupError ? styles.error : styles.hint}>
+                  {backupBusy
+                    ? t('backup.working')
+                    : backupError
+                      ? t('backup.failed', { detail: backupError })
+                      : lastBackup
+                        ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
+                        : t('backup.never')}
+                </Text>
+                <Pressable style={styles.secondary} onPress={backupNow} disabled={backupBusy} accessibilityRole="button">
+                  {backupBusy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t('backup.now')}</Text>}
+                </Pressable>
+              </View>
+            )}
+            <View style={styles.row}>
+              <View style={styles.rowText}>
+                <Text style={styles.label}>{t('backup.account')}</Text>
+                <Text style={styles.hint} numberOfLines={1}>
+                  {backupAccount ?? t('backup.accountNone')}
+                </Text>
+              </View>
+              <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>
+                <Text style={styles.linkSmall}>{t('backup.change')}</Text>
+              </Pressable>
+            </View>
+            {link(t('backup.restore'), () => router.push('/restore'))}
+          </>,
+        )}
+
+        {section(
+          t('data.section'),
+          <>
+            {link(t('data.exportPdf'), () => exportList('pdf'))}
+            {link(t('data.exportCsv'), () => exportList('csv'))}
+            {link(t('data.share'), shareAll, { hint: t('data.shareHint') })}
+            {link(t('data.import'), importShared)}
+            {link(t('data.exportAll'), exportEverything, { hint: t('data.exportAllHint') })}
+            {link(t('data.delete'), confirmDeleteAll, { danger: true })}
+          </>,
+        )}
+
+        {section(
+          t('settings.about'),
+          <>
+            {link(t('help.title'), () => router.push('/help'))}
+            {link(t('settings.rate'), () => void openStorePage().catch(() => {}))}
+            {link(t('privacy.title'), () => router.push('/privacy'))}
+          </>,
+        )}
         <Text style={styles.version} selectable>
           {t('settings.version', { version: versionLine(i18n.language) })}
         </Text>
@@ -472,16 +469,24 @@ export default function Settings() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 64, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  content: { padding: 16, paddingBottom: 32 },
+  sectionWrap: { marginTop: 24 },
+  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+  card: { backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 16, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   rowText: { flex: 1, gap: 4 },
   label: { fontSize: 16, fontWeight: '600', color: colors.text },
+  dangerLabel: { color: colors.soon.fg },
   hint: { fontSize: 14, color: colors.muted },
+  value: { fontSize: 16, color: colors.muted },
+  chevron: { fontSize: 22, color: colors.muted },
+  pad: { paddingVertical: 8 },
   link: { color: colors.primary },
-  firstSection: { marginTop: 0 },
   linkSmall: { fontSize: 15, fontWeight: '600', color: colors.primary },
   danger: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
-  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginTop: 32, marginBottom: 4 },
+  check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
+  checkMark: { color: colors.onPrimary, fontSize: 15, fontWeight: '800' },
   block: { gap: 10, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
@@ -489,7 +494,7 @@ const styles = StyleSheet.create({
   chipText: { fontSize: 15, color: colors.text },
   chipTextSelected: { color: colors.onPrimary, fontWeight: '600' },
   error: { fontSize: 14, color: colors.soon.fg },
-  version: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 32 },
+  version: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 24 },
   secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
 });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, Redirect, router, useFocusEffect } from 'expo-router';
-import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, RefreshControl, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -8,30 +8,32 @@ import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
 import { runDueBackup } from '@/backup';
+import { SideMenu, type MenuSection } from '@/components/SideMenu';
 import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { colors } from '@/theme';
-import { CATEGORIES, filterWarranties, todayYmd, totalValue } from '@/warranty';
+import { CATEGORIES, filterWarranties, todayYmd, totalValue, type ListFilter } from '@/warranty';
 import { updateWidget } from '@/widget';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
-type Filter = 'all' | 'manual' | number; // an account id
+// What the side menu narrows the list to; one at a time, so it is always clear what is shown.
+type Filter = { kind: 'all' } | { kind: 'account'; id: number } | { kind: 'manual' } | { kind: 'category'; key: string } | { kind: 'store'; name: string };
+type View3 = 'active' | 'soon' | 'expired';
 
-// Warranty list (section 13): one tab per mail account plus Manual (section 15), each with Active and
-// Expired (section 10), sorted by soonest expiry.
+// Warranty list (section 13), laid out like Gmail so anyone can find their way: a search bar with the
+// menu (accounts, Manual, categories, stores, settings) on the left and the user on the right, three big
+// tabs, the list sorted by soonest expiry, and one large Add button.
 export default function Home() {
   const { t, i18n } = useTranslation();
   const name = getUsername();
   const [accounts, setAccounts] = useState<Account[] | null>(null);
-  const [filter, setFilter] = useState<Filter>('all');
-  const [tab, setTab] = useState<'active' | 'expired'>('active');
+  const [filter, setFilter] = useState<Filter>({ kind: 'all' });
+  const [view, setView] = useState<View3>('active');
   const [query, setQuery] = useState('');
-  const [store, setStore] = useState<string | null>(null);
-  const [category, setCategory] = useState<string | null>(null);
-  const [soon, setSoon] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [attention, setAttention] = useState(0);
   const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
@@ -84,32 +86,94 @@ export default function Home() {
   if (!name) return <Redirect href="/onboarding" />;
 
   const today = todayYmd();
-  // Section 15: one tab per account plus the general Manual tab, shown once an account is connected.
-  const groups: Filter[] = accounts?.length ? [...accounts.map((a) => a.id), 'manual'] : [];
-  // Section 13: search (product, store) and filters, in both Active and Expired.
-  const shown = filterWarranties(warranties, { query, store, category, soon, account: filter, tab }, today);
-  const usedCategories = CATEGORIES.filter((c) => warranties.some((w) => w.category === c));
+  // Section 13: search (product, store) and the menu's filter, in each tab.
+  const listFilter = (v: View3, f: Filter): ListFilter => ({
+    query,
+    tab: v === 'expired' ? 'expired' : 'active',
+    soon: v === 'soon',
+    account: f.kind === 'account' ? f.id : f.kind === 'manual' ? 'manual' : 'all',
+    category: f.kind === 'category' ? f.key : null,
+    store: f.kind === 'store' ? f.name : null,
+  });
+  const count = (v: View3, f: Filter = filter) => filterWarranties(warranties, { ...listFilter(v, f), query: '' }, today).length;
+  const shown = filterWarranties(warranties, listFilter(view, filter), today);
   const total = Object.entries(totalValue(shown)).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + ');
-  const stores = [...new Set(filterWarranties(warranties, { query: '', store: null, soon: false, account: filter, tab }, today).map((w) => w.store_name))].sort();
-  const label = (f: Filter) => (f === 'all' ? t('home.tabAll') : f === 'manual' ? t('home.tabManual') : (accounts?.find((a) => a.id === f)?.email ?? ''));
+  const all: Filter = { kind: 'all' };
+  const inAll = (f: Filter) => count('active', f) + count('expired', f);
+  const same = (a: Filter, b: Filter) => JSON.stringify(a) === JSON.stringify(b);
+  const filterName = (f: Filter): string =>
+    f.kind === 'account' ? (accounts?.find((a) => a.id === f.id)?.email ?? '') : f.kind === 'manual' ? t('home.tabManual') : f.kind === 'category' ? t(`category.${f.key}`) : f.kind === 'store' ? f.name : t('home.menuAll');
+
+  const menuItem = (f: Filter) => ({ key: JSON.stringify(f), label: filterName(f), count: inAll(f), selected: same(f, filter), onPress: () => setFilter(f) });
+  const usedCategories = CATEGORIES.filter((c) => warranties.some((w) => w.category === c));
+  const stores = [...new Set(warranties.map((w) => w.store_name))].sort((a, b) => a.localeCompare(b));
+  const menu: MenuSection[] = [
+    { items: [menuItem(all)] },
+    ...(accounts?.length
+      ? [{ title: t('home.menuAccounts'), items: [...accounts.map((a) => menuItem({ kind: 'account', id: a.id })), menuItem({ kind: 'manual' })] }]
+      : []),
+    ...(usedCategories.length ? [{ title: t('form.category'), items: usedCategories.map((key) => menuItem({ kind: 'category', key })) }] : []),
+    ...(stores.length > 1 ? [{ title: t('home.menuStores'), items: stores.map((name) => menuItem({ kind: 'store', name })) }] : []),
+    {
+      items: [
+        { key: 'attention', label: t('attention.title'), count: attention, onPress: () => router.push('/attention') },
+        { key: 'ignored', label: t('ignored.title'), onPress: () => router.push('/ignored') },
+        { key: 'settings', label: t('settings.title'), onPress: () => router.push('/settings') },
+        { key: 'help', label: t('help.title'), onPress: () => router.push('/help') },
+      ],
+    },
+  ];
 
   const header = (
     <View style={styles.header}>
-      <View style={styles.titleRow}>
-        <Text style={styles.greeting} accessibilityRole="header">
-          {t('home.greeting', { name })}
-        </Text>
-        <Link href="/warranty/edit" asChild>
-          <Pressable style={styles.addButton} accessibilityRole="button">
-            <Text style={styles.addText}>+ {t('home.add')}</Text>
+      <View style={styles.searchBar}>
+        <Pressable style={styles.iconButton} onPress={() => setMenuOpen(true)} accessibilityRole="button" accessibilityLabel={t('home.menu')} hitSlop={4}>
+          <Text style={styles.menuIcon}>☰</Text>
+        </Pressable>
+        <TextInput
+          style={styles.searchInput}
+          value={query}
+          onChangeText={setQuery}
+          placeholder={t('home.search')}
+          placeholderTextColor={colors.muted}
+          accessibilityLabel={t('home.search')}
+          returnKeyType="search"
+        />
+        {query !== '' && (
+          <Pressable style={styles.iconButton} onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel={t('home.clearSearch')}>
+            <Text style={styles.clearIcon}>✕</Text>
           </Pressable>
-        </Link>
-        <Link href="/settings" asChild>
-          <Pressable style={styles.settingsButton} accessibilityRole="button" accessibilityLabel={t('settings.title')}>
-            <Text style={styles.settingsText}>⚙</Text>
-          </Pressable>
-        </Link>
+        )}
+        <Pressable style={styles.avatar} onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel={t('settings.title')}>
+          <Text style={styles.avatarText}>{name.trim().charAt(0).toUpperCase()}</Text>
+        </Pressable>
       </View>
+      {filter.kind !== 'all' && (
+        <Pressable style={styles.filterPill} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
+          <Text style={styles.filterText} numberOfLines={1}>
+            {t('home.showing', { name: filterName(filter) })}
+          </Text>
+          <Text style={styles.filterClose}>✕</Text>
+        </Pressable>
+      )}
+      {(accounts?.length || warranties.length > 0) && (
+        <View style={styles.tabs} accessibilityRole="tablist">
+          {(['active', 'soon', 'expired'] as const).map((key) => (
+            <Pressable
+              key={key}
+              style={[styles.tab, view === key && styles.tabSelected]}
+              onPress={() => setView(key)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: view === key }}
+            >
+              <Text style={[styles.tabText, view === key && styles.tabTextSelected]} numberOfLines={1}>
+                {t(`home.view_${key}`)}
+              </Text>
+              <Text style={[styles.tabCount, view === key && styles.tabTextSelected]}>{count(key)}</Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {updateReady && (
         <Pressable style={styles.banner} onPress={() => void restartIntoUpdate()} accessibilityRole="button">
           <Text style={styles.bannerText}>{t('home.updateReady')} ›</Text>
@@ -133,89 +197,17 @@ export default function Home() {
             {p}
           </Text>
         ))}
-      {warranties.length > 0 && (
-        <>
-          <TextInput
-            style={styles.search}
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t('home.search')}
-            placeholderTextColor={colors.muted}
-            accessibilityLabel={t('home.search')}
-            clearButtonMode="while-editing"
-            returnKeyType="search"
-          />
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
-            {tab === 'active' && (
-              <Pressable style={[styles.chip, soon && styles.chipSelected]} onPress={() => setSoon(!soon)} accessibilityRole="checkbox" accessibilityState={{ checked: soon }}>
-                <Text style={[styles.chipText, soon && styles.chipTextSelected]}>{t('home.soon')}</Text>
-              </Pressable>
-            )}
-            {usedCategories.map((c) => (
-              <Pressable
-                key={c}
-                style={[styles.chip, category === c && styles.chipSelected]}
-                onPress={() => setCategory(category === c ? null : c)}
-                accessibilityRole="checkbox"
-                accessibilityState={{ checked: category === c }}
-              >
-                <Text style={[styles.chipText, category === c && styles.chipTextSelected]}>{t(`category.${c}`)}</Text>
-              </Pressable>
-            ))}
-            {stores.length > 1 &&
-              stores.map((name) => (
-                <Pressable
-                  key={name}
-                  style={[styles.chip, store === name && styles.chipSelected]}
-                  onPress={() => setStore(store === name ? null : name)}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked: store === name }}
-                >
-                  <Text style={[styles.chipText, store === name && styles.chipTextSelected]} numberOfLines={1}>
-                    {name}
-                  </Text>
-                </Pressable>
-              ))}
-          </ScrollView>
-        </>
-      )}
-      {groups.length > 0 && (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} accessibilityRole="tablist">
-          {(['all', ...groups] as Filter[]).map((f) => (
-            <Pressable key={String(f)} style={[styles.chip, filter === f && styles.chipSelected]} onPress={() => setFilter(f)} accessibilityRole="tab" accessibilityState={{ selected: filter === f }}>
-              <Text style={[styles.chipText, filter === f && styles.chipTextSelected]} numberOfLines={1}>
-                {label(f)}
-              </Text>
-            </Pressable>
-          ))}
-        </ScrollView>
-      )}
-      {(accounts?.length || warranties.length > 0) && (
-        <View style={styles.tabs} accessibilityRole="tablist">
-          {(['active', 'expired'] as const).map((key) => (
-            <Pressable
-              key={key}
-              style={[styles.tab, tab === key && styles.tabSelected]}
-              onPress={() => setTab(key)}
-              accessibilityRole="tab"
-              accessibilityState={{ selected: tab === key }}
-            >
-              <Text style={[styles.tabText, tab === key && styles.tabTextSelected]}>{t(key === 'active' ? 'home.tabActive' : 'home.tabExpired')}</Text>
-            </Pressable>
-          ))}
-        </View>
-      )}
       {total !== '' && <Text style={styles.total}>{t('home.total', { total })}</Text>}
     </View>
   );
 
-  const empty = accounts === null ? undefined : accounts.length ? (
+  const empty = accounts === null ? undefined : accounts.length || warranties.length ? (
     <Text style={styles.empty}>
       {sync.kind === 'syncing'
         ? t('home.syncing', { email: sync.email })
-        : query || store || soon || category
+        : query || filter.kind !== 'all'
           ? t('home.noMatch')
-          : t(tab === 'active' ? 'home.emptyActive' : 'home.emptyExpired')}
+          : t(`home.empty_${view}`)}
     </Text>
   ) : (
     <View style={styles.connect}>
@@ -236,46 +228,55 @@ export default function Home() {
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
         contentContainerStyle={styles.list}
+        keyboardShouldPersistTaps="handled"
         refreshControl={
           <RefreshControl refreshing={sync.kind === 'syncing'} onRefresh={() => {
             void runSync();
           }} enabled={!!accounts?.length} colors={[colors.primary]} />
         }
       />
+      <Pressable style={styles.fab} onPress={() => router.push('/warranty/edit')} accessibilityRole="button" accessibilityLabel={t('home.addLong')}>
+        <Text style={styles.fabText}>+ {t('home.add')}</Text>
+      </Pressable>
+      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} title="Warrantly" subtitle={t('home.greeting', { name })} sections={menu} />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  total: { fontSize: 14, color: colors.muted },
   screen: { flex: 1, backgroundColor: colors.background },
-  list: { paddingHorizontal: 24, paddingBottom: 24, flexGrow: 1 },
-  header: { paddingTop: 24, paddingBottom: 8, gap: 12 },
-  titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  greeting: { flex: 1, fontSize: 28, fontWeight: '700', color: colors.text },
-  addButton: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.primary, justifyContent: 'center' },
-  addText: { fontSize: 15, fontWeight: '600', color: colors.onPrimary },
-  settingsButton: { minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  settingsText: { fontSize: 24, color: colors.text },
-  banner: { backgroundColor: colors.banner, borderRadius: 8, padding: 12, minHeight: 48, justifyContent: 'center' },
+  list: { paddingHorizontal: 16, paddingBottom: 112, flexGrow: 1 },
+  header: { paddingTop: 12, paddingBottom: 8, gap: 12 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: 56, borderRadius: 28, backgroundColor: colors.surface, paddingHorizontal: 6, gap: 4 },
+  iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  menuIcon: { fontSize: 24, color: colors.text },
+  clearIcon: { fontSize: 18, color: colors.muted },
+  searchInput: { flex: 1, minHeight: 48, fontSize: 17, color: colors.text },
+  avatar: { width: 40, height: 40, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
+  avatarText: { fontSize: 18, fontWeight: '700', color: colors.onPrimary },
+  filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.primary, maxWidth: '100%' },
+  filterText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.onPrimary },
+  filterClose: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
+  tabs: { flexDirection: 'row', gap: 8 },
+  tab: { flex: 1, minHeight: 56, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tabSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
+  tabText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  tabCount: { fontSize: 13, color: colors.muted },
+  tabTextSelected: { color: colors.onPrimary },
+  banner: { backgroundColor: colors.banner, borderRadius: 12, padding: 14, minHeight: 52, justifyContent: 'center' },
   bannerText: { fontSize: 16, fontWeight: '600', color: colors.warning.fg },
   status: { fontSize: 14, color: colors.muted },
-  chips: { gap: 8 },
-  chip: { minHeight: 36, maxWidth: 220, paddingHorizontal: 12, borderRadius: 18, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
-  chipSelected: { backgroundColor: colors.text, borderColor: colors.text },
-  chipText: { fontSize: 14, color: colors.text },
-  search: { minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: 22, paddingHorizontal: 16, fontSize: 16, color: colors.text },
-  chipTextSelected: { color: colors.background, fontWeight: '600' },
   detail: { fontSize: 12, color: colors.muted },
-  tabs: { flexDirection: 'row', borderRadius: 8, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
-  tab: { flex: 1, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
-  tabSelected: { backgroundColor: colors.primary },
-  tabText: { fontSize: 15, fontWeight: '600', color: colors.text },
-  tabTextSelected: { color: colors.onPrimary },
+  total: { fontSize: 14, color: colors.muted },
   empty: { fontSize: 16, color: colors.muted, textAlign: 'center', marginTop: 48 },
   connect: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 48 },
   connectTitle: { fontSize: 20, fontWeight: '600', color: colors.text, textAlign: 'center' },
   connectBody: { fontSize: 16, lineHeight: 24, color: colors.muted, textAlign: 'center', maxWidth: 320 },
   button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  fab: {
+    position: 'absolute', right: 20, bottom: 28, minHeight: 60, paddingHorizontal: 24, borderRadius: 20, backgroundColor: colors.primary,
+    alignItems: 'center', justifyContent: 'center', elevation: 6, shadowColor: '#000', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+  },
+  fabText: { fontSize: 18, fontWeight: '700', color: colors.onPrimary },
 });

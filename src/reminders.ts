@@ -5,7 +5,7 @@ import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
-import { getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
+import { getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
 import { reminderDays, reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
 
 
@@ -40,14 +40,14 @@ async function reschedule(db: Db): Promise<void> {
   const now = new Date();
   const returns = getReturnRemindersEnabled();
   const items = warranties.map((w) => ({ ...w, return_by: returns ? returnDeadline(w) : null }));
-  const hour = getReminderHour();
+  const time = getReminderTime();
   const jobs = (getRemindersEnabled() ? reminderPlan(items, todayYmd(now), 60, reminderDays(getReminderGroups())) : [])
     .map((r) => {
       const [y, m, d] = r.date.split('-').map(Number);
       const w = byId.get(r.warrantyId)!;
       return {
         content: r.kind === 'return' ? returnContent(w) : content(w, r.daysLeft),
-        date: new Date(y, m - 1, d, hour),
+        date: new Date(y, m - 1, d, Math.floor(time / 60), time % 60),
         channelId: r.kind === 'expiry' && r.daysLeft === 0 ? 'expiry' : 'reminders',
       };
     })
