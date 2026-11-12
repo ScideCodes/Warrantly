@@ -456,5 +456,8 @@
       "Kiválaszthatod, milyen emlékeztetőket kapsz és mikor.",
       "Nyelvválasztó, súgó, visszajelzés és adatvédelmi tájékoztató."
     ]
+  },
+  "share": {
+    "failed": "A Warrantly nem tudta megnyitni a megosztott fájlt."
   }
 }

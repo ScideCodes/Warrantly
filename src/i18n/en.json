@@ -456,5 +456,8 @@
       "Choose which reminders you get and at what time.",
       "Language picker, help, feedback and the privacy policy."
     ]
+  },
+  "share": {
+    "failed": "Warrantly could not open the shared file."
   }
 }

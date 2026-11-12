@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { Alert, AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
@@ -27,7 +27,10 @@ export const unstable_settings = { anchor: 'index' };
 
 // Share into Warrantly (section 18): a PDF or photo sent from another app opens the add form with it.
 function SharedFiles() {
-  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
+  const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntentContext();
+  useEffect(() => {
+    if (error) Alert.alert(i18n.t('share.failed'), error); // e.g. the sending app gave no access to the file
+  }, [error]);
   useEffect(() => {
     const file = shareIntent.files?.[0];
     if (!hasShareIntent || !file) return;
