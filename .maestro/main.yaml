@@ -34,7 +34,9 @@ appId: dev.warrantly.prototype
 - hideKeyboard
 - takeScreenshot: 02-form
 - scrollUntilVisible: { element: "Save warranty" }
+- takeScreenshot: 02b-before-save
 - tapOn: "Save warranty"
+- takeScreenshot: 02c-after-save
 - extendedWaitUntil: { visible: "Philips HD9350", timeout: 20000 }
 - assertVisible: "Total value: .*"
 - assertVisible: "Appliances"

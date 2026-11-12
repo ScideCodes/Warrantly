@@ -29,5 +29,7 @@ flow shortcut
 
 flow cleanup
 adb logcat -d -b crash > out/crash.txt
+adb logcat -d > out/logcat.txt
+cp -r ~/.maestro/tests out/maestro-tests 2>/dev/null
 grep -q "$APP" out/crash.txt; [ $? = 0 ] && { echo "FAIL app crashed (see crash.txt)"; FAILED=1; } || echo "PASS no crashes"
 exit $FAILED
