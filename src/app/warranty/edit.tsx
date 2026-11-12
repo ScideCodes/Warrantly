@@ -46,7 +46,8 @@ const fromWarranty = (w: Warranty | null): Form => ({
 export default function EditWarranty() {
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
   // shared: a file sent from another app is waiting in the share inbox.
-  const { id, copyFrom, shared } = useLocalSearchParams<{ id?: string; copyFrom?: string; shared?: string }>();
+  // scan: opened from the app icon's "Scan receipt" shortcut.
+  const { id, copyFrom, shared, scan: scanNow } = useLocalSearchParams<{ id?: string; copyFrom?: string; shared?: string; scan?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
@@ -96,7 +97,8 @@ export default function EditWarranty() {
   useEffect(() => {
     const file = shared ? takeSharedFile() : null;
     if (file) void runScan(() => fileToDocument(file.uri, file.name, file.mimeType));
-  }, [shared]);
+    else if (scanNow && !id) void runScan(scanDocument);
+  }, [shared, scanNow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
