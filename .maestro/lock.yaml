@@ -18,7 +18,7 @@ appId: dev.warrantly.prototype
 - tapOn: "2"
 - tapOn: "3"
 - tapOn: "4"
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 30000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
 - tapOn: "Settings"
 - extendedWaitUntil: { visible: "Magyar", timeout: 20000 }
 - takeScreenshot: L1-settings
@@ -40,4 +40,11 @@ appId: dev.warrantly.prototype
 - assertNotVisible: "Enter your PIN"
 - back
 - takeScreenshot: L6-home
+- assertNotVisible: "Enter your PIN"
+- tapOn: "Settings"
+- scrollUntilVisible: { element: "Dark" }
+- waitForAnimationToEnd
+- tapOn: "Dark"
+- extendedWaitUntil: { visible: "Search warranties|Enter your PIN", timeout: 90000 }
+- takeScreenshot: L7-after-theme-restart
 - assertNotVisible: "Enter your PIN"

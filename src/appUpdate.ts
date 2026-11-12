@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { AppState } from 'react-native';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
+import { allowRelaunchWithoutLock } from '@/lock/store';
 
 // App updates (over the air, EAS Update). The app checks on start by itself; this also checks when it
 // comes back from the background, because phones keep apps open for days. True once an update is
@@ -21,7 +22,11 @@ export function useUpdateReady(): boolean {
   return isUpdatePending;
 }
 
-export const restartIntoUpdate = (): Promise<void> => Updates.reloadAsync();
+// Restarts the app (new update, new theme). The user is inside the unlocked app, so no PIN on the way back.
+export function restartIntoUpdate(): Promise<void> {
+  allowRelaunchWithoutLock();
+  return Updates.reloadAsync();
+}
 
 // "0.7.0 · update a395e4b0 · Nov 11, 2026", or just the version for the build's own code.
 export function versionLine(language: string): string {

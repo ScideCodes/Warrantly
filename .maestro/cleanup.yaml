@@ -1,7 +1,7 @@
 # #12: delete all my data; the app starts like a new install.
 appId: dev.warrantly.prototype
 ---
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 60000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 60000 }
 - tapOn: "Settings"
 - scrollUntilVisible: { element: "Delete all my data" }
 - waitForAnimationToEnd
