@@ -145,9 +145,9 @@ appId: dev.warrantly.prototype
 - scrollUntilVisible: { element: "60 days before" }
 - waitForAnimationToEnd
 - tapOn: "60 days before"
-- scrollUntilVisible: { element: "06:00 PM" }
+- scrollUntilVisible: { element: "06:00.PM" }
 - waitForAnimationToEnd
-- tapOn: "06:00 PM"
+- tapOn: "06:00.PM"
 - takeScreenshot: 14-reminders
 - scrollUntilVisible: { element: "Import a shared list" }
 - waitForAnimationToEnd
