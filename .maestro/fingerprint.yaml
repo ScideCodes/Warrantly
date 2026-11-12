@@ -1,0 +1,30 @@
+# User report: on opening the app the fingerprint prompt showed, closed by itself, and left the PIN pad.
+# run.sh enrols a fingerprint and touches the emulator's sensor every 1.5 s during this flow.
+appId: dev.warrantly.prototype
+---
+- launchApp
+- extendedWaitUntil: { visible: "Enter your PIN", timeout: 60000 }
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "4"
+- extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
+- tapOn: "Settings"
+- scrollUntilVisible: { element: "Unlock with fingerprint or face", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Unlock with fingerprint or face" }
+- waitForAnimationToEnd
+- tapOn: "Unlock with fingerprint or face"
+- takeScreenshot: F1-turning-on
+- extendedWaitUntil: { notVisible: "Unlock Warrantly", timeout: 30000 }
+- takeScreenshot: F2-turned-on
+# Cold start: the prompt must open by itself and stay until the finger unlocks, with no PIN typed.
+- launchApp
+- takeScreenshot: F3-cold-start
+- extendedWaitUntil: { visible: "Search warranties", timeout: 45000 }
+- assertNotVisible: "Enter your PIN"
+- takeScreenshot: F4-unlocked-by-finger
+# Second cold start, to catch a prompt that only sometimes closes.
+- launchApp
+- extendedWaitUntil: { visible: "Search warranties", timeout: 45000 }
+- assertNotVisible: "Enter your PIN"
+- takeScreenshot: F5-unlocked-again

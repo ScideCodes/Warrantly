@@ -32,6 +32,19 @@ flow shortcut
 
 flow cleanup
 flow lock
+
+# Fingerprint unlock on a cold start (user report: the prompt closed by itself). Needs a screen PIN and an
+# enrolled finger; a background loop touches the emulator sensor so each prompt that stays open gets a finger.
+adb shell svc power stayon true
+adb shell settings put system screen_off_timeout 1800000
+adb shell locksettings set-pin 1111
+( while true; do adb -e emu finger touch 1 >/dev/null 2>&1; sleep 1.5; done ) & TOUCH=$!
+adb shell am start -a android.settings.FINGERPRINT_ENROLL
+flow fp-enroll
+adb shell dumpsys fingerprint > out/fingerprint.txt 2>&1
+flow fingerprint
+kill $TOUCH
+grep "fingerprint prompt closed" out/applog.txt out/logcat.txt 2>/dev/null | head
 adb logcat -d -b crash > out/crash.txt
 adb logcat -d > out/logcat.txt
 cp -r ~/.maestro/tests out/maestro-tests 2>/dev/null

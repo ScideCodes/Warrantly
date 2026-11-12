@@ -63,9 +63,10 @@ export const isBiometricEnabled = (): boolean => SecureStore.getItem(BIOMETRIC) 
 export const setBiometricEnabled = (on: boolean): void => SecureStore.setItem(BIOMETRIC, on ? '1' : '0');
 
 // Biometrics only; the PIN pad is the fallback, so the device passcode is not offered here.
-export async function unlockWithBiometrics(prompt: string, cancel: string): Promise<boolean> {
+// `error` says who closed the prompt: 'user_cancel' is the person, 'system_cancel'/'app_cancel' is Android.
+export async function unlockWithBiometrics(prompt: string, cancel: string): Promise<{ success: boolean; error?: string }> {
   const res = await LocalAuthentication.authenticateAsync({ promptMessage: prompt, cancelLabel: cancel, disableDeviceFallback: true });
-  return res.success;
+  return res.success ? { success: true } : { success: false, error: res.error };
 }
 
 // "Forgot PIN": the phone's own screen lock (passcode, fingerprint or face) proves the owner.

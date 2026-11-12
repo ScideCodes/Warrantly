@@ -1,0 +1,16 @@
+# Enrols an emulator fingerprint. run.sh sets the screen PIN first and keeps touching the sensor meanwhile.
+appId: com.android.settings
+---
+- extendedWaitUntil: { visible: ".*PIN.*", timeout: 30000 }
+- takeScreenshot: E1-confirm-pin
+- inputText: "1111"
+- pressKey: Enter
+- tapOn: { text: "More", optional: true }
+- tapOn: { text: "More", optional: true }
+- tapOn: { text: "More", optional: true }
+- tapOn: { text: "I agree", optional: true }
+- tapOn: { text: "Next", optional: true }
+- takeScreenshot: E2-touch-sensor
+- extendedWaitUntil: { visible: "Fingerprint added|Done", timeout: 90000 }
+- takeScreenshot: E3-added
+- tapOn: { text: "Done", optional: true }
