@@ -127,7 +127,13 @@ appId: dev.warrantly.prototype
 - tapOn: "Send a test reminder in 5 seconds"
 - extendedWaitUntil: { visible: "never-shown-wait-8s", timeout: 8000, optional: true }
 - swipe: { start: "50%, 1%", end: "50%, 80%" }
-- extendedWaitUntil: { visible: ".*days left on the warranty", timeout: 15000 }
+- extendedWaitUntil: { visible: ".*days left on the warranty", timeout: 20000, optional: true }
+- runFlow:
+    when: { notVisible: ".*days left on the warranty" }
+    commands:
+      - back
+      - swipe: { start: "50%, 1%", end: "50%, 80%" }
+- extendedWaitUntil: { visible: ".*days left on the warranty", timeout: 20000 }
 - takeScreenshot: 12-notification
 - back
 - back
