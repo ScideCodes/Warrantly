@@ -35,6 +35,11 @@ export async function importDocument(): Promise<{ text: string; localPath: strin
   const picked = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
   if (picked.canceled || !picked.assets.length) return null;
   const { uri, name, mimeType } = picked.assets[0];
+  return fileToDocument(uri, name, mimeType ?? null);
+}
+
+// A photo or PDF file (picked, or shared into Warrantly from another app) as a stored document.
+export async function fileToDocument(uri: string, name: string, mimeType: string | null): Promise<{ text: string; localPath: string }> {
   if (mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) {
     const pdf = new File(folder(), `import-${Date.now()}.pdf`);
     await new File(uri).copy(pdf);

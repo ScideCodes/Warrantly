@@ -62,7 +62,16 @@
         }
       ],
       "expo-status-bar",
-      "expo-share-intent"
+      [
+        "expo-share-intent",
+        {
+          "androidIntentFilters": [
+            "image/*",
+            "application/pdf"
+          ],
+          "disableIOS": true
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true
