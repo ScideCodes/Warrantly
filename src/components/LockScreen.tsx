@@ -3,7 +3,8 @@ import { router } from 'expo-router';
 import { Alert, AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { PinPad } from '@/components/PinPad';
+import Ionicons from '@expo/vector-icons/Ionicons';
+import { KEY_SIZE, PinPad } from '@/components/PinPad';
 import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { logError } from '@/errorLog';
 import { colors } from '@/theme';
@@ -82,6 +83,9 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={styles.top}>
+        <View style={styles.logo}>
+          <Ionicons name="shield-checkmark" size={36} color={colors.onPrimary} />
+        </View>
         <Text style={styles.title} accessibilityRole="header">
           {t('lock.title')}
         </Text>
@@ -96,8 +100,13 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         onDelete={() => setPin((p) => p.slice(0, -1))}
         extra={
           isBiometricEnabled() && (
-            <Pressable onPress={tryBiometrics} accessibilityRole="button" accessibilityLabel={t('lock.biometric')} hitSlop={8}>
-              <Text style={styles.icon}>☝</Text>
+            <Pressable
+              style={({ pressed }) => [styles.finger, pressed && styles.fingerPressed]}
+              onPress={tryBiometrics}
+              accessibilityRole="button"
+              accessibilityLabel={t('lock.biometric')}
+            >
+              <Ionicons name="finger-print" size={34} color={colors.primary} />
             </Pressable>
           )
         }
@@ -112,10 +121,12 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 const styles = StyleSheet.create({
   screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'space-evenly', zIndex: 10 },
   top: { alignItems: 'center', gap: 12, paddingHorizontal: 24 },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
+  logo: { width: 72, height: 72, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  title: { fontSize: 26, fontWeight: '700', color: colors.text },
   message: { fontSize: 15, color: colors.muted, textAlign: 'center', minHeight: 20 },
   error: { color: colors.soon.fg },
-  icon: { fontSize: 28 },
+  finger: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  fingerPressed: { opacity: 0.7 },
   link: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 16 },
-  linkText: { fontSize: 16, fontWeight: '600', color: colors.primary },
+  linkText: { fontSize: 17, fontWeight: '600', color: colors.primary },
 });
