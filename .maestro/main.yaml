@@ -87,11 +87,13 @@ appId: dev.warrantly.prototype
 - waitForAnimationToEnd
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
+- scrollUntilVisible: { element: "Open document", timeout: 30000, direction: UP, optional: true }
 - scrollUntilVisible: { element: "Open document", timeout: 30000 }
 - scrollUntilVisible: { element: "Attach a photo or PDF" }
 - waitForAnimationToEnd
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
+- scrollUntilVisible: { element: "Philips HD9350 \\(2\\)\\.pdf", timeout: 30000, direction: UP, optional: true }
 - scrollUntilVisible: { element: "Philips HD9350 \\(2\\)\\.pdf", timeout: 30000 }
 - scrollUntilVisible: { element: "Philips HD9350\\.pdf", direction: UP }
 - waitForAnimationToEnd

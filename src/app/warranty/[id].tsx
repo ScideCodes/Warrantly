@@ -196,26 +196,6 @@ export default function WarrantyDetail() {
         {w.serial_number && <Field label={t('detail.serial')} value={w.serial_number} />}
         {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
 
-        {docs.map((d) => (
-          <View key={d.id} style={styles.docRow}>
-          <Pressable
-            style={[styles.secondary, styles.docOpen]}
-            onPress={() =>
-              documentExists(d.local_path)
-                ? router.push({ pathname: '/document', params: { path: d.local_path, title: product } })
-                : Alert.alert(t('detail.documentMissing'))
-            }
-            accessibilityRole="button"
-          >
-            <Text style={styles.secondaryText} numberOfLines={1}>
-              {docs.length > 1 ? d.filename : t('detail.openDocument')}
-            </Text>
-          </Pressable>
-          <Pressable style={[styles.secondary, styles.docRemove]} onPress={() => confirmRemoveDocument(d)} accessibilityRole="button" accessibilityLabel={t('detail.removeDocument')}>
-            <Text style={[styles.secondaryText, styles.danger]}>{t('detail.removeDocument')}</Text>
-          </Pressable>
-          </View>
-        ))}
         {brand && (
           <Pressable
             style={styles.secondary}
@@ -272,6 +252,26 @@ export default function WarrantyDetail() {
           <Text style={styles.secondaryText}>{t('detail.addCover')}</Text>
         </Pressable>
         {/* Any number of documents: invoice, warranty card, repair sheet. */}
+        {docs.map((d) => (
+          <View key={d.id} style={styles.docRow}>
+          <Pressable
+            style={[styles.secondary, styles.docOpen]}
+            onPress={() =>
+              documentExists(d.local_path)
+                ? router.push({ pathname: '/document', params: { path: d.local_path, title: product } })
+                : Alert.alert(t('detail.documentMissing'))
+            }
+            accessibilityRole="button"
+          >
+            <Text style={styles.secondaryText} numberOfLines={1}>
+              {docs.length > 1 ? d.filename : t('detail.openDocument')}
+            </Text>
+          </Pressable>
+          <Pressable style={[styles.secondary, styles.docRemove]} onPress={() => confirmRemoveDocument(d)} accessibilityRole="button" accessibilityLabel={t('detail.removeDocument')}>
+            <Text style={[styles.secondaryText, styles.danger]}>{t('detail.removeDocument')}</Text>
+          </Pressable>
+          </View>
+        ))}
         <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
           <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
         </Pressable>
