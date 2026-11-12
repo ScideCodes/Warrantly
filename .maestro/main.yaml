@@ -54,7 +54,7 @@ appId: dev.warrantly.prototype
 # Detail: price, category, #10 brand support, #9 history
 - tapOn: "Philips HD9350"
 - extendedWaitUntil: { visible: "Price", timeout: 20000 }
-- assertVisible: "Appliances"
+- scrollUntilVisible: { element: "Appliances" }
 - scrollUntilVisible: { element: "Find Philips support" }
 - waitForAnimationToEnd
 - scrollUntilVisible: { element: "e.g. Sent for repair" }

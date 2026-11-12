@@ -1,6 +1,17 @@
-# #3: a PDF shared from another app opens the add form with the file attached.
+# #3: a PDF shared from the Files app opens Warrantly's add form with the file attached.
 appId: dev.warrantly.prototype
 ---
+- extendedWaitUntil: { visible: ".*(Recent|Downloads|Files|fixture).*", timeout: 30000 }
+- runFlow:
+    when: { notVisible: "fixture-share.pdf" }
+    commands:
+      - tapOn: "Show roots"
+      - tapOn: "Downloads"
+- longPressOn: "fixture-share.pdf"
+- tapOn: "Share"
+- extendedWaitUntil: { visible: "Warrantly", timeout: 30000 }
+- takeScreenshot: 22b-share-sheet
+- tapOn: "Warrantly"
 - extendedWaitUntil: { visible: "Add warranty", timeout: 60000 }
 - extendedWaitUntil: { visible: "Document attached\\..*", timeout: 60000 }
 - takeScreenshot: 23-shared-into-app
