@@ -380,6 +380,12 @@ export default function Settings() {
         <Pressable style={styles.row} onPress={() => router.push('/restore')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('backup.restore')}</Text>
         </Pressable>
+        <Pressable style={styles.row} onPress={() => router.push('/help')} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('help.title')}</Text>
+        </Pressable>
+        <Pressable style={styles.row} onPress={() => router.push('/privacy')} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('privacy.title')}</Text>
+        </Pressable>
         <Text style={styles.section} accessibilityRole="header">
           {t('data.section')}
         </Text>

@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
+import { shouldShowWhatsNew } from '@/whatsNew';
 import { runDueBackup } from '@/backup';
 import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
@@ -65,6 +66,7 @@ export default function Home() {
   );
   useEffect(() => {
     if (name) void runSync();
+    if (name && shouldShowWhatsNew()) router.push('/whats-new');
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function connect() {
