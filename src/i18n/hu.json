@@ -195,6 +195,7 @@
   },
   "settings": {
     "title": "Beállítások",
+    "profileHint": "A garanciáid ezen a telefonon maradnak",
     "lock": "Alkalmazászár",
     "lockHint": "PIN kérése megnyitáskor és 3 perc távollét után.",
     "changePin": "PIN módosítása",
