@@ -6,6 +6,7 @@ appId: dev.warrantly.prototype
 - takeScreenshot: 23-shared-into-app
 - tapOn: { id: "product_name" }
 - inputText: "Shared PDF item"
+- hideKeyboard
 - tapOn: { id: "store_name" }
 - inputText: "Shop"
 - hideKeyboard

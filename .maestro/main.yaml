@@ -23,6 +23,7 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "Add warranty", timeout: 20000 }
 - tapOn: { id: "product_name" }
 - inputText: "Philips HD9350"
+- hideKeyboard
 - tapOn: { id: "store_name" }
 - inputText: "MediaMarkt"
 - hideKeyboard
