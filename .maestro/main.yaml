@@ -9,12 +9,13 @@ appId: dev.warrantly.prototype
 - hideKeyboard
 - tapOn: "Continue"
 - tapOn: "Later"
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 30000 }
+- extendedWaitUntil: { visible: "Hi, Tester!|Got it", timeout: 30000 }
 - runFlow:
     when: { visible: "Got it" }
     commands:
       - takeScreenshot: BUG-whats-new-on-new-install
       - tapOn: "Got it"
+- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 30000 }
 - takeScreenshot: 01-home-empty
 
 # #4 #6 price and category on a new warranty
