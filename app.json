@@ -6,7 +6,7 @@
     "version": "0.7.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "dev.warrantly.prototype"
@@ -61,7 +61,8 @@
           ]
         }
       ],
-      "expo-status-bar"
+      "expo-status-bar",
+      "expo-share-intent"
     ],
     "experiments": {
       "typedRoutes": true

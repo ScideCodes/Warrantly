@@ -14,7 +14,7 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
-import { getLanguageSetting, setLanguageSetting, getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderHour, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
+import { getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderHour, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderHour, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
@@ -33,6 +33,7 @@ export default function Settings() {
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
   const [hour, setHour] = useState(getReminderHour);
   const [language, setLanguage] = useState(getLanguageSetting);
+  const [theme, setTheme] = useState(getThemeSetting);
   const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
@@ -92,6 +93,13 @@ export default function Settings() {
     setLanguage(code);
     await i18n.changeLanguage(appLanguage());
     await rescheduleReminders(await getDb()); // reminder texts are written in the app language
+  }
+
+  // Styles are built at start, so a new theme needs a restart.
+  function chooseTheme(next: string) {
+    setThemeSetting(next);
+    setTheme(next);
+    restartIntoUpdate().catch(() => Alert.alert(t('settings.themeRestart')));
   }
 
   async function chooseHour(h: number) {
@@ -300,6 +308,22 @@ export default function Settings() {
                 accessibilityState={{ selected: language === code }}
               >
                 <Text style={[styles.chipText, language === code && styles.chipTextSelected]}>{t(`settings.lang_${code}`)}</Text>
+              </Pressable>
+            ))}
+          </View>
+        </View>
+        <View style={styles.block}>
+          <Text style={styles.label}>{t('settings.theme')}</Text>
+          <View style={styles.chips}>
+            {['system', 'light', 'dark'].map((code) => (
+              <Pressable
+                key={code}
+                style={[styles.chip, theme === code && styles.chipSelected]}
+                onPress={() => chooseTheme(code)}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: theme === code }}
+              >
+                <Text style={[styles.chipText, theme === code && styles.chipTextSelected]}>{t(`settings.theme_${code}`)}</Text>
               </Pressable>
             ))}
           </View>

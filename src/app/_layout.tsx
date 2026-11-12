@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { Stack } from 'expo-router';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import * as SystemUI from 'expo-system-ui';
 import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
@@ -10,7 +11,14 @@ import { isLockEnabled } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
-import { colors } from '@/theme';
+import { colors, isDark } from '@/theme';
+
+// Headers and screen backgrounds follow the app palette (dark mode).
+const navTheme = {
+  ...(isDark ? DarkTheme : DefaultTheme),
+  colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: colors.background, card: colors.background, text: colors.text, primary: colors.primary, border: colors.border },
+};
+void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
@@ -41,13 +49,13 @@ export default function RootLayout() {
   }, [locales]);
 
   return (
-    <>
-      <StatusBar style="dark" />
+    <ThemeProvider value={navTheme}>
+      <StatusBar style={isDark ? 'light' : 'dark'} />
       {/* Tablets and wide screens: screens keep a readable width, centred. */}
       <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.background } }}>
         <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
       </Stack>
       {locked && <LockScreen onUnlock={() => setLocked(false)} />}
-    </>
+    </ThemeProvider>
   );
 }
