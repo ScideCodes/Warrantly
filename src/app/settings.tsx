@@ -10,6 +10,7 @@ import { listAccounts, listWarranties, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
 import { restartIntoUpdate, versionLine } from '@/appUpdate';
+import { openStorePage } from '@/rate';
 import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties } from '@/dataTools';
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
@@ -427,6 +428,9 @@ export default function Settings() {
         </Pressable>
         <Pressable style={styles.row} onPress={() => router.push('/help')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('help.title')}</Text>
+        </Pressable>
+        <Pressable style={styles.row} onPress={() => void openStorePage().catch(() => {})} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('settings.rate')}</Text>
         </Pressable>
         <Pressable style={styles.row} onPress={() => router.push('/privacy')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('privacy.title')}</Text>
