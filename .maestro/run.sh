@@ -31,6 +31,7 @@ adb shell am start -a android.intent.action.VIEW -d "warrantly://warranty/edit" 
 flow shortcut
 
 flow cleanup
+flow lock
 adb logcat -d -b crash > out/crash.txt
 adb logcat -d > out/logcat.txt
 cp -r ~/.maestro/tests out/maestro-tests 2>/dev/null
