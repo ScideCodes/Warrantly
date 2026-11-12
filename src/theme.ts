@@ -66,6 +66,13 @@ const darkColors: Palette = {
 export const isDark = (getThemeSetting() === 'system' ? Appearance.getColorScheme() : getThemeSetting()) === 'dark';
 export const colors: Palette = isDark ? darkColors : lightColors;
 
-// Every button and text field is this tall, so the app has one button size.
+// Every button and text field is at least this tall, so the app has one button size. Text may wrap:
+// the height grows with it instead of the text shrinking.
 export const BUTTON_HEIGHT = 52;
 export const BUTTON_RADIUS = 14;
+
+// Shared spacing (dp): screen edges, padding inside a group, and the gap between sections.
+export const SPACE = { screen: 20, group: 16, section: 24 } as const;
+// Shared text sizes (sp).
+export const FONT = { title: 28, heading: 19, body: 17, small: 15 } as const;
+export const CARD_RADIUS = 16;

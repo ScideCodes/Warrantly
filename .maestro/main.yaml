@@ -48,8 +48,8 @@ appId: dev.warrantly.prototype
       - scrollUntilVisible: { element: "Product", direction: UP }
       - takeScreenshot: 02d-top-after-save
 - extendedWaitUntil: { visible: "Philips HD9350", timeout: 20000 }
-- assertVisible: "Total value: .*"
 - tapOn: "Filter"
+- assertVisible: "Total value: .*"
 - tapOn: "Appliances"
 - assertVisible: "Showing: Appliances"
 - takeScreenshot: 03b-menu-filter
@@ -72,8 +72,7 @@ appId: dev.warrantly.prototype
 - takeScreenshot: 04-history
 
 # #7 another warranty for the same purchase
-- scrollUntilVisible: { element: "Add another warranty \\(e.g. extended plan\\)" }
-- waitForAnimationToEnd
+- tapOn: "More actions"
 - tapOn: "Add another warranty \\(e.g. extended plan\\)"
 - extendedWaitUntil: { visible: "Add warranty", timeout: 20000 }
 - scrollUntilVisible: { element: "Extended plan" }
@@ -88,14 +87,16 @@ appId: dev.warrantly.prototype
 - takeScreenshot: 05-covers
 
 # #2 several documents, and the PDF viewer
-- scrollUntilVisible: { element: "Attach a photo or PDF" }
+- scrollUntilVisible: { element: "Add document" }
 - waitForAnimationToEnd
+- tapOn: "Add document"
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
-- scrollUntilVisible: { element: "Open document", timeout: 30000, direction: UP, optional: true }
-- scrollUntilVisible: { element: "Open document", timeout: 30000 }
-- scrollUntilVisible: { element: "Attach a photo or PDF" }
+- scrollUntilVisible: { element: "View", timeout: 30000, direction: UP, optional: true }
+- scrollUntilVisible: { element: "View", timeout: 30000 }
+- scrollUntilVisible: { element: "Add document" }
 - waitForAnimationToEnd
+- tapOn: "Add document"
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
 - scrollUntilVisible: { element: "Philips HD9350 \\(2\\)\\.pdf", timeout: 30000, direction: UP, optional: true }
@@ -103,9 +104,10 @@ appId: dev.warrantly.prototype
 - scrollUntilVisible: { element: "Philips HD9350\\.pdf", direction: UP }
 - waitForAnimationToEnd
 - takeScreenshot: 06-two-documents
-- tapOn: "Philips HD9350\\.pdf"
+- tapOn: "View: Philips HD9350\\.pdf"
 - extendedWaitUntil: { visible: "100%", timeout: 30000 }
-- assertVisible: "Open in another app"
+- assertVisible: "Save"
+- assertVisible: "Share"
 - takeScreenshot: 07-viewer
 - tapOn: "Zoom in"
 - assertVisible: "200%"
@@ -113,9 +115,9 @@ appId: dev.warrantly.prototype
 - back
 
 # #8 product photo from the gallery
-- scrollUntilVisible: { element: "\\+ Product photo", direction: UP }
+- scrollUntilVisible: { element: "Product photo", direction: UP }
 - waitForAnimationToEnd
-- tapOn: "\\+ Product photo"
+- tapOn: "Product photo"
 - tapOn: "Choose from gallery"
 - extendedWaitUntil: { visible: ".*(Photos|Albums|Photo taken).*", timeout: 30000 }
 - takeScreenshot: 09-photo-picker
@@ -123,12 +125,11 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: ".*(Crop|CROP|Done|DONE).*", timeout: 20000, optional: true }
 - takeScreenshot: 10-crop
 - tapOn: { text: "Crop|CROP|Done|DONE", optional: true }
-- extendedWaitUntil: { notVisible: "\\+ Product photo", timeout: 30000 }
+- waitForAnimationToEnd
 - takeScreenshot: 11-photo
 
 # Test reminder arrives as a notification
-- scrollUntilVisible: { element: "Send a test reminder in 5 seconds" }
-- waitForAnimationToEnd
+- tapOn: "More actions"
 - tapOn: "Send a test reminder in 5 seconds"
 - extendedWaitUntil: { visible: "never-shown-wait-8s", timeout: 8000, optional: true }
 - swipe: { start: "50%, 1%", end: "50%, 80%" }
@@ -163,7 +164,7 @@ appId: dev.warrantly.prototype
 - tapOn: "Magyar"
 - assertVisible: "Beállítások"
 - takeScreenshot: 13-hungarian
-- tapOn: "Telefon nyelve"
+- tapOn: "Telefon"
 - assertVisible: "Settings"
 - scrollUntilVisible: { element: "60 days before", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "60 days before" }

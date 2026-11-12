@@ -43,19 +43,26 @@ export function formatDate(ymd: string, language: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// One row for a warranty everywhere (home, attention list, other covers on the detail screen):
+// photo or product icon, the name (up to two lines), then a small badge that says how long is left,
+// with the store and the end date beside it. Colour only backs up what the badge text says.
 // `to` overrides where a tap goes (the attention list opens the resolve form directly).
 export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle> }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
-  // Only what needs action gets colour; the rest stays quiet so the eye goes to it.
-  const level = urgency(days);
-  const tone = level === 'soon' || level === 'warning' ? { color: colors[level].fg, fontWeight: '700' as const } : { color: colors.muted };
+  const tone = colors[urgency(days)];
   const product = displayName(t, w);
+  const left = daysLabel(t, days);
+  const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) });
+  const store = w.coverage ? `${w.store_name} · ${t(`coverage.${w.coverage}`)}` : w.store_name;
 
   return (
-    <Pressable style={[styles.row, style]} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
-      {/* Photo if there is one, else an icon for the kind of product: rows are easier to tell apart. */}
+    <Pressable
+      style={({ pressed }) => [styles.row, style, pressed && styles.pressed]}
+      onPress={() => router.push(to ?? `/warranty/${w.id}`)}
+      accessibilityRole="button" // TalkBack reads the texts inside in order: name, store, time left, end date
+    >
       {w.photo_path && documentUriOrNull(w.photo_path) ? (
         <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />
       ) : (
@@ -64,13 +71,18 @@ export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to
         </View>
       )}
       <View style={styles.text}>
-        <Text style={styles.title} numberOfLines={1}>
+        <Text style={styles.title} numberOfLines={2}>
           {product}
         </Text>
-        <Text style={styles.meta} numberOfLines={1}>
-          <Text style={tone}>{daysLabel(t, days)}</Text> · {w.store_name}
-          {w.coverage ? ` · ${t(`coverage.${w.coverage}`)}` : ''}
+        <Text style={styles.meta} numberOfLines={2}>
+          {store}
         </Text>
+        <View style={styles.status}>
+          <View style={[styles.badge, { backgroundColor: tone.bg }]}>
+            <Text style={[styles.badgeText, { color: tone.fg }]}>{left}</Text>
+          </View>
+          <Text style={styles.meta}>{ends}</Text>
+        </View>
       </View>
     </Pressable>
   );
@@ -78,17 +90,21 @@ export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to
 
 const styles = StyleSheet.create({
   row: {
-    minHeight: 64,
+    minHeight: 80,
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingVertical: 12,
+    alignItems: 'flex-start',
+    gap: 14,
+    paddingVertical: 14,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.divider,
   },
-  thumb: { width: 44, height: 44, borderRadius: 12 },
-  icon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  text: { flex: 1, gap: 2 },
+  pressed: { opacity: 0.7 },
+  thumb: { width: 46, height: 46, borderRadius: 12 },
+  icon: { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  text: { flex: 1, gap: 4 },
   title: { fontSize: 17, fontWeight: '600', color: colors.text },
   meta: { fontSize: 15, color: colors.muted },
+  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4, marginTop: 2 },
+  badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
+  badgeText: { fontSize: 14, fontWeight: '700' },
 });

@@ -21,7 +21,7 @@ export default function WhatsNew() {
           </Text>
         ))}
         <Pressable style={styles.button} onPress={goBack} accessibilityRole="button">
-          <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('whatsNew.ok')}</Text>
+          <Text style={styles.buttonText}>{t('whatsNew.ok')}</Text>
         </Pressable>
       </ScrollView>
     </>

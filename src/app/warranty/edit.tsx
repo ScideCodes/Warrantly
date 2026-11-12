@@ -4,6 +4,7 @@ import { goBack } from '@/nav';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/db/client';
 import {
@@ -12,7 +13,7 @@ import {
 } from '@/db/repo.ts';
 import { gmailTokenFor } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS, FONT, SPACE } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
 import { takeSharedFile } from '@/shareInbox';
@@ -290,7 +291,7 @@ export default function EditWarranty() {
           {resolving && existing?.origin === 'gmail' && (
             <View style={styles.field}>
               <Pressable style={styles.secondary} onPress={toggleMail} accessibilityRole="button">
-                {mail.state === 'loading' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t(mail.state === 'shown' ? 'form.hideEmail' : 'form.showEmail')}</Text>}
+                {mail.state === 'loading' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t(mail.state === 'shown' ? 'form.hideEmail' : 'form.showEmail')}</Text>}
               </Pressable>
               {mail.state === 'shown' && (
                 <ScrollView style={styles.mailBox} nestedScrollEnabled>
@@ -302,35 +303,41 @@ export default function EditWarranty() {
             </View>
           )}
           {!existing && (
-            <View style={styles.field}>
-              <Pressable
-                style={({ pressed }) => [styles.scanCard, pressed && styles.scanPressed]}
-                onPress={() => runScan(scanDocument)}
-                disabled={scan.state === 'busy'}
-                accessibilityRole="button"
-                accessibilityLabel={t('form.scan')}
-              >
-                {scan.state === 'busy' ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="camera" size={22} color={colors.onPrimary} />}
-                <Text style={styles.scanText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('form.scan')}</Text>
-              </Pressable>
-              <Pressable style={styles.secondary} onPress={() => runScan(importDocument)} disabled={scan.state === 'busy'} accessibilityRole="button">
-                <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('form.import')}</Text>
-              </Pressable>
-              <Text style={scan.state === 'failed' ? styles.error : styles.hint} accessibilityLiveRegion="polite">
-                {scan.state === 'busy'
-                  ? t('form.scanning')
-                  : scan.state === 'done'
-                    ? t('form.scanned')
-                    : scan.state === 'attached'
-                      ? t('form.imported')
-                      : scan.state === 'failed'
-                      ? t('form.scanFailed', { detail: scan.detail })
-                      : t('form.scanHint')}
+            <View style={styles.group}>
+              <Text style={styles.groupTitle} accessibilityRole="header">
+                {t('form.fromDocument')}
               </Text>
+              <View style={styles.methods}>
+                <Pressable style={[styles.method, styles.methodPrimary]} onPress={() => runScan(scanDocument)} disabled={scan.state === 'busy'} accessibilityRole="button" accessibilityLabel={t('form.scan')}>
+                  {scan.state === 'busy' ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="camera-outline" size={22} color={colors.onPrimary} />}
+                  <Text style={styles.methodPrimaryText}>{t('form.scanShort')}</Text>
+                </Pressable>
+                <Pressable style={styles.method} onPress={() => runScan(importDocument)} disabled={scan.state === 'busy'} accessibilityRole="button" accessibilityLabel={t('form.import')}>
+                  <Ionicons name="folder-open-outline" size={22} color={colors.primary} />
+                  <Text style={styles.methodText}>{t('form.importShort')}</Text>
+                </Pressable>
+              </View>
+              {scan.state === 'done' || scan.state === 'attached' ? (
+                // Review before save: say plainly that the form was filled from the document.
+                <View style={styles.review} accessibilityLiveRegion="polite">
+                  <Ionicons name="checkmark-circle" size={22} color={colors.ok.fg} />
+                  <Text style={styles.reviewText}>{t(scan.state === 'done' ? 'form.scanned' : 'form.imported')}</Text>
+                </View>
+              ) : (
+                <Text style={scan.state === 'failed' ? styles.error : styles.hint} accessibilityLiveRegion="polite">
+                  {scan.state === 'busy' ? t('form.scanning') : scan.state === 'failed' ? t('form.scanFailed', { detail: scan.detail }) : t('form.scanHint')}
+                </Text>
+              )}
             </View>
           )}
+          <Text style={styles.groupTitle} accessibilityRole="header">
+            {t('form.groupProduct')}
+          </Text>
           {field('product_name', t('form.product'), { error: t('form.errProduct') })}
           {field('store_name', t('form.store'), { error: t('form.errStore') })}
+          <Text style={[styles.groupTitle, styles.groupGap]} accessibilityRole="header">
+            {t('form.groupWarranty')}
+          </Text>
           {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
 
           <View style={styles.field}>
@@ -346,7 +353,7 @@ export default function EditWarranty() {
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
                   >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{m}</Text>
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{m}</Text>
                   </Pressable>
                 );
               })}
@@ -388,14 +395,14 @@ export default function EditWarranty() {
 
           {existing?.store_domain && (
             <View style={styles.switchRow}>
-              <Text style={styles.switchLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('form.remember', { store: existing.store_name })}</Text>
+              <Text style={styles.switchLabel}>{t('form.remember', { store: existing.store_name })}</Text>
               <Switch value={remember} onValueChange={setRemember} accessibilityLabel={t('form.remember', { store: existing.store_name })} />
             </View>
           )}
 
           {!showMore ? (
             <Pressable style={styles.secondary} onPress={() => setMore(true)} accessibilityRole="button">
-              <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('form.more')}</Text>
+              <Text style={styles.secondaryText}>{t('form.more')}</Text>
             </Pressable>
           ) : (
             <>
@@ -411,7 +418,7 @@ export default function EditWarranty() {
                   accessibilityRole="radio"
                   accessibilityState={{ selected: coverage === c }}
                 >
-                  <Text style={[styles.chipText, coverage === c && styles.chipTextSelected]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t(`coverage.${c ?? 'standard'}`)}</Text>
+                  <Text style={[styles.chipText, coverage === c && styles.chipTextSelected]}>{t(`coverage.${c ?? 'standard'}`)}</Text>
                 </Pressable>
               ))}
             </View>
@@ -429,7 +436,7 @@ export default function EditWarranty() {
                     accessibilityRole="radio"
                     accessibilityState={{ selected }}
                   >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t(`category.${c}`)}</Text>
+                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{t(`category.${c}`)}</Text>
                   </Pressable>
                 );
               })}
@@ -448,20 +455,23 @@ export default function EditWarranty() {
             </>
           )}
 
-          <Pressable style={styles.button} onPress={save} accessibilityRole="button">
-            <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('form.save')}</Text>
-          </Pressable>
           {resolving && (
             <View style={styles.resolveRow}>
               <Pressable style={[styles.secondary, styles.flex]} onPress={goNext} accessibilityRole="button">
-                <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('form.later')}</Text>
+                <Text style={styles.secondaryText}>{t('form.later')}</Text>
               </Pressable>
               <Pressable style={[styles.secondary, styles.flex]} onPress={notWarranty} accessibilityRole="button">
-                <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.notWarranty')}</Text>
+                <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
               </Pressable>
             </View>
           )}
         </ScrollView>
+        {/* Save stays in reach at the bottom, above the keyboard when it is open. */}
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.saveBar}>
+          <Pressable style={styles.button} onPress={save} accessibilityRole="button">
+            <Text style={styles.buttonText}>{t('form.save')}</Text>
+          </Pressable>
+        </SafeAreaView>
       </KeyboardAvoidingView>
     </>
   );
@@ -471,7 +481,7 @@ const styles = StyleSheet.create({
   priceRow: { flexDirection: 'row', gap: 12 },
   currency: { width: 96 },
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 16, paddingBottom: 48 },
+  content: { padding: SPACE.screen, gap: 16, paddingBottom: 32 },
   field: { gap: 6 },
   label: { fontSize: 15, fontWeight: '600', color: colors.text },
   input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 16, fontSize: 17, color: colors.text, backgroundColor: colors.surface },
@@ -490,9 +500,17 @@ const styles = StyleSheet.create({
   mailText: { fontSize: 13, lineHeight: 19, color: colors.text },
   resolveRow: { flexDirection: 'row', gap: 12 },
   flex: { flex: 1 },
-  scanCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary },
-  scanPressed: { opacity: 0.8 },
-  scanText: { fontSize: 17, fontWeight: '700', color: colors.onPrimary },
+  group: { gap: 10, marginBottom: 8 },
+  groupTitle: { fontSize: FONT.heading, fontWeight: '700', color: colors.text },
+  groupGap: { marginTop: 8 },
+  methods: { flexDirection: 'row', gap: 10 },
+  method: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 10, paddingVertical: 8, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
+  methodPrimary: { backgroundColor: colors.primary },
+  methodText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.primary, textAlign: 'center' },
+  methodPrimaryText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.onPrimary, textAlign: 'center' },
+  review: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.ok.bg },
+  reviewText: { flex: 1, fontSize: 15, color: colors.ok.fg },
+  saveBar: { paddingHorizontal: SPACE.screen, paddingTop: 10, paddingBottom: 10, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipWide: { paddingHorizontal: 14, maxWidth: '100%' },
   monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },
@@ -501,6 +519,6 @@ const styles = StyleSheet.create({
   datePlaceholder: { color: colors.muted },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   switchLabel: { flex: 1, fontSize: 15, color: colors.text },
-  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontSize: 17, fontWeight: '700', color: colors.onPrimary },
 });

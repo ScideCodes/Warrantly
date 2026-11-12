@@ -69,7 +69,7 @@ export default function Restore() {
               <Text style={styles.hint}>{t('restore.passwordHint')}</Text>
             </View>
             <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={confirm} disabled={busy} accessibilityRole="button">
-              {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('restore.button')}</Text>}
+              {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('restore.button')}</Text>}
             </Pressable>
           </>
         )}

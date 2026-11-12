@@ -42,7 +42,7 @@ export default function Ignored() {
               </Text>
             </View>
             <Pressable style={styles.button} onPress={() => restore(item.id)} accessibilityRole="button" accessibilityLabel={`${t('ignored.restore')}: ${item.subject ?? item.store_name}`}>
-              <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('ignored.restore')}</Text>
+              <Text style={styles.buttonText}>{t('ignored.restore')}</Text>
             </Pressable>
           </View>
         )}
