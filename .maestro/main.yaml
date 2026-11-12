@@ -139,10 +139,16 @@ appId: dev.warrantly.prototype
       - swipe: { start: "50%, 1%", end: "50%, 80%" }
 - extendedWaitUntil: { visible: ".*days left on the warranty", timeout: 20000 }
 - takeScreenshot: 12-notification
-# Close the notification shade: one Back sometimes only collapses it; a second Back then would leave the app.
+# Close the notification shade, then go back to the list. The shade sometimes needs one Back and sometimes
+# two, so each extra Back only happens while its screen is still showing (a Back on the list closes the app).
 - back
 - runFlow:
     when: { visible: ".*days left on the warranty" }
+    commands:
+      - back
+- waitForAnimationToEnd
+- runFlow:
+    when: { visible: "Edit" }
     commands:
       - back
 
