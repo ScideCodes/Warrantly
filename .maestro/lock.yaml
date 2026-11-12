@@ -33,6 +33,9 @@ appId: dev.warrantly.prototype
 - tapOn: "60 days before"
 - takeScreenshot: L3-after-reminder-day
 - assertNotVisible: "Enter your PIN"
+- scrollUntilVisible: { element: "Expiry reminders", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Expiry reminders" }
+- waitForAnimationToEnd
 - tapOn: { text: "Expiry reminders", index: 0 }
 - takeScreenshot: L4-after-reminders-toggle
 - assertNotVisible: "Enter your PIN"
