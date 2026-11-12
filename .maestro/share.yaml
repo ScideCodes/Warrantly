@@ -10,6 +10,7 @@ appId: dev.warrantly.prototype
 - inputText: "Shop"
 - hideKeyboard
 - scrollUntilVisible: { element: "Save warranty" }
+- waitForAnimationToEnd
 - tapOn: "Save warranty"
 - extendedWaitUntil: { visible: "Shared PDF item", timeout: 20000 }
 - tapOn: "Shared PDF item"

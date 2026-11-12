@@ -27,13 +27,16 @@ appId: dev.warrantly.prototype
 - inputText: "MediaMarkt"
 - hideKeyboard
 - scrollUntilVisible: { element: "Appliances" }
+- waitForAnimationToEnd
 - tapOn: "Appliances"
 - scrollUntilVisible: { element: "Price" }
+- waitForAnimationToEnd
 - tapOn: { below: "Price", leftOf: "Currency" }
 - inputText: "19990"
 - hideKeyboard
 - takeScreenshot: 02-form
 - scrollUntilVisible: { element: "Save warranty" }
+- waitForAnimationToEnd
 - takeScreenshot: 02b-before-save
 - tapOn: "Save warranty"
 - takeScreenshot: 02c-after-save
@@ -47,7 +50,9 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "Price", timeout: 20000 }
 - assertVisible: "Appliances"
 - scrollUntilVisible: { element: "Find Philips support" }
+- waitForAnimationToEnd
 - scrollUntilVisible: { element: "e.g. Sent for repair" }
+- waitForAnimationToEnd
 - tapOn: "e.g. Sent for repair"
 - inputText: "Sent for repair"
 - hideKeyboard
@@ -57,21 +62,26 @@ appId: dev.warrantly.prototype
 
 # #7 another warranty for the same purchase
 - scrollUntilVisible: { element: "Add another warranty \\(e.g. extended plan\\)" }
+- waitForAnimationToEnd
 - tapOn: "Add another warranty \\(e.g. extended plan\\)"
 - extendedWaitUntil: { visible: "Extended plan", timeout: 20000 }
 - tapOn: "Extended plan"
 - scrollUntilVisible: { element: "Save warranty" }
+- waitForAnimationToEnd
 - tapOn: "Save warranty"
 - scrollUntilVisible: { element: "Other warranties for this purchase" }
+- waitForAnimationToEnd
 - assertVisible: ".*Extended plan.*"
 - takeScreenshot: 05-covers
 
 # #2 several documents, and the PDF viewer
 - scrollUntilVisible: { element: "Attach a photo or PDF" }
+- waitForAnimationToEnd
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
 - extendedWaitUntil: { visible: "Open document", timeout: 30000 }
 - scrollUntilVisible: { element: "Attach a photo or PDF" }
+- waitForAnimationToEnd
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
 - extendedWaitUntil: { visible: "Philips HD9350 \\(2\\)\\.pdf", timeout: 30000 }
@@ -88,6 +98,7 @@ appId: dev.warrantly.prototype
 
 # #8 product photo from the gallery
 - scrollUntilVisible: { element: "\\+ Product photo", direction: UP }
+- waitForAnimationToEnd
 - tapOn: "\\+ Product photo"
 - tapOn: "Choose from gallery"
 - extendedWaitUntil: { visible: ".*(Photos|Albums|Photo taken).*", timeout: 30000 }
@@ -101,6 +112,7 @@ appId: dev.warrantly.prototype
 
 # Test reminder arrives as a notification
 - scrollUntilVisible: { element: "Send a test reminder in 5 seconds" }
+- waitForAnimationToEnd
 - tapOn: "Send a test reminder in 5 seconds"
 - extendedWaitUntil: { visible: "never-shown-wait-8s", timeout: 8000, optional: true }
 - swipe: { start: "50%, 1%", end: "50%, 80%" }
@@ -123,6 +135,7 @@ appId: dev.warrantly.prototype
 - tapOn: "06:00 PM"
 - takeScreenshot: 14-reminders
 - scrollUntilVisible: { element: "Import a shared list" }
+- waitForAnimationToEnd
 - tapOn: "Import a shared list"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-shared.json } }
 - extendedWaitUntil: { visible: "1 warranty added\\.", timeout: 30000 }
@@ -140,13 +153,16 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - back
 - scrollUntilVisible: { element: "Help and feedback", direction: UP }
+- waitForAnimationToEnd
 - tapOn: "Help and feedback"
 - tapOn: "Why doesn't a purchase show up\\?"
 - assertVisible: "Warrantly only imports.*"
 - takeScreenshot: 18-help
 - scrollUntilVisible: { element: "Privacy policy" }
+- waitForAnimationToEnd
 - tapOn: "Privacy policy"
 - scrollUntilVisible: { element: ".*Limited Use.*" }
+- waitForAnimationToEnd
 - takeScreenshot: 19-privacy
 - back
 - tapOn: "What's new"
@@ -162,6 +178,7 @@ appId: dev.warrantly.prototype
 
 # #14 dark mode: the app restarts in the dark palette
 - scrollUntilVisible: { element: "Dark", direction: UP }
+- waitForAnimationToEnd
 - tapOn: "Dark"
 - extendedWaitUntil: { visible: "Hi, Tester!", timeout: 90000 }
 - assertVisible: ".*Shared Kettle.*"
