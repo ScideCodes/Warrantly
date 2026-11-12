@@ -13,7 +13,8 @@ import { gmailTokenFor } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
 import { colors } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
-import { deleteDocuments, importDocument, scanDocument } from '@/documents';
+import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
+import { takeSharedFile } from '@/shareInbox';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
 import { CATEGORIES, formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
@@ -44,7 +45,8 @@ const fromWarranty = (w: Warranty | null): Form => ({
 // Dates open the system calendar on Android; elsewhere (web previews, iOS for now) they are typed as YYYY-MM-DD.
 export default function EditWarranty() {
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
-  const { id, copyFrom } = useLocalSearchParams<{ id?: string; copyFrom?: string }>();
+  // shared: a file sent from another app is waiting in the share inbox.
+  const { id, copyFrom, shared } = useLocalSearchParams<{ id?: string; copyFrom?: string; shared?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
@@ -90,6 +92,11 @@ export default function EditWarranty() {
       setMail({ state: 'hidden' });
     });
   }, [id, copyFrom]);
+
+  useEffect(() => {
+    const file = shared ? takeSharedFile() : null;
+    if (file) void runScan(() => fileToDocument(file.uri, file.name, file.mimeType));
+  }, [shared]);
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 

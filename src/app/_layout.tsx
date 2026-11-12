@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from 'expo-router';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
+import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
+import { putSharedFile } from '@/shareInbox';
 import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
@@ -22,6 +24,19 @@ void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
+
+// Share into Warrantly (section 18): a PDF or photo sent from another app opens the add form with it.
+function SharedFiles() {
+  const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
+  useEffect(() => {
+    const file = shareIntent.files?.[0];
+    if (!hasShareIntent || !file) return;
+    putSharedFile({ uri: file.path, name: file.fileName, mimeType: file.mimeType });
+    resetShareIntent();
+    router.push({ pathname: '/warranty/edit', params: { shared: '1' } });
+  }, [hasShareIntent, shareIntent, resetShareIntent]);
+  return null;
+}
 
 export default function RootLayout() {
   // Android can change the language while the app runs; follow it.
@@ -49,13 +64,16 @@ export default function RootLayout() {
   }, [locales]);
 
   return (
-    <ThemeProvider value={navTheme}>
-      <StatusBar style={isDark ? 'light' : 'dark'} />
-      {/* Tablets and wide screens: screens keep a readable width, centred. */}
-      <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.background } }}>
-        <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
-      </Stack>
-      {locked && <LockScreen onUnlock={() => setLocked(false)} />}
-    </ThemeProvider>
+    <ShareIntentProvider>
+      <ThemeProvider value={navTheme}>
+        <SharedFiles />
+        <StatusBar style={isDark ? 'light' : 'dark'} />
+        {/* Tablets and wide screens: screens keep a readable width, centred. */}
+        <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.background } }}>
+          <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
+        </Stack>
+        {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+      </ThemeProvider>
+    </ShareIntentProvider>
   );
 }
