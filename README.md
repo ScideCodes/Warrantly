@@ -58,6 +58,15 @@ npx eas-cli@latest build --platform android --profile preview
 JavaScript-only changes reach an installed build over the air (`npx eas-cli@latest update --channel preview`).
 A change that adds native code needs a new `version` in `app.json` and a new build.
 
+## On-device test
+
+`.github/workflows/device-test.yml` runs the x86_64 test build (EAS profile `emulator`, link in
+`.maestro/apk-url.txt`) on Google's Android emulator in GitHub Actions and drives it with Maestro
+(`.maestro/*.yaml`): onboarding, add with price and category, history, extended plan, two documents and
+the PDF viewer, product photo, test reminder, language, reminder settings, import, export, help, privacy,
+what's new, dark mode, share from the Files app, the icon shortcut link, and delete all data.
+Screenshots and logs are uploaded as the run's artifact. Gmail, Drive and the widget need a person.
+
 ## Checks
 
 ```sh
