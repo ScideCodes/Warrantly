@@ -1,0 +1,13 @@
+# In Android's file picker, choose the file named in ${FILE} (from Downloads).
+appId: dev.warrantly.prototype
+---
+- extendedWaitUntil:
+    visible: ".*(Recent|Downloads|Files|${FILE}).*"
+    timeout: 20000
+- runFlow:
+    when:
+      notVisible: ${FILE}
+    commands:
+      - tapOn: "Show roots"
+      - tapOn: "Downloads"
+- tapOn: ${FILE}
