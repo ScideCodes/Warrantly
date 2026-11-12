@@ -11,6 +11,11 @@ jobs:
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
+      - name: Free disk space
+        # The app build and the emulator together outgrow the runner's free disk; drop unused toolchains.
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL /usr/local/lib/node_modules/@angular
+          df -h /
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -29,6 +34,8 @@ jobs:
           npx expo prebuild --platform android --no-install
           cd android && ./gradlew assembleRelease -PreactNativeArchitectures=x86_64 --no-daemon
           cp app/build/outputs/apk/release/app-release.apk ../app.apk
+          ./gradlew --stop
+          cd .. && rm -rf android node_modules/.cache && df -h /
       - name: Test files and Maestro
         run: |
           pip install --quiet pillow
