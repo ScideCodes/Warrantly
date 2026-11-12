@@ -24,8 +24,9 @@ export const getThemeSetting = (): string => Storage.getItemSync('theme') ?? 'sy
 export const setThemeSetting = (theme: string): void => Storage.setItemSync('theme', theme);
 
 // Reminder time of day (hour) and which reminders (groups from warranty.ts), section 16.
-export const getReminderHour = (): number => Number(Storage.getItemSync('reminder_hour') ?? 9);
-export const setReminderHour = (hour: number): void => Storage.setItemSync('reminder_hour', String(hour));
+// Minutes after midnight (9:00 = 540). Older installs saved only the hour.
+export const getReminderTime = (): number => Number(Storage.getItemSync('reminder_time') ?? Number(Storage.getItemSync('reminder_hour') ?? 9) * 60);
+export const setReminderTime = (minutes: number): void => Storage.setItemSync('reminder_time', String(minutes));
 export const getReminderGroups = (): ReminderGroup[] => JSON.parse(Storage.getItemSync('reminder_groups') ?? 'null') ?? ALL_GROUPS;
 export const setReminderGroups = (groups: ReminderGroup[]): void => Storage.setItemSync('reminder_groups', JSON.stringify(groups));
 
@@ -44,7 +45,7 @@ export const setWidgetNames = (on: boolean | null): void => void (on === null ? 
 export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account'): string | null => Storage.getItemSync(key);
 export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account', value: string): void => Storage.setItemSync(key, value);
 // What a backup carries besides the database.
-export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), theme: Storage.getItemSync('theme'), language: Storage.getItemSync('language'), reminder_hour: Storage.getItemSync('reminder_hour'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled') });
+export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), theme: Storage.getItemSync('theme'), language: Storage.getItemSync('language'), reminder_time: Storage.getItemSync('reminder_time'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled') });
 export function applySnapshot(s: Record<string, string | null>): void {
-  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'reminders_enabled', 'reminder_hour', 'reminder_groups', 'return_reminders'].includes(k) && v !== null) Storage.setItemSync(k, v);
+  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders'].includes(k) && v !== null) Storage.setItemSync(k, v);
 }
