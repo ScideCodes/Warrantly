@@ -74,7 +74,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: colors.text, paddingHorizontal: 16, paddingTop: 8 },
   subtitle: { fontSize: 15, color: colors.muted, paddingHorizontal: 16, paddingBottom: 8 },
   section: { paddingVertical: 8 },
-  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.border },
+  divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', paddingHorizontal: 16, paddingVertical: 8 },
   item: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 26 },
   itemSelected: { backgroundColor: colors.surface },

@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     gap: 12,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.border,
+    borderBottomColor: colors.divider,
   },
   thumb: { width: 44, height: 44, borderRadius: 22 },
   letter: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
@@ -93,5 +93,5 @@ const styles = StyleSheet.create({
   title: { fontSize: 16, fontWeight: '600', color: colors.text },
   meta: { fontSize: 14, color: colors.muted },
   pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, maxWidth: 140 },
-  pillText: { fontSize: 13, fontWeight: '600', textAlign: 'center' },
+  pillText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
 });

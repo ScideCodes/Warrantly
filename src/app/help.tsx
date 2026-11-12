@@ -59,7 +59,7 @@ export default function Help() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 4 },
-  item: { paddingVertical: 14, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  item: { paddingVertical: 14, gap: 8, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   q: { fontSize: 16, fontWeight: '600', color: colors.text },
   a: { fontSize: 15, lineHeight: 22, color: colors.muted },
   heading: { fontSize: 17, fontWeight: '700', color: colors.text, marginTop: 24 },
