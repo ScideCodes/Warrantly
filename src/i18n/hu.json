@@ -35,6 +35,8 @@
     "showing": "Szűrés: {{name}}",
     "empty_active": "Most semmi sincs garanciában",
     "title": "Garanciák",
+    "nextUp": "Legközelebb lejár",
+    "endsOn": "lejár: {{date}}",
     "filter": "Szűrés",
     "sectionSoon": "Hamarosan lejár ({{count}})",
     "sectionCovered": "Érvényes ({{count}})",

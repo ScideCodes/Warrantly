@@ -1,6 +1,6 @@
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { Image, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import type { Warranty } from '@/db/repo.ts';
 import { documentUriOrNull } from '@/documents';
@@ -43,15 +43,17 @@ export function formatDate(ymd: string, language: string): string {
 }
 
 // `to` overrides where a tap goes (the attention list opens the resolve form directly).
-export function WarrantyRow({ warranty: w, to }: { warranty: Warranty; to?: Href }) {
+export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle> }) {
   const { t } = useTranslation();
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
-  const pill = colors[urgency(days)];
+  // Only what needs action gets colour; the rest stays quiet so the eye goes to it.
+  const level = urgency(days);
+  const tone = level === 'soon' || level === 'warning' ? { color: colors[level].fg, fontWeight: '700' as const } : { color: colors.muted };
   const product = displayName(t, w);
 
   return (
-    <Pressable style={styles.row} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
+    <Pressable style={[styles.row, style]} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
       {/* Photo if there is one, else the first letter (like a sender in Gmail): rows are easier to tell apart. */}
       {w.photo_path && documentUriOrNull(w.photo_path) ? (
         <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />
@@ -69,9 +71,7 @@ export function WarrantyRow({ warranty: w, to }: { warranty: Warranty; to?: Href
           {t('warranty.purchased', { ago: agoLabel(t, w.purchase_date, today) })}
         </Text>
       </View>
-      <View style={[styles.pill, { backgroundColor: pill.bg }]}>
-        <Text style={[styles.pillText, { color: pill.fg }]}>{daysLabel(t, days)}</Text>
-      </View>
+      <Text style={[styles.days, tone]}>{daysLabel(t, days)}</Text>
     </Pressable>
   );
 }
@@ -86,12 +86,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: colors.divider,
   },
-  thumb: { width: 44, height: 44, borderRadius: 22 },
-  letter: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  thumb: { width: 44, height: 44, borderRadius: 12 },
+  letter: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   letterText: { fontSize: 18, fontWeight: '700', color: colors.primary },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 16, fontWeight: '600', color: colors.text },
   meta: { fontSize: 14, color: colors.muted },
-  pill: { borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, maxWidth: 140 },
-  pillText: { fontSize: 14, fontWeight: '600', textAlign: 'center' },
+  days: { fontSize: 15, textAlign: 'right', maxWidth: 120 },
 });
