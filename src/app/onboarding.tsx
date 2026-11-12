@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { setUsername } from '@/settings';
+import { markWhatsNewSeen } from '@/whatsNew';
 import { colors } from '@/theme';
 
 const MAX_NAME = 30;
@@ -18,6 +19,7 @@ export default function Onboarding() {
   function submit() {
     if (!trimmed) return;
     setUsername(trimmed);
+    markWhatsNewSeen(); // a new user has nothing to compare with
     setAskLock(true);
   }
 

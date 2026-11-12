@@ -1,0 +1,6 @@
+# #21: the icon shortcut's link opens the add form.
+appId: dev.warrantly.prototype
+---
+- extendedWaitUntil: { visible: "Add warranty", timeout: 60000 }
+- takeScreenshot: 25-shortcut-add
+- back
