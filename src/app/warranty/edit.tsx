@@ -68,6 +68,10 @@ export default function EditWarranty() {
   const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
   const [mail, setMail] = useState<{ state: 'hidden' | 'loading' | 'shown'; text?: string }>({ state: 'hidden' });
   const resolving = existing?.status === 'needs_input'; // section 9 resolve view
+  // A new warranty asks only for the essentials; the rest opens on request, or by itself when there is
+  // something in it to see (editing, a copied purchase, a scan, an error in the start date).
+  const [more, setMore] = useState(false);
+  const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date');
 
   useEffect(() => {
     void getDb().then(async (db) => {
@@ -320,7 +324,6 @@ export default function EditWarranty() {
           {field('product_name', t('form.product'), { error: t('form.errProduct') })}
           {field('store_name', t('form.store'), { error: t('form.errStore') })}
           {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
-          {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
 
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.length')}</Text>
@@ -382,6 +385,13 @@ export default function EditWarranty() {
             </View>
           )}
 
+          {!showMore ? (
+            <Pressable style={styles.secondary} onPress={() => setMore(true)} accessibilityRole="button">
+              <Text style={styles.secondaryText}>{t('form.more')}</Text>
+            </Pressable>
+          ) : (
+            <>
+          {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.coverage')}</Text>
             <View style={styles.wrapChips}>
@@ -427,6 +437,8 @@ export default function EditWarranty() {
           {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
           {field('website_url', t('form.website'), { keyboard: 'url' })}
           {field('notes', t('form.notes'), { multiline: true })}
+            </>
+          )}
 
           <Pressable style={styles.button} onPress={save} accessibilityRole="button">
             <Text style={styles.buttonText}>{t('form.save')}</Text>

@@ -199,7 +199,7 @@ export default function Home() {
 
   const empty = accounts === null ? undefined : accounts.length || warranties.length ? (
     <Text style={styles.empty}>
-      {sync.kind === 'syncing' ? t('home.syncing', { email: sync.email }) : query || filter.kind !== 'all' ? t('home.noMatch') : t('home.empty_active')}
+      {sync.kind === 'syncing' ? t('home.syncing', { email: sync.email }) : (query || filter.kind !== 'all') && !expired.length ? t('home.noMatch') : t('home.empty_active')}
     </Text>
   ) : (
     <View style={styles.connect}>
@@ -285,7 +285,7 @@ const styles = StyleSheet.create({
   searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: 56, borderRadius: 14, borderWidth: 2, borderColor: colors.border, paddingLeft: 14, paddingRight: 4, gap: 8 },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   searchInput: { flex: 1, minHeight: 48, fontSize: 18, color: colors.text },
-  filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: 40, paddingHorizontal: 16, borderRadius: 20, backgroundColor: colors.primary, maxWidth: '100%' },
+  filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: 48, paddingHorizontal: 16, borderRadius: 24, backgroundColor: colors.primary, maxWidth: '100%' },
   filterText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.onPrimary },
   filterClose: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
   banner: { backgroundColor: colors.banner, borderRadius: 12, padding: 14, minHeight: 52, justifyContent: 'center' },
