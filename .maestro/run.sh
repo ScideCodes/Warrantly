@@ -8,19 +8,21 @@ FAILED=0
 adb install -r -g app.apk
 adb logcat -c
 adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E ExpoModulesCore:V expo-share-intent:V ExpoShareIntent:V '*:S' > out/applog.txt 2>&1 &
+adb logcat -v time > out/fulllog.txt 2>&1 &
 for f in fixture-invoice.pdf fixture-share.pdf fixture-shared.json; do adb push "$f" /sdcard/Download/; done
 adb push fixture-photo.jpg /sdcard/Pictures/
 adb shell content call --uri content://media --method scan_volume --arg external_primary >/dev/null
 sleep 5
 
 export MAESTRO_CLI_NO_ANALYTICS=1
-flow() { (cd out && maestro test --format junit --output "$1.xml" --debug-output "debug-$1" "../.maestro/$1.yaml" > "$1.log" 2>&1); result $? "$1"; tail -5 "out/$1.log"; adb exec-out screencap -p > "out/end-$1.png"; }
+flow() { (cd out && maestro test --format junit --output "$1.xml" --debug-output "debug-$1" --test-output-dir "tests-$1" "../.maestro/$1.yaml" > "$1.log" 2>&1); result $? "$1"; tail -5 "out/$1.log"; adb exec-out screencap -p > "out/end-$1.png"; }
 
 flow main
 
 # Share into Warrantly (#3): a PDF sent from another app opens the add form with it attached.
 ID=$(adb shell content query --uri content://media/external/file --projection _id --where "_display_name=\'fixture-share.pdf\'" | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
 adb shell am start -a android.intent.action.SEND -t application/pdf --eu android.intent.extra.STREAM "content://media/external/file/$ID" --grant-read-uri-permission -n "$APP/.MainActivity"
+sleep 8; adb exec-out screencap -p > out/after-share-intent.png
 flow share
 
 # App icon shortcuts (#21): published by the app, and the link they use opens the add form.
