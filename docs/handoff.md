@@ -58,7 +58,7 @@ npx expo start                # dev server
 ## Decisions the owner made
 
 - Warranty names are shortened to at most 3 words in lists (`displayName` in `src/components/WarrantyRow.tsx`).
-- Home is Gmail-like: a search bar with a ☰ side menu (`src/components/SideMenu.tsx`) and an avatar that opens Settings. Below it are the tabs Active, Expiring soon and Expired, plus a "+ Add" button.
+- Home is one list with no tabs (chosen Nov 2026 from the design canvas, direction G): title "Warranties", a "Filter" button that opens the account/category/store menu (`src/components/SideMenu.tsx`), a search box, then groups "Expiring soon" and "Covered", with expired ones folded under "Show expired". A bottom bar with icon + label (Warranties, Add, Settings) replaced the ☰ menu and the avatar. Icons come from `@expo/vector-icons` (Ionicons).
 - Settings uses cards: accounts, Reminders (checklist + "Time" row, no "at"), Privacy and security, App, Backup, Your data, Help and about. Version is at the bottom.
 - App lock: a PIN plus optional fingerprint. It relocks after 3 minutes in the background. A theme restart doesn't relock: `allowRelaunchWithoutLock` in `src/lock/store.ts` gives a 30-second pass. On the lock screen the fingerprint prompt opens by itself once the app is in front. If Android (not the person) closes it, it retries once and writes a note to the error log in Help (`src/components/LockScreen.tsx`). The owner confirmed on the phone that this works.
 - It must be easy for both young and old people: big touch targets, plain words.
