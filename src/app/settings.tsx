@@ -2,6 +2,7 @@ import { useCallback, useState, type ReactNode } from 'react';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
@@ -16,13 +17,14 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
-import { getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
+import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { colors } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
+type Icon = keyof typeof Ionicons.glyphMap;
 
 // Settings (section 13): mail accounts, app lock, reminders and backup.
 export default function Settings() {
@@ -264,43 +266,67 @@ export default function Settings() {
     await backupNow();
   }
 
-  const row = (label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void) => (
+  // A small tinted square with an icon at the start of each row, so rows are easy to tell apart.
+  const tile = (icon: Icon, danger = false) => (
+    <View style={[styles.tile, danger && styles.tileDanger]}>
+      <Ionicons name={icon} size={20} color={danger ? colors.soon.fg : colors.primary} />
+    </View>
+  );
+  const row = (icon: Icon, label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void) => (
     <View style={styles.row}>
+      {tile(icon)}
       <View style={styles.rowText}>
         <Text style={styles.label}>{label}</Text>
         {hint && <Text style={styles.hint}>{hint}</Text>}
       </View>
-      <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        accessibilityLabel={label}
+        trackColor={{ true: colors.primary, false: colors.border }}
+        thumbColor={value ? colors.onPrimary : colors.surface}
+      />
     </View>
   );
-  const link = (label: string, onPress: () => void, opts: { hint?: string; danger?: boolean; value?: string } = {}) => (
+  const link = (icon: Icon, label: string, onPress: () => void, opts: { hint?: string; danger?: boolean; value?: string } = {}) => (
     <Pressable style={styles.row} onPress={onPress} accessibilityRole="button">
+      {tile(icon, opts.danger)}
       <View style={styles.rowText}>
         <Text style={[styles.label, opts.danger && styles.dangerLabel]}>{label}</Text>
         {opts.hint && <Text style={styles.hint}>{opts.hint}</Text>}
       </View>
       {opts.value && <Text style={styles.value}>{opts.value}</Text>}
-      {!opts.danger && <Text style={styles.chevron}>›</Text>}
+      {!opts.danger && <Ionicons name="chevron-forward" size={20} color={colors.muted} />}
     </Pressable>
   );
-  const choices = (label: string, items: { key: string; text: string }[], selected: string, onPick: (key: string) => void) => (
-    <View style={styles.block}>
-      <Text style={styles.label}>{label}</Text>
-      <View style={styles.chips}>
-        {items.map((it) => (
-          <Pressable
-            key={it.key}
-            style={[styles.chip, selected === it.key && styles.chipSelected]}
-            onPress={() => onPick(it.key)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: selected === it.key }}
-          >
-            <Text style={[styles.chipText, selected === it.key && styles.chipTextSelected]}>{it.text}</Text>
-          </Pressable>
-        ))}
-      </View>
+  // Segmented control: every choice visible at once, the chosen one filled.
+  const segmented = (label: string, items: { key: string; text: string }[], selected: string, onPick: (key: string) => void) => (
+    <View style={styles.segment} accessibilityRole="radiogroup" accessibilityLabel={label}>
+      {items.map((it) => (
+        <Pressable
+          key={it.key}
+          style={[styles.segItem, selected === it.key && styles.segItemOn]}
+          onPress={() => onPick(it.key)}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: selected === it.key }}
+        >
+          <Text style={[styles.segText, selected === it.key && styles.segTextOn]} numberOfLines={2}>
+            {it.text}
+          </Text>
+        </Pressable>
+      ))}
     </View>
   );
+  const choices = (icon: Icon, label: string, items: { key: string; text: string }[], selected: string, onPick: (key: string) => void) => (
+    <View style={styles.block}>
+      <View style={styles.blockHead}>
+        {tile(icon)}
+        <Text style={styles.label}>{label}</Text>
+      </View>
+      {segmented(label, items, selected, onPick)}
+    </View>
+  );
+  const name = getUsername();
   // One card per topic, with a heading above it, so sections are easy to tell apart.
   const section = (title: string, body: ReactNode) => (
     <View style={styles.sectionWrap}>
@@ -315,101 +341,114 @@ export default function Settings() {
     <>
       <Stack.Screen options={{ headerShown: true, title: t('settings.title') }} />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <View style={styles.profile}>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
+          </View>
+          <View style={styles.rowText}>
+            <Text style={styles.profileName} numberOfLines={1}>
+              {name?.trim() || t('settings.title')}
+            </Text>
+            <Text style={styles.hint}>{t('settings.profileHint')}</Text>
+          </View>
+        </View>
+
         {section(
           t('accounts.section'),
           <>
             {accounts.map((a) => (
               <View key={a.id} style={styles.row}>
-                <Text style={[styles.label, styles.rowText]} numberOfLines={1}>
-                  {a.email}
-                </Text>
-                <Pressable
-                  onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
-                  hitSlop={8}
-                >
-                  <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
-                </Pressable>
-                <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
-                  <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
-                </Pressable>
+                {tile('mail-outline')}
+                <View style={styles.rowText}>
+                  <Text style={styles.label} numberOfLines={1}>
+                    {a.email}
+                  </Text>
+                  <View style={styles.inlineLinks}>
+                    <Pressable
+                      onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
+                    </Pressable>
+                    <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
+                      <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
+                    </Pressable>
+                  </View>
+                </View>
               </View>
             ))}
             <Pressable style={styles.row} onPress={addAccount} accessibilityRole="button">
-              <Text style={[styles.label, styles.link]}>+ {t('accounts.add')}</Text>
+              {tile('add')}
+              <Text style={[styles.label, styles.link, styles.rowText]}>{t('accounts.add')}</Text>
             </Pressable>
             {accountBusy && <Text style={[styles.hint, styles.pad]}>{accountBusy}</Text>}
-            {link(t('ignored.title'), () => router.push('/ignored'))}
+            {link('eye-off-outline', t('ignored.title'), () => router.push('/ignored'))}
           </>,
         )}
 
         {section(
           t('settings.remindersSection'),
           <>
-            {row(t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+            {row('notifications-outline', t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
             {reminders && (
               <>
                 {ALL_GROUPS.map((g) => (
                   <Pressable
                     key={g}
-                    style={styles.row}
+                    style={[styles.row, styles.subRow]}
                     onPress={() => toggleGroup(g)}
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: groups.includes(g) }}
                   >
                     <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
-                    <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <Text style={styles.checkMark}>✓</Text>}</View>
+                    <View style={[styles.check, groups.includes(g) && styles.checkOn]}>
+                      {groups.includes(g) && <Ionicons name="checkmark" size={18} color={colors.onPrimary} />}
+                    </View>
                   </Pressable>
                 ))}
-                {link(t('settings.reminderTime'), pickTime, { value: timeLabel })}
-                {row(t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
+                {link('time-outline', t('settings.reminderTime'), pickTime, { value: timeLabel })}
+                {row('return-down-back-outline', t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
               </>
             )}
           </>,
         )}
 
         {section(
-          t('settings.security'),
+          t('settings.general'),
           <>
-            {row(t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
-            {lock && link(t('settings.changePin'), () => router.push('/pin'))}
-            {lock && canBiometric && row(t('settings.biometric'), null, biometric, toggleBiometric)}
-            {Platform.OS === 'android' && row(t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
+            {choices('contrast-outline', t('settings.theme'), ['light', 'dark', 'system'].map((key) => ({ key, text: t(`settings.theme_${key}`) })), theme, chooseTheme)}
+            {choices('globe-outline', t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, text: t(`settings.lang_${key}`) })), language, chooseLanguage)}
           </>,
         )}
 
         {section(
-          t('settings.general'),
+          t('settings.security'),
           <>
-            {choices(t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, text: t(`settings.lang_${key}`) })), language, chooseLanguage)}
-            {choices(t('settings.theme'), ['system', 'light', 'dark'].map((key) => ({ key, text: t(`settings.theme_${key}`) })), theme, chooseTheme)}
+            {row('lock-closed-outline', t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
+            {lock && link('keypad-outline', t('settings.changePin'), () => router.push('/pin'))}
+            {lock && canBiometric && row('finger-print-outline', t('settings.biometric'), null, biometric, toggleBiometric)}
+            {Platform.OS === 'android' && row('apps-outline', t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
           </>,
         )}
 
         {section(
           t('backup.section'),
           <>
-            {row(t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
+            {row('cloud-upload-outline', t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
             {backup && (
               <View style={styles.block}>
                 <Text style={styles.label}>{t('backup.interval')}</Text>
-                <View style={styles.chips}>
-                  {INTERVALS.map((i) => (
-                    <Pressable
-                      key={i}
-                      style={[styles.chip, interval === i && styles.chipSelected]}
-                      onPress={() => {
-                        setSetting('backup_interval', i);
-                        setIntervalChoice(i);
-                      }}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected: interval === i }}
-                    >
-                      <Text style={[styles.chipText, interval === i && styles.chipTextSelected]}>{t(`backup.${i}`)}</Text>
-                    </Pressable>
-                  ))}
-                </View>
+                {segmented(
+                  t('backup.interval'),
+                  INTERVALS.map((i) => ({ key: i, text: t(`backup.${i}`) })),
+                  interval,
+                  (i) => {
+                    setSetting('backup_interval', i);
+                    setIntervalChoice(i as BackupInterval);
+                  },
+                )}
                 <Text style={backupError ? styles.error : styles.hint}>
                   {backupBusy
                     ? t('backup.working')
@@ -425,6 +464,7 @@ export default function Settings() {
               </View>
             )}
             <View style={styles.row}>
+              {tile('person-circle-outline')}
               <View style={styles.rowText}>
                 <Text style={styles.label}>{t('backup.account')}</Text>
                 <Text style={styles.hint} numberOfLines={1}>
@@ -435,28 +475,28 @@ export default function Settings() {
                 <Text style={styles.linkSmall}>{t('backup.change')}</Text>
               </Pressable>
             </View>
-            {link(t('backup.restore'), () => router.push('/restore'))}
+            {link('cloud-download-outline', t('backup.restore'), () => router.push('/restore'))}
           </>,
         )}
 
         {section(
           t('data.section'),
           <>
-            {link(t('data.exportPdf'), () => exportList('pdf'))}
-            {link(t('data.exportCsv'), () => exportList('csv'))}
-            {link(t('data.share'), shareAll, { hint: t('data.shareHint') })}
-            {link(t('data.import'), importShared)}
-            {link(t('data.exportAll'), exportEverything, { hint: t('data.exportAllHint') })}
-            {link(t('data.delete'), confirmDeleteAll, { danger: true })}
+            {link('document-text-outline', t('data.exportPdf'), () => exportList('pdf'))}
+            {link('grid-outline', t('data.exportCsv'), () => exportList('csv'))}
+            {link('share-social-outline', t('data.share'), shareAll, { hint: t('data.shareHint') })}
+            {link('download-outline', t('data.import'), importShared)}
+            {link('archive-outline', t('data.exportAll'), exportEverything, { hint: t('data.exportAllHint') })}
+            {link('trash-outline', t('data.delete'), confirmDeleteAll, { danger: true })}
           </>,
         )}
 
         {section(
           t('settings.about'),
           <>
-            {link(t('help.title'), () => router.push('/help'))}
-            {link(t('settings.rate'), () => void openStorePage().catch(() => {}))}
-            {link(t('privacy.title'), () => router.push('/privacy'))}
+            {link('help-circle-outline', t('help.title'), () => router.push('/help'))}
+            {link('star-outline', t('settings.rate'), () => void openStorePage().catch(() => {}))}
+            {link('shield-checkmark-outline', t('privacy.title'), () => router.push('/privacy'))}
           </>,
         )}
         <Text style={styles.version} selectable>
@@ -470,31 +510,38 @@ export default function Settings() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 16, paddingBottom: 32 },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 20, backgroundColor: colors.surface },
+  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 22, fontWeight: '700', color: colors.onPrimary },
+  profileName: { fontSize: 18, fontWeight: '700', color: colors.text },
   sectionWrap: { marginTop: 24 },
-  section: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
-  card: { backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 16, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  rowText: { flex: 1, gap: 4 },
-  label: { fontSize: 16, fontWeight: '600', color: colors.text },
+  section: { fontSize: 14, fontWeight: '700', letterSpacing: 0.8, color: colors.muted, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+  card: { backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 16, overflow: 'hidden' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 64, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  subRow: { paddingLeft: 50, minHeight: 56 },
+  rowText: { flex: 1, gap: 2 },
+  tile: { width: 36, height: 36, borderRadius: 10, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  tileDanger: { backgroundColor: colors.soon.bg },
+  label: { fontSize: 17, fontWeight: '600', color: colors.text },
   dangerLabel: { color: colors.soon.fg },
   hint: { fontSize: 14, color: colors.muted },
   value: { fontSize: 16, color: colors.muted },
-  chevron: { fontSize: 22, color: colors.muted },
   pad: { paddingVertical: 8 },
   link: { color: colors.primary },
+  inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 6 },
   linkSmall: { fontSize: 15, fontWeight: '600', color: colors.primary },
   danger: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
-  check: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  checkMark: { color: colors.onPrimary, fontSize: 15, fontWeight: '800' },
-  block: { gap: 10, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 15, color: colors.text },
-  chipTextSelected: { color: colors.onPrimary, fontWeight: '600' },
+  block: { gap: 12, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  blockHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  segment: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
+  segItem: { flex: 1, minHeight: 48, paddingHorizontal: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  segItemOn: { backgroundColor: colors.primary },
+  segText: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
+  segTextOn: { color: colors.onPrimary, fontWeight: '700' },
   error: { fontSize: 14, color: colors.soon.fg },
-  version: { fontSize: 13, color: colors.muted, textAlign: 'center', marginTop: 24 },
-  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  version: { fontSize: 14, color: colors.muted, textAlign: 'center', marginTop: 24 },
+  secondary: { minHeight: 48, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  secondaryText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

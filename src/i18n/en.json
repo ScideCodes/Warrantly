@@ -195,6 +195,7 @@
   },
   "settings": {
     "title": "Settings",
+    "profileHint": "Your warranties stay on this phone",
     "lock": "App lock",
     "lockHint": "Ask for a PIN when the app opens, and after 3 minutes away.",
     "changePin": "Change PIN",
