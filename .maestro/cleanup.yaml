@@ -4,6 +4,7 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "Hi, Tester!", timeout: 60000 }
 - tapOn: "Settings"
 - scrollUntilVisible: { element: "Delete all my data" }
+- waitForAnimationToEnd
 - tapOn: "Delete all my data"
 - tapOn: "Delete from this phone"
 - extendedWaitUntil: { visible: "Welcome to Warrantly", timeout: 90000 }
