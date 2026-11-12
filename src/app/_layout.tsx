@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
@@ -47,6 +47,7 @@ export default function RootLayout() {
 
   // App lock (section 19): locked on every cold start; again after more than 3 minutes in the background.
   const [locked, setLocked] = useState(() => isLockEnabled() && !takeRelaunchPass());
+  const unlock = useCallback(() => setLocked(false), []); // stable, so the lock screen's fingerprint prompt starts once
   const hiddenAt = useRef<number | null>(null);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
@@ -75,7 +76,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.background } }}>
           <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
         </Stack>
-        {locked && <LockScreen onUnlock={() => setLocked(false)} />}
+        {locked && <LockScreen onUnlock={unlock} />}
       </ThemeProvider>
     </ShareIntentProvider>
   );

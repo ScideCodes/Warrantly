@@ -72,7 +72,7 @@ export default function Settings() {
   }
 
   async function toggleBiometric(on: boolean) {
-    if (on && !(await unlockWithBiometrics(t('lock.biometricPrompt'), t('lock.usePin')))) return; // prove it works first
+    if (on && !(await unlockWithBiometrics(t('lock.biometricPrompt'), t('lock.usePin'))).success) return; // prove it works first
     setBiometricEnabled(on);
     setBiometric(on);
   }
