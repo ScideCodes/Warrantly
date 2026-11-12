@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { runBackup, setBackupPassword } from '@/backup';
 import { getDb } from '@/db/client';
 import { setSetting } from '@/settings';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 const MIN_PASSWORD = 8;
 
@@ -54,7 +54,7 @@ export default function BackupPassword() {
           </Text>
         )}
         <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={save} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')}</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')}</Text>}
         </Pressable>
         {busy && <Text style={styles.hint}>{t('backupPassword.working')}</Text>}
       </ScrollView>
@@ -68,10 +68,10 @@ const styles = StyleSheet.create({
   warning: { fontSize: 15, lineHeight: 22, color: colors.warning.fg, backgroundColor: colors.warning.bg, padding: 12, borderRadius: 8 },
   field: { gap: 6 },
   label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
+  input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text },
   error: { fontSize: 14, color: colors.soon.fg },
   hint: { fontSize: 14, color: colors.muted, textAlign: 'center' },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { backgroundColor: colors.primaryDisabled },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
 });

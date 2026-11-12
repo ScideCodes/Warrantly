@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Animated, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 export interface MenuItem {
   key: string;
@@ -76,7 +76,7 @@ const styles = StyleSheet.create({
   section: { paddingVertical: 8 },
   divider: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
   sectionTitle: { fontSize: 13, fontWeight: '700', color: colors.muted, textTransform: 'uppercase', paddingHorizontal: 16, paddingVertical: 8 },
-  item: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: 26 },
+  item: { minHeight: BUTTON_HEIGHT, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS },
   itemSelected: { backgroundColor: colors.surface },
   itemText: { flex: 1, fontSize: 16, color: colors.text },
   itemTextSelected: { fontWeight: '700', color: colors.primary },

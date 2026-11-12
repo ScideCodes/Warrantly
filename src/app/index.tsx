@@ -15,7 +15,7 @@ import { getDb } from '@/db/client';
 import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
-import { colors, isDark } from '@/theme';
+import { colors, isDark, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 import { CATEGORIES, daysUntil, filterWarranties, todayYmd, totalValue, type ListFilter } from '@/warranty';
 import { updateWidget } from '@/widget';
 
@@ -136,7 +136,7 @@ export default function Home() {
         </Text>
         <Pressable style={styles.filterButton} onPress={() => setMenuOpen(true)} accessibilityRole="button" hitSlop={4}>
           <Ionicons name="funnel-outline" size={20} color={colors.primary} />
-          <Text style={styles.filterButtonText}>{t('home.filter')}</Text>
+          <Text style={styles.filterButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.filter')}</Text>
         </Pressable>
       </View>
       <View style={styles.searchBar}>
@@ -159,11 +159,11 @@ export default function Home() {
       {next && (
         <Pressable style={styles.hero} onPress={() => router.push(`/warranty/${next.id}`)} accessibilityRole="button">
           <Text style={styles.heroLabel}>{t('home.nextUp')}</Text>
-          <Text style={styles.heroName} numberOfLines={2}>
+          <Text style={styles.heroName} numberOfLines={1}>
             {displayName(t, next)}
           </Text>
           <View style={styles.heroRow}>
-            <Text style={styles.heroDays}>{daysLabel(t, daysUntil(next.end_date, today))}</Text>
+            <Text style={styles.heroDays} numberOfLines={1}>{daysLabel(t, daysUntil(next.end_date, today))}</Text>
             <Text style={styles.heroMeta} numberOfLines={1}>
               {next.store_name} · {t('home.endsOn', { date: formatDate(next.end_date, i18n.language) })}
             </Text>
@@ -221,7 +221,7 @@ export default function Home() {
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
       <Text style={styles.connectBody}>{t('home.emptyBody')}</Text>
       <Pressable style={styles.button} onPress={connect} accessibilityRole="button">
-        <Text style={styles.buttonText}>{t('home.connectGmail')}</Text>
+        <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.connectGmail')}</Text>
       </Pressable>
     </View>
   );
@@ -229,7 +229,7 @@ export default function Home() {
   const footer =
     expired.length > 0 && query === '' ? (
       <Pressable style={styles.expiredToggle} onPress={() => setShowExpired((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: showExpired }}>
-        <Text style={styles.expiredToggleText}>{showExpired ? t('home.hideExpired') : t('home.showExpired', { count: expired.length })}</Text>
+        <Text style={styles.expiredToggleText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{showExpired ? t('home.hideExpired') : t('home.showExpired', { count: expired.length })}</Text>
         <Ionicons name={showExpired ? 'chevron-up' : 'chevron-down'} size={22} color={colors.text} />
       </Pressable>
     ) : undefined;
@@ -276,17 +276,17 @@ export default function Home() {
           <View style={[styles.barIcon, styles.barIconSelected]}>
             <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
           </View>
-          <Text style={styles.barLabel}>{t('home.title')}</Text>
+          <Text style={styles.barLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.title')}</Text>
         </Pressable>
         <Pressable style={styles.barAdd} onPress={() => router.push('/warranty/edit')} accessibilityRole="button" accessibilityLabel={t('home.addLong')}>
           <Ionicons name="add" size={28} color={colors.onPrimary} />
-          <Text style={styles.barAddText}>{t('home.add')}</Text>
+          <Text style={styles.barAddText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.add')}</Text>
         </Pressable>
         <Pressable style={styles.barItem} onPress={() => router.push('/settings')} accessibilityRole="button">
           <View style={styles.barIcon}>
             <Ionicons name="options-outline" size={24} color={colors.muted} />
           </View>
-          <Text style={[styles.barLabel, styles.barLabelIdle]}>{t('settings.title')}</Text>
+          <Text style={[styles.barLabel, styles.barLabelIdle]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('settings.title')}</Text>
         </Pressable>
       </View>
       <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} title={t('home.filter')} sections={menu} />
@@ -300,12 +300,12 @@ const styles = StyleSheet.create({
   header: { paddingTop: 16, paddingBottom: 8, gap: 16 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   title: { fontSize: 28, fontWeight: '700', color: colors.text },
-  filterButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 14, borderRadius: 24, borderWidth: 1, borderColor: colors.border },
+  filterButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: BUTTON_HEIGHT, paddingHorizontal: 14, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border },
   filterButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: 56, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingLeft: 14, paddingRight: 4, gap: 8 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingLeft: 14, paddingRight: 4, gap: 8 },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   searchInput: { flex: 1, minHeight: 48, fontSize: 18, color: colors.text },
-  filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: 48, paddingHorizontal: 16, borderRadius: 24, backgroundColor: colors.primary, maxWidth: '100%' },
+  filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, maxWidth: '100%' },
   filterText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.onPrimary },
   filterClose: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
   banner: { backgroundColor: colors.banner, borderRadius: 12, padding: 14, minHeight: 52, justifyContent: 'center' },
@@ -325,13 +325,13 @@ const styles = StyleSheet.create({
   heroDays: { fontSize: 26, fontWeight: '700', color: isDark ? colors.soon.fg : colors.onPrimary },
   heroMeta: { fontSize: 15, color: isDark ? colors.muted : colors.onPrimary },
   sectionTitle: { fontSize: 18, fontWeight: '700' },
-  expiredToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, marginTop: 24, paddingHorizontal: 16, borderRadius: 14, backgroundColor: colors.surface },
+  expiredToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: BUTTON_HEIGHT, marginTop: 24, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, backgroundColor: colors.surface },
   expiredToggleText: { fontSize: 17, fontWeight: '700', color: colors.text },
   empty: { fontSize: 16, color: colors.muted, textAlign: 'center', marginTop: 48 },
   connect: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 48 },
   connectTitle: { fontSize: 20, fontWeight: '600', color: colors.text, textAlign: 'center' },
   connectBody: { fontSize: 16, lineHeight: 24, color: colors.muted, textAlign: 'center', maxWidth: 320 },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
   // Bottom bar: every item has an icon and a word, and Add sits where a thumb reaches it.
   bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', minHeight: 84, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider, backgroundColor: colors.surface },

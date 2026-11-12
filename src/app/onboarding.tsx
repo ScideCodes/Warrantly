@@ -5,7 +5,7 @@ import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { setUsername } from '@/settings';
 import { markWhatsNewSeen } from '@/whatsNew';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 const MAX_NAME = 30;
 
@@ -40,10 +40,10 @@ export default function Onboarding() {
           </View>
           <View style={styles.choices}>
             <Pressable style={styles.button} onPress={() => finish(true)} accessibilityRole="button">
-              <Text style={styles.buttonText}>{t('onboarding.setUpPin')}</Text>
+              <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('onboarding.setUpPin')}</Text>
             </Pressable>
             <Pressable style={styles.secondary} onPress={() => finish(false)} accessibilityRole="button">
-              <Text style={styles.secondaryText}>{t('onboarding.later')}</Text>
+              <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('onboarding.later')}</Text>
             </Pressable>
           </View>
         </View>
@@ -89,7 +89,7 @@ export default function Onboarding() {
           accessibilityRole="button"
           accessibilityState={{ disabled: !trimmed }}
         >
-          <Text style={styles.buttonText}>{t('onboarding.continue')}</Text>
+          <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('onboarding.continue')}</Text>
         </Pressable>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -105,19 +105,19 @@ const styles = StyleSheet.create({
   field: { gap: 8 },
   label: { fontSize: 16, fontWeight: '600', color: colors.text },
   input: {
-    minHeight: 48,
+    minHeight: BUTTON_HEIGHT,
     borderWidth: 1,
     borderColor: colors.border,
-    borderRadius: 8,
+    borderRadius: BUTTON_RADIUS,
     paddingHorizontal: 12,
     fontSize: 16,
     color: colors.text,
   },
   helper: { fontSize: 14, color: colors.muted },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { backgroundColor: colors.primaryDisabled },
   choices: { gap: 12 },
-  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  secondary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
 });

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { syncAllAccounts } from '@/accounts';
 import { getDb } from '@/db/client';
 import { listAccounts, setSyncRange } from '@/db/repo.ts';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 // Section 7: how far back to look, asked after connecting an account (and from "Scan older emails").
 const OPTIONS = [
@@ -66,7 +66,7 @@ export default function SyncRange() {
               accessibilityRole="radio"
               accessibilityState={{ selected: days === o.days }}
             >
-              <Text style={[styles.optionText, days === o.days && styles.selectedText]}>
+              <Text style={[styles.optionText, days === o.days && styles.selectedText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                 {t(`range.${o.key}`)}
                 {o.days === 730 ? ` ${t('range.recommended')}` : ''}
               </Text>
@@ -74,7 +74,7 @@ export default function SyncRange() {
           ))}
         </View>
         <Pressable style={styles.button} onPress={start} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('range.start')}</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('range.start')}</Text>}
         </Pressable>
         {status && (
           <Text style={styles.status} accessibilityLiveRegion="polite">
@@ -91,11 +91,11 @@ const styles = StyleSheet.create({
   content: { padding: 24, gap: 16 },
   body: { fontSize: 15, lineHeight: 22, color: colors.muted },
   options: { gap: 8 },
-  option: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, justifyContent: 'center' },
+  option: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, justifyContent: 'center' },
   selected: { backgroundColor: colors.primary, borderColor: colors.primary },
   optionText: { fontSize: 16, color: colors.text },
   selectedText: { color: colors.onPrimary, fontWeight: '600' },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
   status: { fontSize: 14, color: colors.muted },
 });

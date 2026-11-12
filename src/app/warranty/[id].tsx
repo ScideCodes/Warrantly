@@ -14,7 +14,7 @@ import { deleteDocuments, documentExists, documentUriOrNull, importDocument, pic
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
 // Warranty detail (section 13). Editing, PDFs and the claim helper come in later build steps.
@@ -202,7 +202,7 @@ export default function WarrantyDetail() {
             onPress={() => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`${brand} ${t('detail.supportQuery')}`)}`)}
             accessibilityRole="link"
           >
-            <Text style={styles.secondaryText}>{t('detail.brandSupport', { brand })}</Text>
+            <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.brandSupport', { brand })}</Text>
           </Pressable>
         )}
         <View style={styles.history}>
@@ -214,7 +214,7 @@ export default function WarrantyDetail() {
               </Text>
               {/* A visible button, not a long-press: hidden gestures are hard to discover. */}
               <Pressable style={styles.noteDelete} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
-                <Text style={styles.noteDeleteText}>{t('detail.delete')}</Text>
+                <Text style={styles.noteDeleteText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.delete')}</Text>
               </Pressable>
             </View>
           ))}
@@ -229,7 +229,7 @@ export default function WarrantyDetail() {
               onSubmitEditing={addNote}
             />
             <Pressable style={styles.noteAdd} onPress={addNote} accessibilityRole="button">
-              <Text style={styles.secondaryText}>{t('detail.addNote')}</Text>
+              <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.addNote')}</Text>
             </Pressable>
           </View>
         </View>
@@ -246,14 +246,14 @@ export default function WarrantyDetail() {
           onPress={() => getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => Alert.alert(String(e)))}
           accessibilityRole="button"
         >
-          <Text style={styles.secondaryText}>{t('detail.share')}</Text>
+          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.share')}</Text>
         </Pressable>
         <Pressable
           style={styles.secondary}
           onPress={() => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } })}
           accessibilityRole="button"
         >
-          <Text style={styles.secondaryText}>{t('detail.addCover')}</Text>
+          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.addCover')}</Text>
         </Pressable>
         {/* Any number of documents: invoice, warranty card, repair sheet. */}
         {docs.map((d) => (
@@ -272,15 +272,15 @@ export default function WarrantyDetail() {
             </Text>
           </Pressable>
           <Pressable style={[styles.secondary, styles.docRemove]} onPress={() => confirmRemoveDocument(d)} accessibilityRole="button" accessibilityLabel={t('detail.removeDocument')}>
-            <Text style={[styles.secondaryText, styles.danger]}>{t('detail.removeDocument')}</Text>
+            <Text style={[styles.secondaryText, styles.danger]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.removeDocument')}</Text>
           </Pressable>
           </View>
         ))}
         <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
-          <Text style={styles.secondaryText}>{t('detail.attachScan')}</Text>
+          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.attachScan')}</Text>
         </Pressable>
         <Pressable style={styles.secondary} onPress={() => attach(importDocument)} accessibilityRole="button">
-          <Text style={styles.secondaryText}>{t('detail.attachImport')}</Text>
+          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.attachImport')}</Text>
         </Pressable>
         {days >= 0 && (
           // Section 20: not offered once the warranty has expired.
@@ -301,7 +301,7 @@ export default function WarrantyDetail() {
                 }}
                 accessibilityRole="button"
               >
-                <Text style={styles.primaryText}>{t('detail.claim')}</Text>
+                <Text style={styles.primaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.claim')}</Text>
               </Pressable>
             ) : (
               <Text style={styles.note}>{t('detail.claimNoEmail')}</Text>
@@ -315,17 +315,17 @@ export default function WarrantyDetail() {
           }}
           accessibilityRole="button"
         >
-          <Text style={styles.secondaryText}>{t('detail.testReminder')}</Text>
+          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.testReminder')}</Text>
         </Pressable>
         {w.status === 'needs_input' && (
           <Pressable style={styles.secondary} onPress={notWarranty} accessibilityRole="button">
-            <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
+            <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.notWarranty')}</Text>
           </Pressable>
         )}
         {/* Any warranty can be deleted (owner's choice, wider than section 10); a deleted mail warranty
             keeps its source marker, so sync never brings it back. */}
         <Pressable style={styles.secondary} onPress={confirmDelete} accessibilityRole="button">
-          <Text style={[styles.secondaryText, styles.danger]}>{t('detail.delete')}</Text>
+          <Text style={[styles.secondaryText, styles.danger]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.delete')}</Text>
         </Pressable>
       </ScrollView>
     </>
@@ -356,10 +356,10 @@ const styles = StyleSheet.create({
   noteRow: { flexDirection: 'row', gap: 8 },
   noteItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   flex: { flex: 1 },
-  noteDelete: { minHeight: 48, minWidth: 48, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
+  noteDelete: { minHeight: BUTTON_HEIGHT, minWidth: BUTTON_HEIGHT, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
   noteDeleteText: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
-  noteInput: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
-  noteAdd: { minHeight: 48, minWidth: 64, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  noteInput: { flex: 1, minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text },
+  noteAdd: { minHeight: BUTTON_HEIGHT, minWidth: 64, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: 24, gap: 4 },
   title: { fontSize: 24, fontWeight: '700', color: colors.text },
@@ -374,10 +374,10 @@ const styles = StyleSheet.create({
   docRow: { flexDirection: 'row', gap: 8 },
   docOpen: { flex: 1 },
   docRemove: { paddingHorizontal: 16 },
-  primary: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  primary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   primaryText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
   headerButton: { fontSize: 16, fontWeight: '600', color: colors.primary, paddingHorizontal: 8 },
-  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
+  secondary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
   secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
   danger: { color: colors.soon.fg },
 });

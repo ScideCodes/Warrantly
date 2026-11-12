@@ -2,10 +2,11 @@ import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { Warranty } from '@/db/repo.ts';
 import { documentUriOrNull } from '@/documents';
 import { colors } from '@/theme';
-import { ago, daysUntil, shortName, todayYmd, urgency } from '@/warranty';
+import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
 
 export function daysLabel(t: TFunction, daysLeft: number): string {
   if (daysLeft < 0) return t('warranty.expiredAgo', { count: -daysLeft });
@@ -54,24 +55,23 @@ export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to
 
   return (
     <Pressable style={[styles.row, style]} onPress={() => router.push(to ?? `/warranty/${w.id}`)} accessibilityRole="button">
-      {/* Photo if there is one, else the first letter (like a sender in Gmail): rows are easier to tell apart. */}
+      {/* Photo if there is one, else an icon for the kind of product: rows are easier to tell apart. */}
       {w.photo_path && documentUriOrNull(w.photo_path) ? (
         <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />
       ) : (
-        <View style={styles.letter} importantForAccessibility="no-hide-descendants">
-          <Text style={styles.letterText}>{product.trim().charAt(0).toUpperCase()}</Text>
+        <View style={styles.icon} importantForAccessibility="no-hide-descendants">
+          <MaterialCommunityIcons name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={26} color={colors.primary} />
         </View>
       )}
       <View style={styles.text}>
-        <Text style={styles.title} numberOfLines={2}>
+        <Text style={styles.title} numberOfLines={1}>
           {product}
         </Text>
-        <Text style={styles.meta}>
-          {w.store_name} · {w.coverage ? `${t(`coverage.${w.coverage}`)} · ` : ''}
-          {t('warranty.purchased', { ago: agoLabel(t, w.purchase_date, today) })}
+        <Text style={styles.meta} numberOfLines={1}>
+          <Text style={tone}>{daysLabel(t, days)}</Text> · {w.store_name}
+          {w.coverage ? ` · ${t(`coverage.${w.coverage}`)}` : ''}
         </Text>
       </View>
-      <Text style={[styles.days, tone]}>{daysLabel(t, days)}</Text>
     </Pressable>
   );
 }
@@ -87,10 +87,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.divider,
   },
   thumb: { width: 44, height: 44, borderRadius: 12 },
-  letter: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  letterText: { fontSize: 18, fontWeight: '700', color: colors.primary },
+  icon: { width: 44, height: 44, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   text: { flex: 1, gap: 2 },
-  title: { fontSize: 16, fontWeight: '600', color: colors.text },
-  meta: { fontSize: 14, color: colors.muted },
-  days: { fontSize: 15, textAlign: 'right', maxWidth: 120 },
+  title: { fontSize: 17, fontWeight: '600', color: colors.text },
+  meta: { fontSize: 15, color: colors.muted },
 });

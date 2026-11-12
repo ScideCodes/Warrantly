@@ -6,7 +6,7 @@ import { versionLine } from '@/appUpdate';
 import { sendClaim } from '@/documents';
 import { readErrorLog } from '@/errorLog';
 import { FEEDBACK_EMAIL } from '@/support';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 // Help and feedback (section 13): short answers to the usual questions, and a feedback mail that carries
 // the app version and, if the user wants, the error log from this phone.
@@ -38,18 +38,18 @@ export default function Help() {
         <Text style={styles.a}>{t('help.feedbackBody')}</Text>
         {errors.length > 0 && (
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel}>{t('help.includeLog', { count: errors.length })}</Text>
+            <Text style={styles.switchLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('help.includeLog', { count: errors.length })}</Text>
             <Switch value={withLog} onValueChange={setWithLog} accessibilityLabel={t('help.includeLog', { count: errors.length })} />
           </View>
         )}
         <Pressable style={styles.button} onPress={feedback} accessibilityRole="button">
-          <Text style={styles.buttonText}>{t('help.feedback')}</Text>
+          <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('help.feedback')}</Text>
         </Pressable>
         <Pressable style={styles.link} onPress={() => router.push('/privacy')} accessibilityRole="link">
-          <Text style={styles.linkText}>{t('privacy.title')}</Text>
+          <Text style={styles.linkText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('privacy.title')}</Text>
         </Pressable>
         <Pressable style={styles.link} onPress={() => router.push('/whats-new')} accessibilityRole="link">
-          <Text style={styles.linkText}>{t('whatsNew.title')}</Text>
+          <Text style={styles.linkText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('whatsNew.title')}</Text>
         </Pressable>
       </ScrollView>
     </>
@@ -65,8 +65,8 @@ const styles = StyleSheet.create({
   heading: { fontSize: 17, fontWeight: '700', color: colors.text, marginTop: 24 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   switchLabel: { flex: 1, fontSize: 15, color: colors.text },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
-  link: { minHeight: 48, justifyContent: 'center' },
+  link: { minHeight: BUTTON_HEIGHT, justifyContent: 'center' },
   linkText: { fontSize: 16, fontWeight: '600', color: colors.primary },
 });
