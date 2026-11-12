@@ -14,6 +14,7 @@ export const documentUri = (_localPath: string): string => '';
 export const documentExists = (_localPath: string): boolean => false;
 export const deleteDocuments = (_localPaths: string[]): void => {};
 export const openDocument = async (_localPath: string): Promise<void> => {};
+export const saveDocument = async (_localPath: string, _name: string): Promise<boolean> => false;
 export const sendClaim = async (to: string, subject: string, body: string, _localPaths: string[]): Promise<void> => {
   await Linking.openURL(mailtoUrl(to, subject, body));
 };

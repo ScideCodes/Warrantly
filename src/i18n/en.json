@@ -20,23 +20,17 @@
     "error": "Couldn't read Gmail. Check your connection and try again.",
     "retry": "Try again",
     "failed": "{{count}} emails couldn't be read. They will be retried at the next sync. First error: {{detail}}",
-    "attention_one": "{{count}} item needs your attention",
-    "attention_other": "{{count}} items need your attention",
     "add": "Add",
     "tabManual": "Added by hand",
     "reconnect": "Connect {{email}} again in Settings to keep syncing it.",
     "search": "Search warranties",
     "noMatch": "Nothing matches. Clear the search or filters.",
-    "updateReady": "Update ready: tap to restart Warrantly",
     "total": "Total value: {{total}}",
-    "closeMenu": "Close menu",
     "clearSearch": "Clear search",
     "clearFilter": "Show everything instead of {{name}}",
     "showing": "Showing: {{name}}",
     "empty_active": "Nothing is covered right now",
     "title": "Warranties",
-    "nextUp": "Next to expire",
-    "endsOn": "ends {{date}}",
     "filter": "Filter",
     "sectionSoon": "Expiring soon ({{count}})",
     "sectionCovered": "Covered ({{count}})",
@@ -46,7 +40,13 @@
     "menuAll": "All warranties",
     "menuAccounts": "Email accounts",
     "menuStores": "Stores",
-    "addLong": "Add a warranty"
+    "addLong": "Add a warranty",
+    "attentionRow": "Needs your attention",
+    "syncFailed_one": "Couldn't check {{count}} account",
+    "syncFailed_other": "Couldn't check {{count}} accounts",
+    "details": "Details",
+    "updateReadyShort": "App update ready",
+    "restart": "Restart"
   },
   "warranty": {
     "unknownProduct": "Product not found",
@@ -74,7 +74,9 @@
     "orderNumber": "Order number",
     "contact": "Contact",
     "website": "Website",
-    "needsInput": "Some details are missing. You can fill them in soon."
+    "needsInput": "Some details are missing. You can fill them in soon.",
+    "endsOn": "Ends {{date}}",
+    "endedOn": "Ended {{date}}"
   },
   "attention": {
     "title": "Needs your attention",
@@ -124,7 +126,12 @@
     "category": "Category",
     "price": "Price",
     "currency": "Currency",
-    "coverage": "Warranty type"
+    "coverage": "Warranty type",
+    "fromDocument": "Fill in from a document",
+    "scanShort": "Scan",
+    "importShort": "Photo or PDF",
+    "groupProduct": "What you bought",
+    "groupWarranty": "Warranty"
   },
   "detail": {
     "edit": "Edit",
@@ -136,13 +143,11 @@
     "cancel": "Cancel",
     "serial": "Serial number",
     "notes": "Notes",
-    "fullName": "Full product name",
     "testReminder": "Send a test reminder in 5 seconds",
     "noPermission": "Notifications are turned off for Warrantly. Turn them on in Android settings.",
     "claim": "Claim warranty",
     "claimNoEmail": "No store email saved. Call or open the website above, or add the email with Edit.",
     "noMailApp": "No email app found on this phone.",
-    "openDocument": "Open document",
     "attachScan": "Scan and attach a document",
     "documentMissing": "The document file is no longer on this phone (backups do not include documents yet).",
     "removeDocument": "Remove",
@@ -162,7 +167,23 @@
     "photo": "Product photo",
     "photoCamera": "Take a photo",
     "photoLibrary": "Choose from gallery",
-    "photoRemove": "Remove photo"
+    "photoRemove": "Remove photo",
+    "documents": "Documents",
+    "noDocuments": "No documents yet. Add the receipt or the warranty card.",
+    "addDocument": "Add document",
+    "view": "View",
+    "save": "Save",
+    "shareFile": "Share or open in another app",
+    "documentOptions": "More options for {{name}}",
+    "fileMissing": "File missing on this phone",
+    "pdf": "PDF document",
+    "saved": "Saved to the folder you chose.",
+    "saveFailed": "Couldn't save: {{detail}}",
+    "details": "Purchase and coverage",
+    "support": "Support and claims",
+    "supportSearch": "Manufacturer support",
+    "more": "More actions",
+    "shareRecord": "Share warranty details (file)"
   },
   "reminder": {
     "channel": "Warranty reminders",
@@ -197,17 +218,17 @@
     "title": "Settings",
     "profileHint": "Your data stays on this phone",
     "lock": "App lock",
-    "lockHint": "PIN when the app opens",
+    "lockHint": "Ask for a PIN when the app opens, and after 3 minutes away.",
     "changePin": "Change PIN",
     "biometric": "Fingerprint or face",
     "reminders": "Expiry reminders",
-    "remindersHint": "Before a warranty ends",
+    "remindersHint": "Before each warranty ends. Choose which ones below.",
     "general": "App",
     "widgetNames": "Names on the widget",
-    "widgetNamesHint": "Visible on your home screen",
+    "widgetNamesHint": "Anyone who sees your home screen can read them, even with the app lock on.",
     "version": "Warrantly {{version}}",
     "returnReminders": "Return reminders",
-    "returnRemindersHint": "Online orders: 14-day return",
+    "returnRemindersHint": "Online orders can be returned within 14 days of delivery (EU). Reminds you 2 days before that ends.",
     "reminderTime": "Time",
     "group_90": "90 days before",
     "group_60": "60 days before",
@@ -231,7 +252,7 @@
   "backup": {
     "section": "Backup",
     "enable": "Back up to Google Drive",
-    "enableHint": "Encrypted before upload",
+    "enableHint": "Encrypted on this phone first. Drive only stores a file it can't read.",
     "interval": "How often",
     "weekly": "Weekly",
     "monthly": "Monthly",
@@ -342,9 +363,11 @@
     "title": "Document",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
-    "share": "Open in another app",
     "failed": "Could not show the document: {{detail}}",
-    "page": "Page {{page}} of {{count}}"
+    "page": "Page {{page}} of {{count}}",
+    "shareShort": "Share",
+    "saving": "Saving…",
+    "saved": "Saved to the folder you chose."
   },
   "category": {
     "electronics": "Electronics",
@@ -386,14 +409,14 @@
     "exportPdf": "Export list as PDF",
     "exportCsv": "Export list as spreadsheet (CSV)",
     "exportAll": "Export all my data",
-    "exportAllHint": "Every record as a JSON file",
+    "exportAllHint": "Every record as a JSON file. Documents stay in your backups.",
     "delete": "Delete all my data",
     "deleteTitle": "Delete all your data?",
     "deleteBody": "Warranties, documents, settings and the PIN are removed from this phone, and Warrantly starts like new. This cannot be undone.",
     "deletePhone": "Delete from this phone",
     "deleteAll": "Also delete Drive backups",
     "share": "Share list with someone",
-    "shareHint": "They import it in Warrantly",
+    "shareHint": "Sends your warranties with their documents as a file. They import it in their Warrantly.",
     "import": "Import a shared list",
     "imported_one": "{{count}} warranty added.",
     "imported_other": "{{count}} warranties added."
@@ -473,5 +496,8 @@
   },
   "share": {
     "failed": "Warrantly could not open the shared file."
+  },
+  "sheet": {
+    "close": "Close"
   }
 }

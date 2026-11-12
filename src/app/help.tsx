@@ -38,18 +38,18 @@ export default function Help() {
         <Text style={styles.a}>{t('help.feedbackBody')}</Text>
         {errors.length > 0 && (
           <View style={styles.switchRow}>
-            <Text style={styles.switchLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('help.includeLog', { count: errors.length })}</Text>
+            <Text style={styles.switchLabel}>{t('help.includeLog', { count: errors.length })}</Text>
             <Switch value={withLog} onValueChange={setWithLog} accessibilityLabel={t('help.includeLog', { count: errors.length })} />
           </View>
         )}
         <Pressable style={styles.button} onPress={feedback} accessibilityRole="button">
-          <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('help.feedback')}</Text>
+          <Text style={styles.buttonText}>{t('help.feedback')}</Text>
         </Pressable>
         <Pressable style={styles.link} onPress={() => router.push('/privacy')} accessibilityRole="link">
-          <Text style={styles.linkText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('privacy.title')}</Text>
+          <Text style={styles.linkText}>{t('privacy.title')}</Text>
         </Pressable>
         <Pressable style={styles.link} onPress={() => router.push('/whats-new')} accessibilityRole="link">
-          <Text style={styles.linkText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('whatsNew.title')}</Text>
+          <Text style={styles.linkText}>{t('whatsNew.title')}</Text>
         </Pressable>
       </ScrollView>
     </>

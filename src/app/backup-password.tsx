@@ -54,7 +54,7 @@ export default function BackupPassword() {
           </Text>
         )}
         <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={save} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')}</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')}</Text>}
         </Pressable>
         {busy && <Text style={styles.hint}>{t('backupPassword.working')}</Text>}
       </ScrollView>

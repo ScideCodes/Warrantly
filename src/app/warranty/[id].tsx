@@ -1,8 +1,11 @@
 import { useCallback, useState } from 'react';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
 import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
+import { Field, Section } from '@/components/Section';
+import { Sheet, type SheetSection } from '@/components/Sheet';
 import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import {
@@ -10,14 +13,18 @@ import {
   type Attachment, type HistoryEntry, type Warranty,
 } from '@/db/repo.ts';
 import { shareWarranties } from '@/dataTools';
-import { deleteDocuments, documentExists, documentUriOrNull, importDocument, pickPhoto, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, documentUriOrNull, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { BUTTON_HEIGHT, BUTTON_RADIUS, CARD_RADIUS, colors, FONT, SPACE } from '@/theme';
 import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
-// Warranty detail (section 13). Editing, PDFs and the claim helper come in later build steps.
+type SheetKind = null | 'more' | 'add' | { doc: Attachment };
+
+// Warranty detail (section 13). Order: what it is and how long it is covered, then its documents (the
+// main reason to open it), then the purchase details, support and claims, and the history. Actions used
+// rarely (share the record, another cover, test reminder, delete) live in the More sheet.
 export default function WarrantyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
@@ -26,6 +33,7 @@ export default function WarrantyDetail() {
   const [others, setOthers] = useState<Warranty[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [note, setNote] = useState('');
+  const [sheet, setSheet] = useState<SheetKind>(null);
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
@@ -43,10 +51,11 @@ export default function WarrantyDetail() {
 
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
-  const pill = colors[urgency(days)];
+  const tone = colors[urgency(days)];
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
   const product = displayName(t, w);
+  const photo = documentUriOrNull(w.photo_path);
 
   function confirmRemoveDocument(d: Attachment) {
     Alert.alert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
@@ -63,6 +72,22 @@ export default function WarrantyDetail() {
       },
     ]);
   }
+
+  const viewDocument = (d: Attachment) =>
+    documentExists(d.local_path) ? router.push({ pathname: '/document', params: { path: d.local_path, title: product, name: d.filename } }) : Alert.alert(t('detail.documentMissing'));
+
+  // Save asks Android where to put the copy; backing out of the folder picker is not an error.
+  async function save(d: Attachment) {
+    if (!documentExists(d.local_path)) return Alert.alert(t('detail.documentMissing'));
+    try {
+      if (await saveDocument(d.local_path, d.filename)) Alert.alert(t('detail.saved'));
+    } catch (e) {
+      Alert.alert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
+    }
+  }
+
+  const share = (d: Attachment) =>
+    documentExists(d.local_path) ? void openDocument(d.local_path).catch((e) => Alert.alert(String(e))) : Alert.alert(t('detail.documentMissing'));
 
   // Any warranty can get a document later (scanned, or a photo or PDF from the phone), e.g. the paper
   // invoice of a mail-imported purchase.
@@ -110,10 +135,10 @@ export default function WarrantyDetail() {
   function choosePhoto() {
     const take = async (source: 'camera' | 'library' | null) => {
       try {
-        const photo = source ? await pickPhoto(source) : null;
-        if (source && !photo) return;
+        const picked = source ? await pickPhoto(source) : null;
+        if (source && !picked) return;
         const db = await getDb();
-        const old = await setPhoto(db, w!.id, photo);
+        const old = await setPhoto(db, w!.id, picked);
         if (old) deleteDocuments([old]);
         setW(await getWarranty(db, w!.id));
       } catch (e) {
@@ -147,6 +172,91 @@ export default function WarrantyDetail() {
     ]);
   }
 
+  function claim() {
+    const { subject, body } = claimEmail(t, {
+      product: w!.product_name ?? t('warranty.unknownProduct'),
+      purchaseDate: date(w!.purchase_date),
+      endDate: date(w!.end_date),
+      orderNumber: w!.order_number,
+      serialNumber: w!.serial_number,
+      name: getUsername(),
+    });
+    sendClaim(w!.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => Alert.alert(t('detail.noMailApp')));
+  }
+
+  const sheets: Record<'more' | 'add', { title: string; sections: SheetSection[] }> = {
+    add: {
+      title: t('detail.addDocument'),
+      sections: [
+        {
+          options: [
+            { key: 'scan', icon: 'camera-outline', label: t('detail.attachScan'), onPress: () => void attach(scanDocument) },
+            { key: 'import', icon: 'folder-open-outline', label: t('detail.attachImport'), onPress: () => void attach(importDocument) },
+          ],
+        },
+      ],
+    },
+    more: {
+      title: t('detail.more'),
+      sections: [
+        {
+          options: [
+            {
+              key: 'share',
+              icon: 'share-outline',
+              label: t('detail.shareRecord'),
+              onPress: () => void getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => Alert.alert(String(e))),
+            },
+            { key: 'cover', icon: 'add-circle-outline', label: t('detail.addCover'), onPress: () => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } }) },
+            {
+              key: 'test',
+              icon: 'notifications-outline',
+              label: t('detail.testReminder'),
+              onPress: async () => {
+                if (!(await sendTestReminder(w, days))) Alert.alert(t('detail.noPermission'));
+              },
+            },
+            ...(w.status === 'needs_input' ? [{ key: 'ignore', icon: 'eye-off-outline' as const, label: t('detail.notWarranty'), onPress: () => void notWarranty() }] : []),
+            // Any warranty can be deleted (owner's choice, wider than section 10); a deleted mail warranty
+            // keeps its source marker, so sync never brings it back.
+            { key: 'delete', icon: 'trash-outline', label: t('detail.delete'), destructive: true, onPress: confirmDelete },
+          ],
+        },
+      ],
+    },
+  };
+  const docSheet = (d: Attachment): { title: string; sections: SheetSection[] } => ({
+    title: d.filename,
+    sections: [
+      {
+        options: [
+          { key: 'share', icon: 'share-social-outline', label: t('detail.shareFile'), onPress: () => share(d) },
+          { key: 'remove', icon: 'trash-outline', label: t('detail.removeDocument'), destructive: true, onPress: () => confirmRemoveDocument(d) },
+        ],
+      },
+    ],
+  });
+  const openSheet = sheet === null ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet(sheet.doc);
+  const returnBy = returnDeadline(w);
+  const details = [
+    { label: t('warranty.purchaseDate'), value: `${date(w.purchase_date)} (${agoLabel(t, w.purchase_date, today)})` },
+    { label: t('warranty.startDate'), value: suggested(date(w.warranty_start_date), w.start_is_suggested) },
+    w.coverage && { label: t('form.coverage'), value: t(`coverage.${w.coverage}`) },
+    { label: t('warranty.length'), value: lengthLabel(t, w) },
+    { label: t('warranty.endDate'), value: date(w.end_date) },
+    returnBy && returnBy >= today && { label: t('detail.returnBy'), value: `${date(returnBy)} (${t('detail.returnHint')})` },
+    w.price !== null && w.currency && { label: t('form.price'), value: formatMoney(w.price, w.currency, i18n.language) },
+    w.category && { label: t('form.category'), value: t(`category.${w.category}`) },
+    w.order_number && { label: t('warranty.orderNumber'), value: w.order_number },
+    w.serial_number && { label: t('detail.serial'), value: w.serial_number },
+    w.notes && { label: t('detail.notes'), value: w.notes },
+  ].filter((f): f is { label: string; value: string } => !!f);
+  const contacts = [
+    w.contact_email && { label: t('warranty.contact'), value: w.contact_email, url: `mailto:${w.contact_email}` },
+    w.contact_phone && { label: t('warranty.contact'), value: w.contact_phone, url: `tel:${w.contact_phone.replace(/[^\d+]/g, '')}` },
+    w.website_url && { label: t('warranty.website'), value: w.website_url.replace(/^https:\/\//, ''), url: w.website_url },
+  ].filter((f): f is { label: string; value: string; url: string } => !!f);
+
   return (
     <>
       <Stack.Screen
@@ -154,67 +264,138 @@ export default function WarrantyDetail() {
           headerShown: true,
           title: w.store_name,
           headerRight: () => (
-            <Pressable onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })} accessibilityRole="button" hitSlop={12}>
-              <Text style={styles.headerButton}>{t('detail.edit')}</Text>
-            </Pressable>
+            <View style={styles.headerButtons}>
+              <Pressable
+                style={styles.headerButton}
+                onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })}
+                accessibilityRole="button"
+              >
+                <Text style={styles.headerButtonText}>{t('detail.edit')}</Text>
+              </Pressable>
+              <Pressable style={styles.headerButton} onPress={() => setSheet('more')} accessibilityRole="button" accessibilityLabel={t('detail.more')}>
+                <Ionicons name="ellipsis-vertical" size={22} color={colors.primary} />
+              </Pressable>
+            </View>
           ),
         }}
       />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')} style={styles.photoWrap}>
-          {documentUriOrNull(w.photo_path) ? (
-            <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.photo} />
-          ) : (
-            <Text style={styles.photoAdd}>+ {t('detail.photo')}</Text>
-          )}
-        </Pressable>
-        <Text style={styles.title} accessibilityRole="header">
-          {product}
-        </Text>
-        <View style={[styles.pill, { backgroundColor: pill.bg }]}>
-          <Text style={[styles.pillText, { color: pill.fg }]}>{daysLabel(t, days)}</Text>
+      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        {/* 1. What it is, and how long it is covered. */}
+        <View style={styles.summary}>
+          <View style={styles.summaryTop}>
+            <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')}>
+              {photo ? (
+                <Image source={{ uri: photo }} style={styles.photo} />
+              ) : (
+                <View style={[styles.photo, styles.photoEmpty]}>
+                  <Ionicons name="camera-outline" size={26} color={colors.primary} />
+                </View>
+              )}
+            </Pressable>
+            <View style={styles.flex}>
+              <Text style={styles.title} accessibilityRole="header">
+                {w.product_name ?? product}
+              </Text>
+              <Text style={styles.store}>{w.store_name}</Text>
+            </View>
+          </View>
+          <View style={styles.status}>
+            <View style={[styles.badge, { backgroundColor: tone.bg }]}>
+              <Text style={[styles.badgeText, { color: tone.fg }]}>{daysLabel(t, days)}</Text>
+            </View>
+            <Text style={styles.store}>{t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: date(w.end_date) })}</Text>
+          </View>
+          {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
         </View>
-        {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
 
-        {w.product_name && w.product_name !== product && <Field label={t('detail.fullName')} value={w.product_name} />}
-        <Field label={t('warranty.store')} value={w.store_name} />
-        <Field label={t('warranty.purchaseDate')} value={`${date(w.purchase_date)} (${agoLabel(t, w.purchase_date, today)})`} />
-        <Field label={t('warranty.startDate')} value={suggested(date(w.warranty_start_date), w.start_is_suggested)} />
-        {w.coverage && <Field label={t('form.coverage')} value={t(`coverage.${w.coverage}`)} />}
-        <Field label={t('warranty.length')} value={lengthLabel(t, w)} />
-        <Field label={t('warranty.endDate')} value={date(w.end_date)} />
-        {(() => {
-          const returnBy = returnDeadline(w);
-          return returnBy && returnBy >= today ? <Field label={t('detail.returnBy')} value={`${date(returnBy)} (${t('detail.returnHint')})`} /> : null;
-        })()}
-        {w.price !== null && w.currency && <Field label={t('form.price')} value={formatMoney(w.price, w.currency, i18n.language)} />}
-        {w.category && <Field label={t('form.category')} value={t(`category.${w.category}`)} />}
-        {w.order_number && <Field label={t('warranty.orderNumber')} value={w.order_number} />}
-        {w.contact_email && <Field label={t('warranty.contact')} value={w.contact_email} url={`mailto:${w.contact_email}`} />}
-        {w.contact_phone && <Field label={t('warranty.contact')} value={w.contact_phone} url={`tel:${w.contact_phone.replace(/[^\d+]/g, '')}`} />}
-        {w.website_url && <Field label={t('warranty.website')} value={w.website_url.replace(/^https:\/\//, '')} url={w.website_url} />}
-        {w.serial_number && <Field label={t('detail.serial')} value={w.serial_number} />}
-        {w.notes && <Field label={t('detail.notes')} value={w.notes} />}
-
-        {brand && (
-          <Pressable
-            style={styles.secondary}
-            onPress={() => Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`${brand} ${t('detail.supportQuery')}`)}`)}
-            accessibilityRole="link"
-          >
-            <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.brandSupport', { brand })}</Text>
+        {/* 2. Documents: right under the summary, one row each with View and Save. */}
+        <Section title={t('detail.documents')}>
+          {docs.length === 0 && <Text style={styles.empty}>{t('detail.noDocuments')}</Text>}
+          {docs.map((d) => {
+            const missing = !documentExists(d.local_path);
+            return (
+              <View key={d.id} style={styles.doc}>
+                <View style={styles.docTop}>
+                  <Ionicons name={missing ? 'alert-circle-outline' : 'document-text-outline'} size={26} color={missing ? colors.soon.fg : colors.primary} />
+                  <View style={styles.flex}>
+                    <Text style={styles.docName}>{d.filename}</Text>
+                    <Text style={[styles.docType, missing && styles.docMissing]}>{missing ? t('detail.fileMissing') : t('detail.pdf')}</Text>
+                  </View>
+                  <Pressable style={styles.iconButton} onPress={() => setSheet({ doc: d })} accessibilityRole="button" accessibilityLabel={t('detail.documentOptions', { name: d.filename })}>
+                    <Ionicons name="ellipsis-vertical" size={22} color={colors.muted} />
+                  </Pressable>
+                </View>
+                {!missing && (
+                  <View style={styles.docActions}>
+                    <Pressable style={[styles.docButton, styles.docPrimary]} onPress={() => viewDocument(d)} accessibilityRole="button" accessibilityLabel={`${t('detail.view')}: ${d.filename}`}>
+                      <Ionicons name="eye-outline" size={20} color={colors.onPrimary} />
+                      <Text style={styles.docPrimaryText}>{t('detail.view')}</Text>
+                    </Pressable>
+                    <Pressable style={styles.docButton} onPress={() => void save(d)} accessibilityRole="button" accessibilityLabel={`${t('detail.save')}: ${d.filename}`}>
+                      <Ionicons name="download-outline" size={20} color={colors.primary} />
+                      <Text style={styles.docButtonText}>{t('detail.save')}</Text>
+                    </Pressable>
+                  </View>
+                )}
+              </View>
+            );
+          })}
+          <Pressable style={styles.addRow} onPress={() => setSheet('add')} accessibilityRole="button">
+            <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
+            <Text style={styles.addText}>{t('detail.addDocument')}</Text>
           </Pressable>
+        </Section>
+
+        {/* 3. Purchase and coverage details. */}
+        <Section title={t('detail.details')}>
+          {details.map((f, i) => (
+            <Field key={f.label} label={f.label} value={f.value} last={i === details.length - 1} />
+          ))}
+        </Section>
+
+        {others.length > 0 && (
+          <Section title={t('detail.otherCovers')}>
+            {others.map((o, i) => (
+              <WarrantyRow key={o.id} warranty={o} style={i === others.length - 1 && styles.lastRow} />
+            ))}
+          </Section>
         )}
-        <View style={styles.history}>
-          <Text style={styles.label}>{t('detail.history')}</Text>
+
+        {/* 4. Support and claims. */}
+        <Section title={t('detail.support')}>
+          {days >= 0 &&
+            // Section 20: not offered once the warranty has expired.
+            (w.contact_email ? (
+              <Pressable style={styles.claim} onPress={claim} accessibilityRole="button">
+                <Ionicons name="mail-outline" size={20} color={colors.onPrimary} />
+                <Text style={styles.claimText}>{t('detail.claim')}</Text>
+              </Pressable>
+            ) : (
+              <Text style={styles.empty}>{t('detail.claimNoEmail')}</Text>
+            ))}
+          {contacts.map((c) => (
+            <Field key={c.url} label={c.label} value={c.value} onPress={() => void Linking.openURL(c.url)} />
+          ))}
+          {brand && (
+            <Field
+              label={t('detail.supportSearch')}
+              value={t('detail.brandSupport', { brand })}
+              onPress={() => void Linking.openURL(`https://www.google.com/search?q=${encodeURIComponent(`${brand} ${t('detail.supportQuery')}`)}`)}
+              last
+            />
+          )}
+        </Section>
+
+        {/* 5. History and notes. */}
+        <Section title={t('detail.history')}>
           {history.map((h) => (
             <View key={h.id} style={styles.noteItem}>
-              <Text style={[styles.value, styles.flex]}>
+              <Text style={[styles.noteText, styles.flex]}>
                 {date(h.date)}: {h.note}
               </Text>
               {/* A visible button, not a long-press: hidden gestures are hard to discover. */}
-              <Pressable style={styles.noteDelete} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
-                <Text style={styles.noteDeleteText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.delete')}</Text>
+              <Pressable style={styles.iconButton} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
+                <Ionicons name="trash-outline" size={20} color={colors.soon.fg} />
               </Pressable>
             </View>
           ))}
@@ -229,155 +410,53 @@ export default function WarrantyDetail() {
               onSubmitEditing={addNote}
             />
             <Pressable style={styles.noteAdd} onPress={addNote} accessibilityRole="button">
-              <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.addNote')}</Text>
+              <Text style={styles.docButtonText}>{t('detail.addNote')}</Text>
             </Pressable>
           </View>
-        </View>
-        {others.length > 0 && (
-          <View>
-            <Text style={styles.label}>{t('detail.otherCovers')}</Text>
-            {others.map((o) => (
-              <WarrantyRow key={o.id} warranty={o} />
-            ))}
-          </View>
-        )}
-        <Pressable
-          style={styles.secondary}
-          onPress={() => getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => Alert.alert(String(e)))}
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.share')}</Text>
-        </Pressable>
-        <Pressable
-          style={styles.secondary}
-          onPress={() => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } })}
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.addCover')}</Text>
-        </Pressable>
-        {/* Any number of documents: invoice, warranty card, repair sheet. */}
-        {docs.map((d) => (
-          <View key={d.id} style={styles.docRow}>
-          <Pressable
-            style={[styles.secondary, styles.docOpen]}
-            onPress={() =>
-              documentExists(d.local_path)
-                ? router.push({ pathname: '/document', params: { path: d.local_path, title: product } })
-                : Alert.alert(t('detail.documentMissing'))
-            }
-            accessibilityRole="button"
-          >
-            <Text style={styles.secondaryText} numberOfLines={1}>
-              {docs.length > 1 ? d.filename : t('detail.openDocument')}
-            </Text>
-          </Pressable>
-          <Pressable style={[styles.secondary, styles.docRemove]} onPress={() => confirmRemoveDocument(d)} accessibilityRole="button" accessibilityLabel={t('detail.removeDocument')}>
-            <Text style={[styles.secondaryText, styles.danger]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.removeDocument')}</Text>
-          </Pressable>
-          </View>
-        ))}
-        <Pressable style={styles.secondary} onPress={() => attach(scanDocument)} accessibilityRole="button">
-          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.attachScan')}</Text>
-        </Pressable>
-        <Pressable style={styles.secondary} onPress={() => attach(importDocument)} accessibilityRole="button">
-          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.attachImport')}</Text>
-        </Pressable>
-        {days >= 0 && (
-          // Section 20: not offered once the warranty has expired.
-          <View style={styles.claim}>
-            {w.contact_email ? (
-              <Pressable
-                style={styles.primary}
-                onPress={() => {
-                  const { subject, body } = claimEmail(t, {
-                    product: w.product_name ?? t('warranty.unknownProduct'),
-                    purchaseDate: date(w.purchase_date),
-                    endDate: date(w.end_date),
-                    orderNumber: w.order_number,
-                    serialNumber: w.serial_number,
-                    name: getUsername(),
-                  });
-                  sendClaim(w.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => Alert.alert(t('detail.noMailApp')));
-                }}
-                accessibilityRole="button"
-              >
-                <Text style={styles.primaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.claim')}</Text>
-              </Pressable>
-            ) : (
-              <Text style={styles.note}>{t('detail.claimNoEmail')}</Text>
-            )}
-          </View>
-        )}
-        <Pressable
-          style={styles.secondary}
-          onPress={async () => {
-            if (!(await sendTestReminder(w, days))) Alert.alert(t('detail.noPermission'));
-          }}
-          accessibilityRole="button"
-        >
-          <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.testReminder')}</Text>
-        </Pressable>
-        {w.status === 'needs_input' && (
-          <Pressable style={styles.secondary} onPress={notWarranty} accessibilityRole="button">
-            <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.notWarranty')}</Text>
-          </Pressable>
-        )}
-        {/* Any warranty can be deleted (owner's choice, wider than section 10); a deleted mail warranty
-            keeps its source marker, so sync never brings it back. */}
-        <Pressable style={styles.secondary} onPress={confirmDelete} accessibilityRole="button">
-          <Text style={[styles.secondaryText, styles.danger]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('detail.delete')}</Text>
-        </Pressable>
+        </Section>
       </ScrollView>
+      <Sheet open={openSheet !== null} onClose={() => setSheet(null)} title={openSheet?.title ?? ''} sections={openSheet?.sections ?? []} />
     </>
-  );
-}
-
-function Field({ label, value, url }: { label: string; value: string; url?: string }) {
-  const body = (
-    <>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={[styles.value, url && styles.link]}>{value}</Text>
-    </>
-  );
-  return url ? (
-    <Pressable style={styles.field} onPress={() => Linking.openURL(url)} accessibilityRole="link">
-      {body}
-    </Pressable>
-  ) : (
-    <View style={styles.field}>{body}</View>
   );
 }
 
 const styles = StyleSheet.create({
-  photoWrap: { alignSelf: 'flex-start' },
-  photo: { width: 120, height: 120, borderRadius: 12 },
-  photoAdd: { fontSize: 15, fontWeight: '600', color: colors.primary, paddingVertical: 8 },
-  history: { gap: 6 },
-  noteRow: { flexDirection: 'row', gap: 8 },
-  noteItem: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  flex: { flex: 1 },
-  noteDelete: { minHeight: BUTTON_HEIGHT, minWidth: BUTTON_HEIGHT, paddingHorizontal: 12, alignItems: 'center', justifyContent: 'center' },
-  noteDeleteText: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
-  noteInput: { flex: 1, minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text },
-  noteAdd: { minHeight: BUTTON_HEIGHT, minWidth: 64, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 4 },
+  content: { padding: SPACE.screen, paddingBottom: 40 },
+  flex: { flex: 1, minWidth: 0 },
+  headerButtons: { flexDirection: 'row', alignItems: 'center' },
+  headerButton: { minHeight: 48, minWidth: 48, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' },
+  headerButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  summary: { gap: 12, padding: SPACE.group, borderRadius: CARD_RADIUS, backgroundColor: colors.surface },
+  summaryTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
+  photo: { width: 64, height: 64, borderRadius: 14 },
+  photoEmpty: { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   title: { fontSize: 24, fontWeight: '700', color: colors.text },
-  pill: { alignSelf: 'flex-start', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 4, marginVertical: 8 },
-  pillText: { fontSize: 14, fontWeight: '600' },
-  note: { fontSize: 14, color: colors.warning.fg, marginBottom: 8 },
-  field: { paddingVertical: 10, minHeight: 48, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  label: { fontSize: 14, color: colors.muted },
-  value: { fontSize: 16, color: colors.text },
-  link: { color: colors.primary },
-  claim: { marginTop: 16 },
-  docRow: { flexDirection: 'row', gap: 8 },
-  docOpen: { flex: 1 },
-  docRemove: { paddingHorizontal: 16 },
-  primary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  primaryText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
-  headerButton: { fontSize: 16, fontWeight: '600', color: colors.primary, paddingHorizontal: 8 },
-  secondary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', marginTop: 16 },
-  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  danger: { color: colors.soon.fg },
+  store: { fontSize: 16, color: colors.muted },
+  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 6 },
+  badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  badgeText: { fontSize: 15, fontWeight: '700' },
+  note: { fontSize: 15, color: colors.warning.fg },
+  empty: { fontSize: 16, color: colors.muted, paddingVertical: 14 },
+  doc: { paddingVertical: 12, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  docTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  docName: { fontSize: FONT.body, fontWeight: '600', color: colors.text },
+  docType: { fontSize: 14, color: colors.muted },
+  docMissing: { color: colors.soon.fg },
+  docActions: { flexDirection: 'row', gap: 10, marginLeft: 38 },
+  docButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
+  docPrimary: { backgroundColor: colors.primary },
+  docPrimaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
+  docButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
+  addRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: BUTTON_HEIGHT, paddingVertical: 10 },
+  addText: { flex: 1, fontSize: FONT.body, fontWeight: '600', color: colors.primary },
+  lastRow: { borderBottomWidth: 0 },
+  claim: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, marginVertical: 14, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary },
+  claimText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary, textAlign: 'center' },
+  noteItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  noteText: { fontSize: 16, color: colors.text },
+  noteRow: { flexDirection: 'row', gap: 8, paddingVertical: 14 },
+  noteInput: { flex: 1, minWidth: 0, minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text, backgroundColor: colors.background },
+  noteAdd: { minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
 });

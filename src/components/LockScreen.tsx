@@ -112,7 +112,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         }
       />
       <Pressable style={styles.link} onPress={forgot} accessibilityRole="button">
-        <Text style={styles.linkText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('lock.forgot')}</Text>
+        <Text style={styles.linkText}>{t('lock.forgot')}</Text>
       </Pressable>
     </SafeAreaView>
   );

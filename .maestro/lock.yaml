@@ -26,7 +26,7 @@ appId: dev.warrantly.prototype
 - tapOn: "Magyar"
 - takeScreenshot: L2-after-language
 - assertNotVisible: "Add meg a PIN-kódot|Enter your PIN"
-- tapOn: "Telefon nyelve"
+- tapOn: "Telefon"
 - scrollUntilVisible: { element: "60 days before", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "60 days before" }
 - waitForAnimationToEnd

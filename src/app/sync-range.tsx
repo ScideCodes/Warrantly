@@ -66,7 +66,7 @@ export default function SyncRange() {
               accessibilityRole="radio"
               accessibilityState={{ selected: days === o.days }}
             >
-              <Text style={[styles.optionText, days === o.days && styles.selectedText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+              <Text style={[styles.optionText, days === o.days && styles.selectedText]}>
                 {t(`range.${o.key}`)}
                 {o.days === 730 ? ` ${t('range.recommended')}` : ''}
               </Text>
@@ -74,7 +74,7 @@ export default function SyncRange() {
           ))}
         </View>
         <Pressable style={styles.button} onPress={start} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('range.start')}</Text>}
+          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('range.start')}</Text>}
         </Pressable>
         {status && (
           <Text style={styles.status} accessibilityLiveRegion="polite">

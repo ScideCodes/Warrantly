@@ -59,7 +59,7 @@ export default function PinSetup() {
             accessibilityRole="button"
             accessibilityState={{ disabled: value.length < MIN_PIN }}
           >
-            <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('pin.continue')}</Text>
+            <Text style={styles.buttonText}>{t('pin.continue')}</Text>
           </Pressable>
         )}
       </View>

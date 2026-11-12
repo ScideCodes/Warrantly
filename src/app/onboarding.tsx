@@ -40,10 +40,10 @@ export default function Onboarding() {
           </View>
           <View style={styles.choices}>
             <Pressable style={styles.button} onPress={() => finish(true)} accessibilityRole="button">
-              <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('onboarding.setUpPin')}</Text>
+              <Text style={styles.buttonText}>{t('onboarding.setUpPin')}</Text>
             </Pressable>
             <Pressable style={styles.secondary} onPress={() => finish(false)} accessibilityRole="button">
-              <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('onboarding.later')}</Text>
+              <Text style={styles.secondaryText}>{t('onboarding.later')}</Text>
             </Pressable>
           </View>
         </View>
@@ -89,7 +89,7 @@ export default function Onboarding() {
           accessibilityRole="button"
           accessibilityState={{ disabled: !trimmed }}
         >
-          <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('onboarding.continue')}</Text>
+          <Text style={styles.buttonText}>{t('onboarding.continue')}</Text>
         </Pressable>
       </KeyboardAvoidingView>
     </SafeAreaView>

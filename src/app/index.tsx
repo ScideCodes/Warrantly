@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Link, Redirect, router, useFocusEffect } from 'expo-router';
-import { Pressable, RefreshControl, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Redirect, router, useFocusEffect } from 'expo-router';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -9,25 +9,25 @@ import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
 import { runDueBackup } from '@/backup';
-import { SideMenu, type MenuSection } from '@/components/SideMenu';
-import { daysLabel, displayName, formatDate, formatMoney, WarrantyRow } from '@/components/WarrantyRow';
+import { Sheet, type IconName, type SheetSection } from '@/components/Sheet';
+import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
-import { colors, isDark, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
-import { CATEGORIES, daysUntil, filterWarranties, todayYmd, totalValue, type ListFilter } from '@/warranty';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS, CARD_RADIUS, FONT, SPACE } from '@/theme';
+import { CATEGORIES, filterWarranties, todayYmd, totalValue, type ListFilter } from '@/warranty';
 import { updateWidget } from '@/widget';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
-// What the side menu narrows the list to; one at a time, so it is always clear what is shown.
+// What the filter sheet narrows the list to; one at a time, so it is always clear what is shown.
 type Filter = { kind: 'all' } | { kind: 'account'; id: number } | { kind: 'manual' } | { kind: 'category'; key: string } | { kind: 'store'; name: string };
 type Group = 'soon' | 'covered' | 'expired';
 
 // Warranty list (section 13): one list with no tabs to switch, so anyone can find their way. Expiring
 // soon comes first, then the rest that is still covered; expired ones stay folded until asked for.
-// A labelled bottom bar (Warranties, Add, Settings) replaces the hidden ☰ menu; Filter keeps the
-// account, category and store filters.
+// A labelled bottom bar (Warranties, Add, Settings); Filter opens a sheet with the account, category and
+// store filters. Above the list only short status rows, and only when there is something to act on.
 export default function Home() {
   const { t, i18n } = useTranslation();
   const name = getUsername();
@@ -108,7 +108,6 @@ export default function Home() {
     { key: 'covered' as const, data: covered },
     { key: 'expired' as const, data: expiredOpen ? expired : [] },
   ].filter((s) => s.data.length > 0);
-  const next = query === '' ? (soon[0] ?? covered[0]) : undefined; // the "Next to expire" card
   const total = Object.entries(totalValue([...soon, ...covered])).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + ');
   const all: Filter = { kind: 'all' };
   const inAll = (f: Filter) => count('active', f) + count('expired', f);
@@ -117,15 +116,32 @@ export default function Home() {
     f.kind === 'account' ? (accounts?.find((a) => a.id === f.id)?.email ?? '') : f.kind === 'manual' ? t('home.tabManual') : f.kind === 'category' ? t(`category.${f.key}`) : f.kind === 'store' ? f.name : t('home.menuAll');
 
   const menuItem = (f: Filter) => ({ key: JSON.stringify(f), label: filterName(f), count: inAll(f), selected: same(f, filter), onPress: () => setFilter(f) });
+  const problems = sync.kind === 'idle' ? sync.problems : [];
+  const showProblems = () =>
+    Alert.alert(t('home.syncFailed', { count: problems.length }), problems.join('\n\n'), [
+      { text: t('detail.cancel'), style: 'cancel' },
+      { text: t('home.retry'), onPress: () => void runSync() },
+    ]);
+  const statusRows = [
+    attention > 0 && (
+      <StatusRow key="attention" icon="alert-circle-outline" color={colors.warning.fg} label={t('home.attentionRow')} action={String(attention)} onPress={() => router.push('/attention')} />
+    ),
+    problems.length > 0 && (
+      <StatusRow key="sync" icon="cloud-offline-outline" color={colors.soon.fg} label={t('home.syncFailed', { count: problems.length })} action={t('home.details')} onPress={showProblems} />
+    ),
+    updateReady && (
+      <StatusRow key="update" icon="arrow-up-circle-outline" color={colors.primary} label={t('home.updateReadyShort')} action={t('home.restart')} onPress={() => void restartIntoUpdate()} />
+    ),
+  ].filter(Boolean);
   const usedCategories = CATEGORIES.filter((c) => warranties.some((w) => w.category === c));
   const stores = [...new Set(warranties.map((w) => w.store_name))].sort((a, b) => a.localeCompare(b));
-  const menu: MenuSection[] = [
-    { items: [menuItem(all)] },
+  const menu: SheetSection[] = [
+    { options: [menuItem(all)] },
     ...(accounts?.length
-      ? [{ title: t('home.menuAccounts'), items: [...accounts.map((a) => menuItem({ kind: 'account', id: a.id })), menuItem({ kind: 'manual' })] }]
+      ? [{ title: t('home.menuAccounts'), options: [...accounts.map((a) => menuItem({ kind: 'account', id: a.id })), menuItem({ kind: 'manual' })] }]
       : []),
-    ...(usedCategories.length ? [{ title: t('form.category'), items: usedCategories.map((key) => menuItem({ kind: 'category', key })) }] : []),
-    ...(stores.length > 1 ? [{ title: t('home.menuStores'), items: stores.map((name) => menuItem({ kind: 'store', name })) }] : []),
+    ...(usedCategories.length ? [{ title: t('form.category'), options: usedCategories.map((key) => menuItem({ kind: 'category', key })) }] : []),
+    ...(stores.length > 1 ? [{ title: t('home.menuStores'), options: stores.map((name) => menuItem({ kind: 'store', name })) }] : []),
   ];
 
   const header = (
@@ -134,9 +150,14 @@ export default function Home() {
         <Text style={styles.title} accessibilityRole="header">
           {t('home.title')}
         </Text>
-        <Pressable style={styles.filterButton} onPress={() => setMenuOpen(true)} accessibilityRole="button" hitSlop={4}>
+        <Pressable
+          style={[styles.filterButton, filter.kind !== 'all' && styles.filterButtonOn]}
+          onPress={() => setMenuOpen(true)}
+          accessibilityRole="button"
+          accessibilityState={{ selected: filter.kind !== 'all' }}
+        >
           <Ionicons name="funnel-outline" size={20} color={colors.primary} />
-          <Text style={styles.filterButtonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.filter')}</Text>
+          <Text style={styles.filterButtonText}>{t('home.filter')}</Text>
         </Pressable>
       </View>
       <View style={styles.searchBar}>
@@ -156,52 +177,20 @@ export default function Home() {
           </Pressable>
         )}
       </View>
-      {next && (
-        <Pressable style={styles.hero} onPress={() => router.push(`/warranty/${next.id}`)} accessibilityRole="button">
-          <Text style={styles.heroLabel}>{t('home.nextUp')}</Text>
-          <Text style={styles.heroName} numberOfLines={1}>
-            {displayName(t, next)}
-          </Text>
-          <View style={styles.heroRow}>
-            <Text style={styles.heroDays} numberOfLines={1}>{daysLabel(t, daysUntil(next.end_date, today))}</Text>
-            <Text style={styles.heroMeta} numberOfLines={1}>
-              {next.store_name} · {t('home.endsOn', { date: formatDate(next.end_date, i18n.language) })}
-            </Text>
-          </View>
-        </Pressable>
-      )}
       {filter.kind !== 'all' && (
-        <Pressable style={styles.filterPill} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
-          <Text style={styles.filterText} numberOfLines={1}>
-            {t('home.showing', { name: filterName(filter) })}
-          </Text>
-          <Text style={styles.filterClose}>✕</Text>
+        <Pressable style={styles.filterChip} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
+          <Text style={styles.filterChipText}>{t('home.showing', { name: filterName(filter) })}</Text>
+          <Ionicons name="close" size={20} color={colors.primary} />
         </Pressable>
       )}
-      {updateReady && (
-        <Pressable style={styles.banner} onPress={() => void restartIntoUpdate()} accessibilityRole="button">
-          <Text style={styles.bannerText}>{t('home.updateReady')} ›</Text>
-        </Pressable>
+      {sync.kind === 'syncing' && (
+        // Routine sync stays quiet: one small line, no banner.
+        <View style={styles.syncLine} accessibilityLiveRegion="polite">
+          <ActivityIndicator size="small" color={colors.muted} />
+          <Text style={styles.syncText}>{sync.total > 0 ? `${sync.email}: ${t('home.progress', { done: sync.done, total: sync.total })}` : t('home.syncing', { email: sync.email })}</Text>
+        </View>
       )}
-      {attention > 0 && (
-        <Link href="/attention" asChild>
-          <Pressable style={styles.banner} accessibilityRole="button">
-            <Text style={styles.bannerText}>{t('home.attention', { count: attention })} ›</Text>
-          </Pressable>
-        </Link>
-      )}
-      {sync.kind === 'syncing' && sync.total > 0 && (
-        <Text style={styles.status}>
-          {sync.email}: {t('home.progress', { done: sync.done, total: sync.total })}
-        </Text>
-      )}
-      {sync.kind === 'idle' &&
-        sync.problems.map((p) => (
-          <Text key={p} style={styles.detail}>
-            {p}
-          </Text>
-        ))}
-      {total !== '' && <Text style={styles.total}>{t('home.total', { total })}</Text>}
+      {statusRows.length > 0 && <View style={styles.statusCard}>{statusRows}</View>}
     </View>
   );
 
@@ -221,7 +210,7 @@ export default function Home() {
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
       <Text style={styles.connectBody}>{t('home.emptyBody')}</Text>
       <Pressable style={styles.button} onPress={connect} accessibilityRole="button">
-        <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.connectGmail')}</Text>
+        <Text style={styles.buttonText}>{t('home.connectGmail')}</Text>
       </Pressable>
     </View>
   );
@@ -229,7 +218,7 @@ export default function Home() {
   const footer =
     expired.length > 0 && query === '' ? (
       <Pressable style={styles.expiredToggle} onPress={() => setShowExpired((v) => !v)} accessibilityRole="button" accessibilityState={{ expanded: showExpired }}>
-        <Text style={styles.expiredToggleText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{showExpired ? t('home.hideExpired') : t('home.showExpired', { count: expired.length })}</Text>
+        <Text style={styles.expiredToggleText}>{showExpired ? t('home.hideExpired') : t('home.showExpired', { count: expired.length })}</Text>
         <Ionicons name={showExpired ? 'chevron-up' : 'chevron-down'} size={22} color={colors.text} />
       </Pressable>
     ) : undefined;
@@ -276,54 +265,61 @@ export default function Home() {
           <View style={[styles.barIcon, styles.barIconSelected]}>
             <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
           </View>
-          <Text style={styles.barLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.title')}</Text>
+          <Text style={styles.barLabel}>{t('home.title')}</Text>
         </Pressable>
         <Pressable style={styles.barAdd} onPress={() => router.push('/warranty/edit')} accessibilityRole="button" accessibilityLabel={t('home.addLong')}>
           <Ionicons name="add" size={28} color={colors.onPrimary} />
-          <Text style={styles.barAddText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('home.add')}</Text>
+          <Text style={styles.barAddText}>{t('home.add')}</Text>
         </Pressable>
         <Pressable style={styles.barItem} onPress={() => router.push('/settings')} accessibilityRole="button">
           <View style={styles.barIcon}>
             <Ionicons name="options-outline" size={24} color={colors.muted} />
           </View>
-          <Text style={[styles.barLabel, styles.barLabelIdle]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('settings.title')}</Text>
+          <Text style={[styles.barLabel, styles.barLabelIdle]}>{t('settings.title')}</Text>
         </Pressable>
       </View>
-      <SideMenu open={menuOpen} onClose={() => setMenuOpen(false)} title={t('home.filter')} sections={menu} />
+      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t('home.filter')} subtitle={total ? t('home.total', { total }) : undefined} sections={menu} />
     </SafeAreaView>
+  );
+}
+
+// A short row in the status card: icon, plain words, and what a tap does.
+function StatusRow({ icon, color, label, action, onPress }: { icon: IconName; color: string; label: string; action: string; onPress: () => void }) {
+  return (
+    <Pressable style={({ pressed }) => [styles.statusRow, pressed && styles.pressed]} onPress={onPress} accessibilityRole="button">
+      <Ionicons name={icon} size={22} color={color} />
+      <Text style={styles.statusText}>{label}</Text>
+      <Text style={styles.statusAction}>{action}</Text>
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
-  list: { paddingHorizontal: 20, paddingBottom: 24, flexGrow: 1 },
-  header: { paddingTop: 16, paddingBottom: 8, gap: 16 },
+  list: { paddingHorizontal: SPACE.screen, paddingBottom: 24, flexGrow: 1 },
+  header: { paddingTop: 16, paddingBottom: 4, gap: 12 },
   titleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  title: { fontSize: 28, fontWeight: '700', color: colors.text },
-  filterButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: BUTTON_HEIGHT, paddingHorizontal: 14, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border },
+  title: { flexShrink: 1, fontSize: FONT.title, fontWeight: '700', color: colors.text },
+  filterButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: BUTTON_HEIGHT, paddingHorizontal: 14, borderRadius: BUTTON_RADIUS },
+  filterButtonOn: { backgroundColor: colors.primarySoft },
   filterButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
   searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingLeft: 14, paddingRight: 4, gap: 8 },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   searchInput: { flex: 1, minHeight: 48, fontSize: 18, color: colors.text },
-  filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, maxWidth: '100%' },
-  filterText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.onPrimary },
-  filterClose: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
-  banner: { backgroundColor: colors.banner, borderRadius: 12, padding: 14, minHeight: 52, justifyContent: 'center' },
-  bannerText: { fontSize: 16, fontWeight: '600', color: colors.warning.fg },
-  status: { fontSize: 14, color: colors.muted },
-  detail: { fontSize: 14, color: colors.muted },
-  total: { fontSize: 14, color: colors.muted },
+  filterChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: 44, paddingHorizontal: 14, paddingVertical: 8, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft, maxWidth: '100%' },
+  filterChipText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.primary },
+  syncLine: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
+  syncText: { flex: 1, fontSize: 14, color: colors.muted },
+  statusCard: { backgroundColor: colors.surface, borderRadius: CARD_RADIUS, paddingHorizontal: SPACE.group },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: BUTTON_HEIGHT, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
+  statusText: { flex: 1, fontSize: 16, fontWeight: '600', color: colors.text },
+  statusAction: { fontSize: 15, fontWeight: '700', color: colors.primary },
+  pressed: { opacity: 0.7 },
   sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 24, paddingBottom: 10 },
   // Each group is one white card; rows keep their dividers inside it.
   card: { backgroundColor: colors.surface, paddingHorizontal: 16 },
-  cardFirst: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
-  cardLast: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20, borderBottomWidth: 0 },
-  hero: { gap: 4, padding: 20, borderRadius: 20, backgroundColor: isDark ? colors.surface : colors.primary },
-  heroLabel: { fontSize: 14, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', color: isDark ? colors.muted : colors.onPrimary },
-  heroName: { fontSize: 22, fontWeight: '700', color: isDark ? colors.text : colors.onPrimary },
-  heroRow: { gap: 2, marginTop: 4 },
-  heroDays: { fontSize: 26, fontWeight: '700', color: isDark ? colors.soon.fg : colors.onPrimary },
-  heroMeta: { fontSize: 15, color: isDark ? colors.muted : colors.onPrimary },
+  cardFirst: { borderTopLeftRadius: CARD_RADIUS, borderTopRightRadius: CARD_RADIUS },
+  cardLast: { borderBottomLeftRadius: CARD_RADIUS, borderBottomRightRadius: CARD_RADIUS, borderBottomWidth: 0 },
   sectionTitle: { fontSize: 18, fontWeight: '700' },
   expiredToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: BUTTON_HEIGHT, marginTop: 24, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, backgroundColor: colors.surface },
   expiredToggleText: { fontSize: 17, fontWeight: '700', color: colors.text },

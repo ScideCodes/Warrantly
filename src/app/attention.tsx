@@ -41,10 +41,10 @@ export default function Attention() {
           </Text>
           <View style={styles.actions}>
             <Pressable style={[styles.action, styles.delete]} onPress={() => answer(p, true)} accessibilityRole="button">
-              <Text style={styles.deleteText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('returns.delete')}</Text>
+              <Text style={styles.deleteText}>{t('returns.delete')}</Text>
             </Pressable>
             <Pressable style={styles.action} onPress={() => answer(p, false)} accessibilityRole="button">
-              <Text style={styles.keepText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('returns.keep')}</Text>
+              <Text style={styles.keepText}>{t('returns.keep')}</Text>
             </Pressable>
           </View>
         </View>

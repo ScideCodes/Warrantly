@@ -20,23 +20,17 @@
     "error": "Nem sikerült olvasni a Gmailt. Ellenőrizd a kapcsolatot, és próbáld újra.",
     "retry": "Újra",
     "failed": "{{count}} levelet nem sikerült beolvasni. A következő szinkronizáláskor újra megpróbáljuk. Első hiba: {{detail}}",
-    "attention_one": "{{count}} tétel figyelmet igényel",
-    "attention_other": "{{count}} tétel figyelmet igényel",
     "add": "Hozzáadás",
     "tabManual": "Kézzel hozzáadott",
     "reconnect": "Kapcsold össze újra a Beállításokban: {{email}}, hogy tovább szinkronizáljon.",
     "search": "Garanciák keresése",
     "noMatch": "Nincs találat. Töröld a keresést vagy a szűrőket.",
-    "updateReady": "Frissítés kész: koppints az újraindításhoz",
     "total": "Összérték: {{total}}",
-    "closeMenu": "Menü bezárása",
     "clearSearch": "Keresés törlése",
     "clearFilter": "Minden mutatása {{name}} helyett",
     "showing": "Szűrés: {{name}}",
     "empty_active": "Most semmi sincs garanciában",
     "title": "Garanciák",
-    "nextUp": "Legközelebb lejár",
-    "endsOn": "lejár: {{date}}",
     "filter": "Szűrés",
     "sectionSoon": "Hamarosan lejár ({{count}})",
     "sectionCovered": "Érvényes ({{count}})",
@@ -46,7 +40,13 @@
     "menuAll": "Összes garancia",
     "menuAccounts": "E-mail fiókok",
     "menuStores": "Boltok",
-    "addLong": "Garancia hozzáadása"
+    "addLong": "Garancia hozzáadása",
+    "attentionRow": "Figyelmet igényel",
+    "syncFailed_one": "{{count}} fiókot nem sikerült ellenőrizni",
+    "syncFailed_other": "{{count}} fiókot nem sikerült ellenőrizni",
+    "details": "Részletek",
+    "updateReadyShort": "Frissítés kész",
+    "restart": "Újraindítás"
   },
   "warranty": {
     "unknownProduct": "Ismeretlen termék",
@@ -74,7 +74,9 @@
     "orderNumber": "Rendelésszám",
     "contact": "Kapcsolat",
     "website": "Weboldal",
-    "needsInput": "Néhány adat hiányzik. Hamarosan kitöltheted őket."
+    "needsInput": "Néhány adat hiányzik. Hamarosan kitöltheted őket.",
+    "endsOn": "Lejár: {{date}}",
+    "endedOn": "Lejárt: {{date}}"
   },
   "attention": {
     "title": "Figyelmet igényel",
@@ -124,7 +126,12 @@
     "category": "Kategória",
     "price": "Ár",
     "currency": "Pénznem",
-    "coverage": "Garancia típusa"
+    "coverage": "Garancia típusa",
+    "fromDocument": "Kitöltés dokumentumból",
+    "scanShort": "Beolvasás",
+    "importShort": "Fotó vagy PDF",
+    "groupProduct": "Mit vásároltál",
+    "groupWarranty": "Garancia"
   },
   "detail": {
     "edit": "Szerkesztés",
@@ -136,13 +143,11 @@
     "cancel": "Mégse",
     "serial": "Sorozatszám",
     "notes": "Megjegyzés",
-    "fullName": "Teljes terméknév",
     "testReminder": "Próba emlékeztető 5 másodperc múlva",
     "noPermission": "A Warrantly értesítései ki vannak kapcsolva. Kapcsold be az Android beállításokban.",
     "claim": "Garanciális igény bejelentése",
     "claimNoEmail": "Nincs mentett e-mail cím az üzlethez. Hívd fel vagy nyisd meg a fenti weboldalt, vagy add meg a címet a Szerkesztésben.",
     "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon.",
-    "openDocument": "Dokumentum megnyitása",
     "attachScan": "Dokumentum beolvasása és csatolása",
     "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat).",
     "removeDocument": "Eltávolítás",
@@ -162,7 +167,23 @@
     "photo": "Termékfotó",
     "photoCamera": "Fotó készítése",
     "photoLibrary": "Választás a galériából",
-    "photoRemove": "Fotó törlése"
+    "photoRemove": "Fotó törlése",
+    "documents": "Dokumentumok",
+    "noDocuments": "Még nincs dokumentum. Add hozzá a nyugtát vagy a garanciajegyet.",
+    "addDocument": "Dokumentum hozzáadása",
+    "view": "Megnézem",
+    "save": "Mentés",
+    "shareFile": "Megosztás vagy megnyitás másik appban",
+    "documentOptions": "További lehetőségek: {{name}}",
+    "fileMissing": "A fájl hiányzik a telefonról",
+    "pdf": "PDF dokumentum",
+    "saved": "Elmentve a választott mappába.",
+    "saveFailed": "Nem sikerült menteni: {{detail}}",
+    "details": "Vásárlás és garancia",
+    "support": "Ügyfélszolgálat és reklamáció",
+    "supportSearch": "Gyártói ügyfélszolgálat",
+    "more": "További műveletek",
+    "shareRecord": "Garancia adatainak megosztása (fájl)"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
@@ -197,17 +218,17 @@
     "title": "Beállítások",
     "profileHint": "Az adataid a telefonon maradnak",
     "lock": "Alkalmazászár",
-    "lockHint": "PIN az app megnyitásakor",
+    "lockHint": "PIN kérése megnyitáskor és 3 perc távollét után.",
     "changePin": "PIN módosítása",
     "biometric": "Ujjlenyomat vagy arc",
     "reminders": "Lejárati emlékeztetők",
-    "remindersHint": "Mielőtt lejár a garancia",
+    "remindersHint": "Minden garancia lejárata előtt. Lent választhatod ki, mikor.",
     "general": "Alkalmazás",
     "widgetNames": "Nevek a widgeten",
-    "widgetNamesHint": "Látszik a kezdőképernyőn",
+    "widgetNamesHint": "Bárki láthatja őket a kezdőképernyőn, alkalmazászár mellett is.",
     "version": "Warrantly {{version}}",
     "returnReminders": "Elállási emlékeztető",
-    "returnRemindersHint": "Online rendelés: 14 nap elállás",
+    "returnRemindersHint": "Online rendelést a kézhezvételtől 14 napig küldhetsz vissza (EU). 2 nappal előtte szól.",
     "reminderTime": "Időpont",
     "group_90": "90 nappal előtte",
     "group_60": "60 nappal előtte",
@@ -231,7 +252,7 @@
   "backup": {
     "section": "Mentés",
     "enable": "Mentés Google Drive-ra",
-    "enableHint": "Feltöltés előtt titkosítva",
+    "enableHint": "Előbb ezen a telefonon titkosítjuk, a Drive csak egy olvashatatlan fájlt tárol.",
     "interval": "Milyen gyakran",
     "weekly": "Hetente",
     "monthly": "Havonta",
@@ -342,9 +363,11 @@
     "title": "Dokumentum",
     "zoomIn": "Nagyítás",
     "zoomOut": "Kicsinyítés",
-    "share": "Megnyitás másik appban",
     "failed": "A dokumentum nem jeleníthető meg: {{detail}}",
-    "page": "{{page}}. oldal / {{count}}"
+    "page": "{{page}}. oldal / {{count}}",
+    "shareShort": "Megosztás",
+    "saving": "Mentés…",
+    "saved": "Elmentve a választott mappába."
   },
   "category": {
     "electronics": "Elektronika",
@@ -386,14 +409,14 @@
     "exportPdf": "Lista exportálása PDF-be",
     "exportCsv": "Lista exportálása táblázatba (CSV)",
     "exportAll": "Összes adatom exportálása",
-    "exportAllHint": "Minden adat JSON fájlban",
+    "exportAllHint": "Minden adat JSON fájlban. A dokumentumok a mentésekben maradnak.",
     "delete": "Összes adatom törlése",
     "deleteTitle": "Törlöd az összes adatodat?",
     "deleteBody": "A garanciák, dokumentumok, beállítások és a PIN törlődnek erről a telefonról, a Warrantly újként indul. Ez nem vonható vissza.",
     "deletePhone": "Törlés a telefonról",
     "deleteAll": "A Drive mentéseket is",
     "share": "Lista megosztása",
-    "shareHint": "Warrantlyben importálható",
+    "shareHint": "A garanciáid a dokumentumokkal együtt egy fájlba kerülnek, amit a másik fél a saját Warrantlyjébe importál.",
     "import": "Megosztott lista importálása",
     "imported_one": "{{count}} garancia hozzáadva.",
     "imported_other": "{{count}} garancia hozzáadva."
@@ -473,5 +496,8 @@
   },
   "share": {
     "failed": "A Warrantly nem tudta megnyitni a megosztott fájlt."
+  },
+  "sheet": {
+    "close": "Bezárás"
   }
 }
