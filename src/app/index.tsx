@@ -166,7 +166,7 @@ export default function Home() {
               accessibilityRole="tab"
               accessibilityState={{ selected: view === key }}
             >
-              <Text style={[styles.tabText, view === key && styles.tabTextSelected]} numberOfLines={1}>
+              <Text style={[styles.tabText, view === key && styles.tabTextSelected]} numberOfLines={2}>
                 {t(`home.view_${key}`)}
               </Text>
               <Text style={[styles.tabCount, view === key && styles.tabTextSelected]}>{count(key)}</Text>
@@ -258,9 +258,10 @@ const styles = StyleSheet.create({
   filterText: { flexShrink: 1, fontSize: 15, fontWeight: '600', color: colors.onPrimary },
   filterClose: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
   tabs: { flexDirection: 'row', gap: 8 },
-  tab: { flex: 1, minHeight: 56, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tab: { flex: 1, minHeight: 56, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4, paddingVertical: 6 },
   tabSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  tabText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  // Two lines instead of "Expiring s…": a third of a 360dp screen is too narrow for the label.
+  tabText: { fontSize: 15, lineHeight: 19, fontWeight: '600', color: colors.text, textAlign: 'center' },
   tabCount: { fontSize: 13, color: colors.muted },
   tabTextSelected: { color: colors.onPrimary },
   banner: { backgroundColor: colors.banner, borderRadius: 12, padding: 14, minHeight: 52, justifyContent: 'center' },
