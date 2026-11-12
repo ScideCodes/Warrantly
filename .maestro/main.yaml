@@ -139,8 +139,12 @@ appId: dev.warrantly.prototype
       - swipe: { start: "50%, 1%", end: "50%, 80%" }
 - extendedWaitUntil: { visible: ".*days left on the warranty", timeout: 20000 }
 - takeScreenshot: 12-notification
+# Close the notification shade: one Back sometimes only collapses it; a second Back then would leave the app.
 - back
-- back
+- runFlow:
+    when: { visible: ".*days left on the warranty" }
+    commands:
+      - back
 
 # Settings: #16 language, #15 reminders, #11 import, #5 #12 export, #17 #13 #19 help/privacy/what's new, #20 rate
 - extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
