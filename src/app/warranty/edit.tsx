@@ -235,6 +235,7 @@ export default function EditWarranty() {
         <View style={styles.field}>
           <Text style={styles.label}>{label}</Text>
           <Pressable
+            testID={key}
             style={[styles.input, styles.dateInput, invalid && styles.inputError]}
             onPress={() => pickDate(key as 'purchase_date' | 'warranty_start_date')}
             accessibilityRole="button"
@@ -254,6 +255,7 @@ export default function EditWarranty() {
           {label}
         </Text>
         <TextInput
+          testID={key} // a stable handle for UI tests (Maestro)
           style={[styles.input, opts.multiline && styles.multiline, invalid && styles.inputError]}
           value={form[key]}
           onChangeText={set(key)}
