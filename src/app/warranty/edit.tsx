@@ -4,6 +4,7 @@ import { goBack } from '@/nav';
 import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
+import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/db/client';
 import {
   addAttachment, addManual, applyLengthToStore, getWarranty, ignoreWarranty, listAccounts, nextNeedsInput, saveStoreRule, sourceOf,
@@ -302,8 +303,17 @@ export default function EditWarranty() {
           )}
           {!existing && (
             <View style={styles.field}>
-              <Pressable style={styles.scanButton} onPress={() => runScan(scanDocument)} disabled={scan.state === 'busy'} accessibilityRole="button">
-                {scan.state === 'busy' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.scanText}>{t('form.scan')}</Text>}
+              <Pressable
+                style={({ pressed }) => [styles.scanCard, pressed && styles.scanPressed]}
+                onPress={() => runScan(scanDocument)}
+                disabled={scan.state === 'busy'}
+                accessibilityRole="button"
+                accessibilityLabel={t('form.scan')}
+              >
+                <View style={styles.scanIcon}>
+                  {scan.state === 'busy' ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="camera" size={28} color={colors.onPrimary} />}
+                </View>
+                <Text style={styles.scanText}>{t('form.scan')}</Text>
               </Pressable>
               <Pressable style={styles.secondary} onPress={() => runScan(importDocument)} disabled={scan.state === 'busy'} accessibilityRole="button">
                 <Text style={styles.secondaryText}>{t('form.import')}</Text>
@@ -466,32 +476,34 @@ const styles = StyleSheet.create({
   content: { padding: 24, gap: 16, paddingBottom: 48 },
   field: { gap: 6 },
   label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
+  input: { minHeight: 52, borderWidth: 1, borderColor: colors.border, borderRadius: 14, paddingHorizontal: 16, fontSize: 17, color: colors.text, backgroundColor: colors.surface },
   multiline: { minHeight: 96, paddingTop: 12, textAlignVertical: 'top' },
   inputError: { borderColor: colors.soon.fg, borderWidth: 2 },
   hint: { fontSize: 14, color: colors.muted },
   error: { fontSize: 14, color: colors.soon.fg },
   chips: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  chip: { minHeight: 48, minWidth: 56, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
+  chip: { minHeight: 48, minWidth: 56, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
   chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
   chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
   chipTextSelected: { color: colors.onPrimary },
-  secondary: { minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  secondaryText: { fontSize: 15, fontWeight: '600', color: colors.text },
-  mailBox: { maxHeight: 280, borderWidth: 1, borderColor: colors.border, borderRadius: 8, padding: 12 },
+  secondary: { minHeight: 52, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
+  mailBox: { maxHeight: 280, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 12, backgroundColor: colors.surface },
   mailText: { fontSize: 13, lineHeight: 19, color: colors.text },
   resolveRow: { flexDirection: 'row', gap: 12 },
   flex: { flex: 1 },
-  scanButton: { minHeight: 56, borderRadius: 8, borderWidth: 2, borderColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  scanText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  scanCard: { flexDirection: 'row', alignItems: 'center', gap: 16, minHeight: 88, padding: 16, borderRadius: 20, backgroundColor: colors.primarySoft },
+  scanPressed: { opacity: 0.8 },
+  scanIcon: { width: 56, height: 56, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  scanText: { flex: 1, fontSize: 18, fontWeight: '700', color: colors.text },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chipWide: { paddingHorizontal: 14, maxWidth: '100%' },
   monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },
   dateInput: { justifyContent: 'center' },
-  dateText: { fontSize: 16, color: colors.text },
+  dateText: { fontSize: 17, color: colors.text },
   datePlaceholder: { color: colors.muted },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   switchLabel: { flex: 1, fontSize: 15, color: colors.text },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
-  buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  button: { minHeight: 56, borderRadius: 16, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 8 },
+  buttonText: { fontSize: 17, fontWeight: '700', color: colors.onPrimary },
 });
