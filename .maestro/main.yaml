@@ -146,20 +146,25 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
 - assertVisible: ".*Philips HD9350.*"
 - tapOn: "Settings"
-- extendedWaitUntil: { visible: "Magyar", timeout: 20000 }
+- extendedWaitUntil: { visible: "Settings", timeout: 20000 }
+- scrollUntilVisible: { element: "Magyar", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Magyar" }
 - tapOn: "Magyar"
 - assertVisible: "Beállítások"
 - takeScreenshot: 13-hungarian
 - tapOn: "Telefon nyelve"
 - assertVisible: "Settings"
+- scrollUntilVisible: { element: "60 days before", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "60 days before" }
 - waitForAnimationToEnd
 - tapOn: "60 days before"
+- scrollUntilVisible: { element: "Time", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Time" }
 - waitForAnimationToEnd
 - tapOn: "Time"
 - tapOn: "OK"
 - takeScreenshot: 14-reminders
+- scrollUntilVisible: { element: "Import a shared list", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Import a shared list" }
 - waitForAnimationToEnd
 - tapOn: "Import a shared list"
@@ -167,43 +172,51 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "1 warranty added\\.", timeout: 30000 }
 - takeScreenshot: 15-imported
 - tapOn: "OK"
+- scrollUntilVisible: { element: "Export list as PDF", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Export list as PDF" }
 - waitForAnimationToEnd
 - tapOn: "Export list as PDF"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - takeScreenshot: 16-share-pdf
 - back
+- scrollUntilVisible: { element: "Export list as spreadsheet \\(CSV\\)", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Export list as spreadsheet \\(CSV\\)" }
 - waitForAnimationToEnd
 - tapOn: "Export list as spreadsheet \\(CSV\\)"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - takeScreenshot: 17-share-csv
 - back
+- scrollUntilVisible: { element: "Export all my data", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Export all my data" }
 - waitForAnimationToEnd
 - tapOn: "Export all my data"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - back
-- scrollUntilVisible: { element: "Help and feedback", direction: UP }
+- scrollUntilVisible: { element: "Help and feedback", direction: UP , optional: true, timeout: 8000 }
+- scrollUntilVisible: { element: "Help and feedback" }
 - waitForAnimationToEnd
 - tapOn: "Help and feedback"
 - tapOn: "Why doesn't a purchase show up\\?"
 - assertVisible: "Warrantly only imports.*"
 - takeScreenshot: 18-help
+- scrollUntilVisible: { element: "Privacy policy", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Privacy policy" }
 - waitForAnimationToEnd
 - tapOn: "Privacy policy"
+- scrollUntilVisible: { element: ".*Limited Use.*", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: ".*Limited Use.*" }
 - waitForAnimationToEnd
 - takeScreenshot: 19-privacy
 - back
+- scrollUntilVisible: { element: "What's new", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "What's new" }
 - waitForAnimationToEnd
 - tapOn: "What's new"
 - assertVisible: ".*Several documents per warranty.*"
 - tapOn: "Got it"
 - back
-- scrollUntilVisible: { element: "Rate Warrantly", direction: UP }
+- scrollUntilVisible: { element: "Rate Warrantly", direction: UP , optional: true, timeout: 8000 }
+- scrollUntilVisible: { element: "Rate Warrantly" }
 - waitForAnimationToEnd
 - tapOn: "Rate Warrantly"
 - runFlow:
@@ -213,7 +226,8 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "Rate Warrantly", timeout: 20000 }
 
 # #14 dark mode: the app restarts in the dark palette
-- scrollUntilVisible: { element: "Dark", direction: UP }
+- scrollUntilVisible: { element: "Dark", direction: UP , optional: true, timeout: 8000 }
+- scrollUntilVisible: { element: "Dark" }
 - waitForAnimationToEnd
 - tapOn: "Dark"
 - extendedWaitUntil: { visible: "Search warranties", timeout: 90000 }
@@ -225,7 +239,8 @@ appId: dev.warrantly.prototype
 - back
 - tapOn: "Settings"
 - takeScreenshot: 22-dark-settings
-- scrollUntilVisible: { element: "Light", direction: UP }
+- scrollUntilVisible: { element: "Light", direction: UP , optional: true, timeout: 8000 }
+- scrollUntilVisible: { element: "Light" }
 - waitForAnimationToEnd
 - tapOn: "Light"
 - extendedWaitUntil: { visible: "Search warranties", timeout: 90000 }
