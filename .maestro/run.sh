@@ -11,7 +11,8 @@ adb push fixture-photo.jpg /sdcard/Pictures/
 adb shell content call --uri content://media --method scan_volume --arg external_primary >/dev/null
 sleep 5
 
-flow() { (cd out && maestro test --format junit --output "$1.xml" "../.maestro/$1.yaml" > "$1.log" 2>&1); result $? "$1"; tail -5 "out/$1.log"; }
+export MAESTRO_CLI_NO_ANALYTICS=1
+flow() { (cd out && maestro test --format junit --output "$1.xml" --debug-output "debug-$1" "../.maestro/$1.yaml" > "$1.log" 2>&1); result $? "$1"; tail -5 "out/$1.log"; adb exec-out screencap -p > "out/end-$1.png"; }
 
 flow main
 
