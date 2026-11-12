@@ -60,8 +60,7 @@ A change that adds native code needs a new `version` in `app.json` and a new bui
 
 ## On-device test
 
-`.github/workflows/device-test.yml` runs the x86_64 test build (EAS profile `emulator`, link in
-`.maestro/apk-url.txt`) on Google's Android emulator in GitHub Actions and drives it with Maestro
+`.github/workflows/device-test.yml` builds the app for x86_64 from the pushed commit, runs it on Google's Android emulator in GitHub Actions and drives it with Maestro
 (`.maestro/*.yaml`): onboarding, add with price and category, history, extended plan, two documents and
 the PDF viewer, product photo, test reminder, language, reminder settings, import, export, help, privacy,
 what's new, dark mode, share from the Files app, the icon shortcut link, and delete all data.
