@@ -39,9 +39,9 @@ appId: dev.warrantly.prototype
 - tapOn: { text: "Expiry reminders", index: 0 }
 - takeScreenshot: L4-after-reminders-toggle
 - assertNotVisible: "Enter your PIN"
-- scrollUntilVisible: { element: "Show product names on the widget", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Show product names on the widget" }
-- tapOn: "Show product names on the widget"
+- scrollUntilVisible: { element: "Names on the widget", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Names on the widget" }
+- tapOn: "Names on the widget"
 - takeScreenshot: L5-after-widget-toggle
 - assertNotVisible: "Enter your PIN"
 - back

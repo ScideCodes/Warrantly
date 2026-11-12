@@ -65,3 +65,7 @@ const darkColors: Palette = {
 // (Settings restarts the app when you pick a theme).
 export const isDark = (getThemeSetting() === 'system' ? Appearance.getColorScheme() : getThemeSetting()) === 'dark';
 export const colors: Palette = isDark ? darkColors : lightColors;
+
+// Every button and text field is this tall, so the app has one button size.
+export const BUTTON_HEIGHT = 52;
+export const BUTTON_RADIUS = 14;

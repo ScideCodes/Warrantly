@@ -19,7 +19,7 @@ import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 
 
@@ -276,8 +276,8 @@ export default function Settings() {
     <View style={styles.row}>
       {tile(icon)}
       <View style={styles.rowText}>
-        <Text style={styles.label}>{label}</Text>
-        {hint && <Text style={styles.hint}>{hint}</Text>}
+        <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{label}</Text>
+        {hint && <Text style={styles.hint} numberOfLines={1}>{hint}</Text>}
       </View>
       <Switch
         value={value}
@@ -292,8 +292,8 @@ export default function Settings() {
     <Pressable style={styles.row} onPress={onPress} accessibilityRole="button">
       {tile(icon, opts.danger)}
       <View style={styles.rowText}>
-        <Text style={[styles.label, opts.danger && styles.dangerLabel]}>{label}</Text>
-        {opts.hint && <Text style={styles.hint}>{opts.hint}</Text>}
+        <Text style={[styles.label, opts.danger && styles.dangerLabel]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{label}</Text>
+        {opts.hint && <Text style={styles.hint} numberOfLines={1}>{opts.hint}</Text>}
       </View>
       {opts.value && <Text style={styles.value}>{opts.value}</Text>}
       {!opts.danger && <Ionicons name="chevron-forward" size={20} color={colors.muted} />}
@@ -310,7 +310,7 @@ export default function Settings() {
           accessibilityRole="radio"
           accessibilityState={{ selected: selected === it.key }}
         >
-          <Text style={[styles.segText, selected === it.key && styles.segTextOn]} numberOfLines={2}>
+          <Text style={[styles.segText, selected === it.key && styles.segTextOn]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
             {it.text}
           </Text>
         </Pressable>
@@ -321,7 +321,7 @@ export default function Settings() {
     <View style={styles.block}>
       <View style={styles.blockHead}>
         {tile(icon)}
-        <Text style={styles.label}>{label}</Text>
+        <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{label}</Text>
       </View>
       {segmented(label, items, selected, onPick)}
     </View>
@@ -349,7 +349,7 @@ export default function Settings() {
             <Text style={styles.profileName} numberOfLines={1}>
               {name?.trim() || t('settings.title')}
             </Text>
-            <Text style={styles.hint}>{t('settings.profileHint')}</Text>
+            <Text style={styles.hint} numberOfLines={1}>{t('settings.profileHint')}</Text>
           </View>
         </View>
 
@@ -360,7 +360,7 @@ export default function Settings() {
               <View key={a.id} style={styles.row}>
                 {tile('mail-outline')}
                 <View style={styles.rowText}>
-                  <Text style={styles.label} numberOfLines={1}>
+                  <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
                     {a.email}
                   </Text>
                   <View style={styles.inlineLinks}>
@@ -381,7 +381,7 @@ export default function Settings() {
             ))}
             <Pressable style={styles.row} onPress={addAccount} accessibilityRole="button">
               {tile('add')}
-              <Text style={[styles.label, styles.link, styles.rowText]}>{t('accounts.add')}</Text>
+              <Text style={[styles.label, styles.link, styles.rowText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('accounts.add')}</Text>
             </Pressable>
             {accountBusy && <Text style={[styles.hint, styles.pad]}>{accountBusy}</Text>}
             {link('eye-off-outline', t('ignored.title'), () => router.push('/ignored'))}
@@ -402,7 +402,7 @@ export default function Settings() {
                     accessibilityRole="checkbox"
                     accessibilityState={{ checked: groups.includes(g) }}
                   >
-                    <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
+                    <Text style={[styles.label, styles.rowText]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t(`settings.group_${g}`)}</Text>
                     <View style={[styles.check, groups.includes(g) && styles.checkOn]}>
                       {groups.includes(g) && <Ionicons name="checkmark" size={18} color={colors.onPrimary} />}
                     </View>
@@ -439,7 +439,7 @@ export default function Settings() {
             {row('cloud-upload-outline', t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
             {backup && (
               <View style={styles.block}>
-                <Text style={styles.label}>{t('backup.interval')}</Text>
+                <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('backup.interval')}</Text>
                 {segmented(
                   t('backup.interval'),
                   INTERVALS.map((i) => ({ key: i, text: t(`backup.${i}`) })),
@@ -459,14 +459,14 @@ export default function Settings() {
                         : t('backup.never')}
                 </Text>
                 <Pressable style={styles.secondary} onPress={backupNow} disabled={backupBusy} accessibilityRole="button">
-                  {backupBusy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t('backup.now')}</Text>}
+                  {backupBusy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('backup.now')}</Text>}
                 </Pressable>
               </View>
             )}
             <View style={styles.row}>
               {tile('person-circle-outline')}
               <View style={styles.rowText}>
-                <Text style={styles.label}>{t('backup.account')}</Text>
+                <Text style={styles.label} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('backup.account')}</Text>
                 <Text style={styles.hint} numberOfLines={1}>
                   {backupAccount ?? t('backup.accountNone')}
                 </Text>
@@ -535,13 +535,13 @@ const styles = StyleSheet.create({
   checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   block: { gap: 12, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  segment: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
-  segItem: { flex: 1, minHeight: 48, paddingHorizontal: 4, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  segItemOn: { backgroundColor: colors.primary },
+  segment: { flexDirection: 'row', gap: 8 },
+  segItem: { flex: 1, minHeight: BUTTON_HEIGHT, paddingHorizontal: 6, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+  segItemOn: { backgroundColor: colors.primary, borderColor: colors.primary },
   segText: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
   segTextOn: { color: colors.onPrimary, fontWeight: '700' },
   error: { fontSize: 14, color: colors.soon.fg },
   version: { fontSize: 14, color: colors.muted, textAlign: 'center', marginTop: 24 },
-  secondary: { minHeight: 48, borderRadius: 14, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  secondary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   secondaryText: { fontSize: 16, fontWeight: '700', color: colors.primary },
 });

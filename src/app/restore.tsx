@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { latestBackup, PasswordNeededError, restoreBackup } from '@/backup';
 import { WrongPasswordError } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 // Restore the newest backup from Google Drive (section 17). Replaces everything on this phone.
 export default function Restore() {
@@ -69,7 +69,7 @@ export default function Restore() {
               <Text style={styles.hint}>{t('restore.passwordHint')}</Text>
             </View>
             <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={confirm} disabled={busy} accessibilityRole="button">
-              {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('restore.button')}</Text>}
+              {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('restore.button')}</Text>}
             </Pressable>
           </>
         )}
@@ -91,10 +91,10 @@ const styles = StyleSheet.create({
   body: { fontSize: 16, color: colors.muted },
   field: { gap: 6 },
   label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
+  input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text },
   hint: { fontSize: 14, color: colors.muted },
   error: { fontSize: 14, color: colors.soon.fg },
-  button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { backgroundColor: colors.primaryDisabled },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
 });

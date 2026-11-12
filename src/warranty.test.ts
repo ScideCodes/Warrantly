@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, reminderDays, reminderPlan, returnDeadline, shortName, totalValue, urgency, type ListFilter } from './warranty.ts';
+import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, productIcon, reminderDays, reminderPlan, returnDeadline, shortName, totalValue, urgency, type ListFilter } from './warranty.ts';
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
@@ -111,4 +111,14 @@ test('reminder groups: only the chosen ones are planned', () => {
   assert.deepEqual(reminderDays(['30', '0']), [30, 0]);
   const plan = reminderPlan([{ id: 1, end_date: '2027-03-01' }], '2026-11-11', 60, reminderDays(['weekly']));
   assert.deepEqual(plan.map((r) => r.daysLeft), [23, 16, 9, 2]);
+});
+
+test('productIcon picks by name, then category, then a parcel', () => {
+  assert.equal(productIcon('Bosch Serie 6 mosógép', null), 'washing-machine');
+  assert.equal(productIcon('Bosch dishwasher', 'appliances'), 'dishwasher');
+  assert.equal(productIcon('Apple iPhone 15', null), 'cellphone');
+  assert.equal(productIcon('Samsung Galaxy Tab S9', null), 'tablet');
+  assert.equal(productIcon('LG OLED55 TV', null), 'television');
+  assert.equal(productIcon('Mystery box', 'tools'), 'hammer-wrench');
+  assert.equal(productIcon(null, null), 'package-variant-closed');
 });

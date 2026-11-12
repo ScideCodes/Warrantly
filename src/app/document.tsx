@@ -4,7 +4,7 @@ import { ActivityIndicator, FlatList, Image, PixelRatio, Pressable, ScrollView, 
 import { useTranslation } from 'react-i18next';
 import PdfPages, { type PdfPage } from '../../modules/pdf-pages';
 import { documentUri, openDocument } from '@/documents';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 const ZOOMS = [1, 2, 3];
 
@@ -35,14 +35,14 @@ export default function DocumentViewer() {
       <Stack.Screen options={{ headerShown: true, title: title || t('viewer.title') }} />
       <View style={styles.bar}>
         <Pressable style={styles.button} onPress={() => setZoom((z) => z - 1)} disabled={zoom === 0} accessibilityRole="button" accessibilityLabel={t('viewer.zoomOut')}>
-          <Text style={[styles.buttonText, zoom === 0 && styles.disabled]}>−</Text>
+          <Text style={[styles.buttonText, zoom === 0 && styles.disabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>−</Text>
         </Pressable>
         <Text style={styles.zoom}>{ZOOMS[zoom] * 100}%</Text>
         <Pressable style={styles.button} onPress={() => setZoom((z) => z + 1)} disabled={zoom === ZOOMS.length - 1} accessibilityRole="button" accessibilityLabel={t('viewer.zoomIn')}>
-          <Text style={[styles.buttonText, zoom === ZOOMS.length - 1 && styles.disabled]}>+</Text>
+          <Text style={[styles.buttonText, zoom === ZOOMS.length - 1 && styles.disabled]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>+</Text>
         </Pressable>
         <Pressable style={[styles.button, styles.share]} onPress={share} accessibilityRole="button">
-          <Text style={styles.shareText}>{t('viewer.share')}</Text>
+          <Text style={styles.shareText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('viewer.share')}</Text>
         </Pressable>
       </View>
       {error ? (
@@ -72,7 +72,7 @@ export default function DocumentViewer() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.expired.bg },
   bar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, backgroundColor: colors.background, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  button: { minWidth: 48, minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
+  button: { minWidth: BUTTON_HEIGHT, minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   buttonText: { fontSize: 22, fontWeight: '700', color: colors.text },
   disabled: { color: colors.primaryDisabled },
   zoom: { minWidth: 48, textAlign: 'center', fontSize: 15, color: colors.text },

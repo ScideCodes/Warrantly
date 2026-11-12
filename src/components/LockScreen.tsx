@@ -7,7 +7,7 @@ import Ionicons from '@expo/vector-icons/Ionicons';
 import { KEY_SIZE, PinPad } from '@/components/PinPad';
 import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { logError } from '@/errorLog';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT } from '@/theme';
 
 // Full-screen lock over the app (section 19). The app stays mounted underneath, so unlocking keeps your place.
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
@@ -112,7 +112,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         }
       />
       <Pressable style={styles.link} onPress={forgot} accessibilityRole="button">
-        <Text style={styles.linkText}>{t('lock.forgot')}</Text>
+        <Text style={styles.linkText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('lock.forgot')}</Text>
       </Pressable>
     </SafeAreaView>
   );
@@ -127,6 +127,6 @@ const styles = StyleSheet.create({
   error: { color: colors.soon.fg },
   finger: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
   fingerPressed: { opacity: 0.7 },
-  link: { minHeight: 48, justifyContent: 'center', paddingHorizontal: 16 },
+  link: { minHeight: BUTTON_HEIGHT, justifyContent: 'center', paddingHorizontal: 16 },
   linkText: { fontSize: 17, fontWeight: '600', color: colors.primary },
 });

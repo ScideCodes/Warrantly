@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { listIgnored, restoreIgnored, type IgnoredRow } from '@/db/repo.ts';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 // Ignored mails (section 8): hidden from the lists, but reviewable and restorable.
 export default function Ignored() {
@@ -42,7 +42,7 @@ export default function Ignored() {
               </Text>
             </View>
             <Pressable style={styles.button} onPress={() => restore(item.id)} accessibilityRole="button" accessibilityLabel={`${t('ignored.restore')}: ${item.subject ?? item.store_name}`}>
-              <Text style={styles.buttonText}>{t('ignored.restore')}</Text>
+              <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('ignored.restore')}</Text>
             </Pressable>
           </View>
         )}
@@ -60,6 +60,6 @@ const styles = StyleSheet.create({
   text: { flex: 1, gap: 2 },
   title: { fontSize: 15, fontWeight: '600', color: colors.text },
   meta: { fontSize: 14, color: colors.muted },
-  button: { minHeight: 44, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, justifyContent: 'center' },
+  button: { minHeight: BUTTON_HEIGHT, paddingHorizontal: 14, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.primary, justifyContent: 'center' },
   buttonText: { fontSize: 14, fontWeight: '600', color: colors.primary },
 });

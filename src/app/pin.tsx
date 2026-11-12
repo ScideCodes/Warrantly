@@ -9,7 +9,7 @@ import { getDb } from '@/db/client';
 import { isLockEnabled, setPin } from '@/lock/store';
 import { setWidgetNames } from '@/settings';
 import { updateWidget } from '@/widget';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 // Choose a PIN (turn the lock on, change it, or after "Forgot PIN"): enter, then confirm.
 export default function PinSetup() {
@@ -59,7 +59,7 @@ export default function PinSetup() {
             accessibilityRole="button"
             accessibilityState={{ disabled: value.length < MIN_PIN }}
           >
-            <Text style={styles.buttonText}>{t('pin.continue')}</Text>
+            <Text style={styles.buttonText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('pin.continue')}</Text>
           </Pressable>
         )}
       </View>
@@ -73,7 +73,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 22, fontWeight: '700', color: colors.text, textAlign: 'center' },
   hint: { fontSize: 15, color: colors.muted, textAlign: 'center', maxWidth: 320 },
   error: { color: colors.soon.fg },
-  button: { minHeight: 48, minWidth: 200, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  button: { minHeight: BUTTON_HEIGHT, minWidth: 200, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { backgroundColor: colors.primaryDisabled },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
 });

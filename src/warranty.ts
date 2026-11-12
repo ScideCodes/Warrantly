@@ -132,6 +132,43 @@ export const plain = (s: string): string => s.toLowerCase().replace(/[áéíóö
 // Fixed categories (keys; names are translated). Stored on the warranty as the key.
 export const CATEGORIES = ['electronics', 'computers', 'phones', 'appliances', 'home', 'tools', 'other'] as const;
 
+// Icon for a product in the list (MaterialCommunityIcons names): the first keyword found in the
+// name wins, then the category, then a parcel. Keywords are plain (no accents), English and Hungarian.
+const PRODUCT_ICONS: [RegExp, string][] = [
+  [/mosogatogep|dishwasher/, 'dishwasher'],
+  [/mosogep|washing|washer|szarito|dryer/, 'washing-machine'],
+  [/huto|fridge|refrigerator|fagyaszto|freezer/, 'fridge-outline'],
+  [/porszivo|vacuum|roomba/, 'vacuum-outline'],
+  [/mikro|microwave/, 'microwave'],
+  [/kave|coffee|espresso/, 'coffee-maker-outline'],
+  [/telefon|phone|iphone|galaxy s|pixel|xiaomi|redmi/, 'cellphone'],
+  [/tablet|ipad|galaxy tab/, 'tablet'],
+  [/laptop|notebook|macbook|thinkpad|chromebook/, 'laptop'],
+  [/monitor|kijelzo/, 'monitor'],
+  [/tv|televizio|television|oled|qled/, 'television'],
+  [/fulhallgato|headphone|earbud|airpods|buds|headset/, 'headphones'],
+  [/hangszoro|speaker|soundbar|hangfal/, 'speaker'],
+  [/ora|watch|okosora/, 'watch-variant'],
+  [/kamera|camera|fenykepezo|gopro/, 'camera-outline'],
+  [/konzol|playstation|ps5|xbox|switch|controller/, 'gamepad-variant-outline'],
+  [/nyomtato|printer/, 'printer-outline'],
+  [/furo|drill|csavarozo|flex|grinder|saw|fureszgep/, 'hammer-wrench'],
+  [/kanape|sofa|couch|matrac|mattress|butor|furniture/, 'sofa-outline'],
+];
+const CATEGORY_ICONS: Record<string, string> = {
+  electronics: 'television',
+  computers: 'laptop',
+  phones: 'cellphone',
+  appliances: 'washing-machine',
+  home: 'sofa-outline',
+  tools: 'hammer-wrench',
+};
+export function productIcon(name: string | null, category: string | null | undefined): string {
+  const text = plain(name ?? '');
+  for (const [re, icon] of PRODUCT_ICONS) if (re.test(text)) return icon;
+  return (category && CATEGORY_ICONS[category]) || 'package-variant-closed';
+}
+
 // Sum of prices per currency, e.g. { HUF: 105263, EUR: 49.9 }. Items without a price are left out.
 export function totalValue(list: { price: number | null; currency: string | null }[]): Record<string, number> {
   const sums: Record<string, number> = {};

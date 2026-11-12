@@ -6,7 +6,7 @@ import { formatDate, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { answerReturn, deleteWarranty, listReturnPrompts, listWarranties, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments } from '@/documents';
-import { colors } from '@/theme';
+import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
 
 // "Needs your attention" (section 9): return/refund questions first (section 11), then incomplete items.
 export default function Attention() {
@@ -41,10 +41,10 @@ export default function Attention() {
           </Text>
           <View style={styles.actions}>
             <Pressable style={[styles.action, styles.delete]} onPress={() => answer(p, true)} accessibilityRole="button">
-              <Text style={styles.deleteText}>{t('returns.delete')}</Text>
+              <Text style={styles.deleteText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('returns.delete')}</Text>
             </Pressable>
             <Pressable style={styles.action} onPress={() => answer(p, false)} accessibilityRole="button">
-              <Text style={styles.keepText}>{t('returns.keep')}</Text>
+              <Text style={styles.keepText} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>{t('returns.keep')}</Text>
             </Pressable>
           </View>
         </View>
@@ -77,7 +77,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 16, fontWeight: '700', color: colors.warning.fg },
   cardBody: { fontSize: 15, lineHeight: 22, color: colors.text },
   actions: { flexDirection: 'row', gap: 12 },
-  action: { flex: 1, minHeight: 44, borderRadius: 8, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  action: { flex: 1, minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
   delete: { borderColor: colors.soon.fg },
   deleteText: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
   keepText: { fontSize: 15, fontWeight: '600', color: colors.text },
