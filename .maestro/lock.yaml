@@ -1,0 +1,43 @@
+# The PIN must not be asked again when settings change (user report).
+appId: dev.warrantly.prototype
+---
+- launchApp:
+    clearState: true
+- extendedWaitUntil: { visible: "Welcome to Warrantly", timeout: 90000 }
+- tapOn: "Your name"
+- inputText: "Tester"
+- hideKeyboard
+- tapOn: "Continue"
+- tapOn: "Set up PIN"
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "4"
+- tapOn: "Continue"
+- tapOn: "1"
+- tapOn: "2"
+- tapOn: "3"
+- tapOn: "4"
+- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 30000 }
+- tapOn: "Settings"
+- extendedWaitUntil: { visible: "Magyar", timeout: 20000 }
+- takeScreenshot: L1-settings
+- tapOn: "Magyar"
+- takeScreenshot: L2-after-language
+- assertNotVisible: "Add meg a PIN-kódot|Enter your PIN"
+- tapOn: "Telefon nyelve"
+- scrollUntilVisible: { element: "60 days before" }
+- waitForAnimationToEnd
+- tapOn: "60 days before"
+- takeScreenshot: L3-after-reminder-day
+- assertNotVisible: "Enter your PIN"
+- tapOn: { text: "Expiry reminders", index: 0 }
+- takeScreenshot: L4-after-reminders-toggle
+- assertNotVisible: "Enter your PIN"
+- scrollUntilVisible: { element: "Show product names on the widget" }
+- tapOn: "Show product names on the widget"
+- takeScreenshot: L5-after-widget-toggle
+- assertNotVisible: "Enter your PIN"
+- back
+- takeScreenshot: L6-home
+- assertNotVisible: "Enter your PIN"
