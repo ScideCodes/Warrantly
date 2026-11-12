@@ -9,17 +9,17 @@ appId: dev.warrantly.prototype
 - hideKeyboard
 - tapOn: "Continue"
 - tapOn: "Later"
-- extendedWaitUntil: { visible: "Hi, Tester!|Got it", timeout: 30000 }
+- extendedWaitUntil: { visible: "Search warranties|Got it", timeout: 30000 }
 - runFlow:
     when: { visible: "Got it" }
     commands:
       - takeScreenshot: BUG-whats-new-on-new-install
       - tapOn: "Got it"
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 30000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
 - takeScreenshot: 01-home-empty
 
 # #4 #6 price and category on a new warranty
-- tapOn: "\\+ Add"
+- tapOn: "Add a warranty|\\+ Add"
 - extendedWaitUntil: { visible: "Add warranty", timeout: 20000 }
 - tapOn: { id: "product_name" }
 - inputText: "Philips HD9350"
@@ -48,7 +48,11 @@ appId: dev.warrantly.prototype
       - takeScreenshot: 02d-top-after-save
 - extendedWaitUntil: { visible: "Philips HD9350", timeout: 20000 }
 - assertVisible: "Total value: .*"
-- assertVisible: "Appliances"
+- tapOn: "Menu"
+- tapOn: "Appliances"
+- assertVisible: "Showing: Appliances"
+- takeScreenshot: 03b-menu-filter
+- tapOn: "Showing: Appliances"
 - takeScreenshot: 03-home-total
 
 # Detail: price, category, #10 brand support, #9 history
@@ -139,7 +143,7 @@ appId: dev.warrantly.prototype
 - back
 
 # Settings: #16 language, #15 reminders, #11 import, #5 #12 export, #17 #13 #19 help/privacy/what's new, #20 rate
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 20000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
 - assertVisible: ".*Philips HD9350.*"
 - tapOn: "Settings"
 - extendedWaitUntil: { visible: "Magyar", timeout: 20000 }
@@ -151,11 +155,10 @@ appId: dev.warrantly.prototype
 - scrollUntilVisible: { element: "60 days before" }
 - waitForAnimationToEnd
 - tapOn: "60 days before"
-- scrollUntilVisible: { element: "At", optional: true }
-- takeScreenshot: 14a-times
-- scrollUntilVisible: { element: "(0?6:00.?PM|18:00)" }
+- scrollUntilVisible: { element: "Time" }
 - waitForAnimationToEnd
-- tapOn: "(0?6:00.?PM|18:00)"
+- tapOn: "Time"
+- tapOn: "OK"
 - takeScreenshot: 14-reminders
 - scrollUntilVisible: { element: "Import a shared list" }
 - waitForAnimationToEnd
@@ -213,7 +216,7 @@ appId: dev.warrantly.prototype
 - scrollUntilVisible: { element: "Dark", direction: UP }
 - waitForAnimationToEnd
 - tapOn: "Dark"
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 90000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 90000 }
 - assertVisible: ".*Shared Kettle.*"
 - takeScreenshot: 20-dark-home
 - tapOn: "Philips HD9350"
@@ -225,4 +228,4 @@ appId: dev.warrantly.prototype
 - scrollUntilVisible: { element: "Light", direction: UP }
 - waitForAnimationToEnd
 - tapOn: "Light"
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 90000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 90000 }

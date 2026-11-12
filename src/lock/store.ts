@@ -9,6 +9,16 @@ const FAILURES = 'lock_failures';
 const WAIT_UNTIL = 'lock_wait_until';
 
 export const isLockEnabled = (): boolean => SecureStore.getItem(PIN) !== null;
+
+// The app restarts itself after some changes (theme, update). The user was just unlocked, so that one
+// start skips the lock: a pass valid for 30 seconds, written only from inside the unlocked app.
+const RELAUNCH = 'lock_relaunch_until';
+export const allowRelaunchWithoutLock = (now = Date.now()): void => SecureStore.setItem(RELAUNCH, String(now + 30_000));
+export function takeRelaunchPass(now = Date.now()): boolean {
+  const until = Number(SecureStore.getItem(RELAUNCH) ?? 0);
+  if (until) void SecureStore.deleteItemAsync(RELAUNCH);
+  return until > now;
+}
 export const storedPinLength = (): number => pinLength(SecureStore.getItem(PIN) ?? '::');
 
 export function setPin(pin: string): void {

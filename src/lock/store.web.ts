@@ -11,3 +11,6 @@ export const setBiometricEnabled = (_on: boolean): void => {};
 export const unlockWithBiometrics = async (_prompt: string, _cancel: string): Promise<boolean> => false;
 export const hasDeviceLock = async (): Promise<boolean> => false;
 export const verifyDeviceOwner = async (_prompt: string): Promise<boolean> => false;
+
+export const allowRelaunchWithoutLock = (_now = Date.now()): void => {};
+export const takeRelaunchPass = (_now = Date.now()): boolean => false;

@@ -9,7 +9,7 @@ import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
 import { LockScreen } from '@/components/LockScreen';
 import { shouldRelock } from '@/lock/pin.ts';
-import { isLockEnabled } from '@/lock/store';
+import { isLockEnabled, takeRelaunchPass } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
@@ -46,7 +46,7 @@ export default function RootLayout() {
   useReminderTaps();
 
   // App lock (section 19): locked on every cold start; again after more than 3 minutes in the background.
-  const [locked, setLocked] = useState(isLockEnabled);
+  const [locked, setLocked] = useState(() => isLockEnabled() && !takeRelaunchPass());
   const hiddenAt = useRef<number | null>(null);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {

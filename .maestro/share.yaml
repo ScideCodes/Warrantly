@@ -26,7 +26,7 @@ appId: dev.warrantly.prototype
 - tapOn: "Save warranty"
 - extendedWaitUntil: { notVisible: "Save warranty", timeout: 20000 }
 - launchApp
-- extendedWaitUntil: { visible: "Hi, Tester!", timeout: 30000 }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
 - scrollUntilVisible: { element: "Shared PDF item" }
 - tapOn: "Shared PDF item"
 - scrollUntilVisible: { element: "Open document", timeout: 20000 }
