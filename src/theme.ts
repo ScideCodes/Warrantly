@@ -1,11 +1,12 @@
 import { Appearance } from 'react-native';
 import { getThemeSetting } from '@/settings';
 
-// shortcut: placeholder palettes until the design pass; screens read colors only from here.
+// "Clean Card" look (design canvas, round 3, look 1): grey page, white cards, one blue; dark is OLED black.
+// Screens read colors only from here.
 type Hex = `#${string}`;
 type Pill = { fg: Hex; bg: Hex };
 export interface Palette {
-  background: Hex;
+  background: Hex; // the page behind the cards
   text: Hex;
   muted: Hex;
   border: Hex; // inputs and outlined buttons (3:1)
@@ -13,48 +14,51 @@ export interface Palette {
   primary: Hex;
   primaryDisabled: Hex;
   onPrimary: Hex;
+  primarySoft: Hex; // tinted backgrounds: letter tiles, icon tiles, the selected bottom-bar item
   ok: Pill;
   warning: Pill;
   soon: Pill;
   expired: Pill;
   banner: Hex;
-  surface: Hex; // grouped cards (settings sections)
+  surface: Hex; // cards on the page (lists, settings groups, search box)
 }
 
 export const lightColors: Palette = {
-  background: '#FFFFFF',
-  text: '#111827',
-  muted: '#4B5563', // 7.6:1 on white
-  border: '#6B7280', // 4.8:1, input borders need 3:1
-  divider: '#D1D5DB', // still visible on the grey settings cards
-  primary: '#1D4ED8', // 6.7:1 with white text
-  primaryDisabled: '#93A5D8',
+  background: '#F2F3F5',
+  text: '#0E1116',
+  muted: '#5B6270', // 5.5:1 on the page, 6.2:1 on white
+  border: '#8A919C', // 3.2:1 on white cards and fields
+  divider: '#E6E8EC',
+  primary: '#2457F5', // 5.3:1 with white text
+  primaryDisabled: '#A9BCF9',
   onPrimary: '#FFFFFF',
-  // Days-left pills: dark text on a light tint, each pair above 4.5:1.
+  primarySoft: '#E8EEFF',
+  // Days left: tinted pairs, each above 4.5:1.
   ok: { fg: '#166534', bg: '#DCFCE7' },
   warning: { fg: '#92400E', bg: '#FEF3C7' },
-  soon: { fg: '#991B1B', bg: '#FEE2E2' },
+  soon: { fg: '#C2410C', bg: '#FFEDD5' }, // orange, not red: tells apart from green for colour-blind eyes
   expired: { fg: '#374151', bg: '#F3F4F6' },
   banner: '#FEF3C7',
-  surface: '#F3F4F6',
+  surface: '#FFFFFF',
 };
 
-// Dark mode (section 13): light text on near-black; every text pair stays above 4.5:1.
+// OLED dark (section 13): true black page, so unlit pixels stay off; cards lift by tone, not shadow.
 const darkColors: Palette = {
-  background: '#111827',
-  text: '#F9FAFB', // 16:1
-  muted: '#9CA3AF', // 6.9:1
-  border: '#6B7280', // 3.3:1
-  divider: '#374151',
-  primary: '#93C5FD', // 10:1 as text; buttons use dark text on it
-  primaryDisabled: '#4B5563',
-  onPrimary: '#111827',
+  background: '#000000',
+  text: '#F5F5F7', // 19:1
+  muted: '#A1A1AA', // 8:1
+  border: '#6B6B73', // 3.6:1
+  divider: '#26262A',
+  primary: '#5B8CFF', // 6.6:1 as text; buttons use black text on it
+  primaryDisabled: '#2A3A66',
+  onPrimary: '#000000',
+  primarySoft: '#13224A',
   ok: { fg: '#BBF7D0', bg: '#14532D' },
   warning: { fg: '#FDE68A', bg: '#78350F' },
-  soon: { fg: '#FECACA', bg: '#7F1D1D' },
-  expired: { fg: '#E5E7EB', bg: '#374151' },
-  banner: '#78350F',
-  surface: '#1F2937',
+  soon: { fg: '#FF9F5A', bg: '#3A1A06' },
+  expired: { fg: '#E5E7EB', bg: '#1C1C1F' },
+  banner: '#3D2A05',
+  surface: '#141416',
 };
 
 // Chosen once at start: styles are created when screens load, so a change applies after a restart

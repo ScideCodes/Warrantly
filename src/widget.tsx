@@ -22,7 +22,7 @@ function NextExpiry({ next, active }: { next: Warranty | null; active: number })
   const pill = colors[urgency(days)];
   return (
     <FlexWidget
-      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: colors.background, borderRadius: 16, padding: 12, justifyContent: 'center' }}
+      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: colors.surface, borderRadius: 16, padding: 12, justifyContent: 'center' }}
       clickAction={next ? 'OPEN_URI' : 'OPEN_APP'}
       clickActionData={next ? { uri: `warrantly://warranty/${next.id}` } : undefined}
     >

@@ -10,13 +10,13 @@ import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
 import { runDueBackup } from '@/backup';
 import { SideMenu, type MenuSection } from '@/components/SideMenu';
-import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
+import { daysLabel, displayName, formatDate, formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
-import { colors } from '@/theme';
-import { CATEGORIES, filterWarranties, todayYmd, totalValue, type ListFilter } from '@/warranty';
+import { colors, isDark } from '@/theme';
+import { CATEGORIES, daysUntil, filterWarranties, todayYmd, totalValue, type ListFilter } from '@/warranty';
 import { updateWidget } from '@/widget';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
@@ -108,6 +108,7 @@ export default function Home() {
     { key: 'covered' as const, data: covered },
     { key: 'expired' as const, data: expiredOpen ? expired : [] },
   ].filter((s) => s.data.length > 0);
+  const next = query === '' ? (soon[0] ?? covered[0]) : undefined; // the "Next to expire" card
   const total = Object.entries(totalValue([...soon, ...covered])).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + ');
   const all: Filter = { kind: 'all' };
   const inAll = (f: Filter) => count('active', f) + count('expired', f);
@@ -155,6 +156,20 @@ export default function Home() {
           </Pressable>
         )}
       </View>
+      {next && (
+        <Pressable style={styles.hero} onPress={() => router.push(`/warranty/${next.id}`)} accessibilityRole="button">
+          <Text style={styles.heroLabel}>{t('home.nextUp')}</Text>
+          <Text style={styles.heroName} numberOfLines={2}>
+            {displayName(t, next)}
+          </Text>
+          <View style={styles.heroRow}>
+            <Text style={styles.heroDays}>{daysLabel(t, daysUntil(next.end_date, today))}</Text>
+            <Text style={styles.heroMeta} numberOfLines={1}>
+              {next.store_name} · {t('home.endsOn', { date: formatDate(next.end_date, i18n.language) })}
+            </Text>
+          </View>
+        </Pressable>
+      )}
       {filter.kind !== 'all' && (
         <Pressable style={styles.filterPill} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
           <Text style={styles.filterText} numberOfLines={1}>
@@ -225,7 +240,12 @@ export default function Home() {
         ref={listRef}
         sections={sections}
         keyExtractor={(w) => String(w.id)}
-        renderItem={({ item }) => <WarrantyRow warranty={item} />}
+        renderItem={({ item, index, section }) => (
+          <WarrantyRow
+            warranty={item}
+            style={[styles.card, index === 0 && styles.cardFirst, index === { soon, covered, expired }[section.key].length - 1 && styles.cardLast]}
+          />
+        )}
         renderSectionHeader={({ section }) => (
           <View style={styles.sectionHeader}>
             <Ionicons name={groupStyle[section.key].icon} size={22} color={groupStyle[section.key].color} />
@@ -282,7 +302,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: '700', color: colors.text },
   filterButton: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: 48, paddingHorizontal: 14, borderRadius: 24, borderWidth: 1, borderColor: colors.border },
   filterButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: 56, borderRadius: 14, borderWidth: 2, borderColor: colors.border, paddingLeft: 14, paddingRight: 4, gap: 8 },
+  searchBar: { flexDirection: 'row', alignItems: 'center', minHeight: 56, borderRadius: 14, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingLeft: 14, paddingRight: 4, gap: 8 },
   iconButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
   searchInput: { flex: 1, minHeight: 48, fontSize: 18, color: colors.text },
   filterPill: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: 48, paddingHorizontal: 16, borderRadius: 24, backgroundColor: colors.primary, maxWidth: '100%' },
@@ -293,7 +313,17 @@ const styles = StyleSheet.create({
   status: { fontSize: 14, color: colors.muted },
   detail: { fontSize: 14, color: colors.muted },
   total: { fontSize: 14, color: colors.muted },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 20, paddingBottom: 4 },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingTop: 24, paddingBottom: 10 },
+  // Each group is one white card; rows keep their dividers inside it.
+  card: { backgroundColor: colors.surface, paddingHorizontal: 16 },
+  cardFirst: { borderTopLeftRadius: 20, borderTopRightRadius: 20 },
+  cardLast: { borderBottomLeftRadius: 20, borderBottomRightRadius: 20, borderBottomWidth: 0 },
+  hero: { gap: 4, padding: 20, borderRadius: 20, backgroundColor: isDark ? colors.surface : colors.primary },
+  heroLabel: { fontSize: 14, fontWeight: '700', letterSpacing: 0.5, textTransform: 'uppercase', color: isDark ? colors.muted : colors.onPrimary },
+  heroName: { fontSize: 22, fontWeight: '700', color: isDark ? colors.text : colors.onPrimary },
+  heroRow: { gap: 2, marginTop: 4 },
+  heroDays: { fontSize: 26, fontWeight: '700', color: isDark ? colors.soon.fg : colors.onPrimary },
+  heroMeta: { fontSize: 15, color: isDark ? colors.muted : colors.onPrimary },
   sectionTitle: { fontSize: 18, fontWeight: '700' },
   expiredToggle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', minHeight: 56, marginTop: 24, paddingHorizontal: 16, borderRadius: 14, backgroundColor: colors.surface },
   expiredToggleText: { fontSize: 17, fontWeight: '700', color: colors.text },
@@ -304,10 +334,10 @@ const styles = StyleSheet.create({
   button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },
   buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
   // Bottom bar: every item has an icon and a word, and Add sits where a thumb reaches it.
-  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', minHeight: 84, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider, backgroundColor: colors.background },
+  bar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', minHeight: 84, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider, backgroundColor: colors.surface },
   barItem: { flex: 1, minHeight: 64, alignItems: 'center', justifyContent: 'center', gap: 4 },
   barIcon: { width: 64, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  barIconSelected: { backgroundColor: colors.surface },
+  barIconSelected: { backgroundColor: colors.primarySoft },
   barLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
   barLabelIdle: { color: colors.muted },
   barAdd: { width: 104, minHeight: 64, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },

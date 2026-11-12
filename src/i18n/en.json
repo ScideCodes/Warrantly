@@ -35,6 +35,8 @@
     "showing": "Showing: {{name}}",
     "empty_active": "Nothing is covered right now",
     "title": "Warranties",
+    "nextUp": "Next to expire",
+    "endsOn": "ends {{date}}",
     "filter": "Filter",
     "sectionSoon": "Expiring soon ({{count}})",
     "sectionCovered": "Covered ({{count}})",
