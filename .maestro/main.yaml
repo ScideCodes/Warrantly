@@ -21,9 +21,9 @@ appId: dev.warrantly.prototype
 # #4 #6 price and category on a new warranty
 - tapOn: "\\+ Add"
 - extendedWaitUntil: { visible: "Add warranty", timeout: 20000 }
-- tapOn: { below: "Product" }
+- tapOn: { id: "product_name" }
 - inputText: "Philips HD9350"
-- tapOn: { below: "Store" }
+- tapOn: { id: "store_name" }
 - inputText: "MediaMarkt"
 - hideKeyboard
 - scrollUntilVisible: { element: "Appliances" }
@@ -31,7 +31,7 @@ appId: dev.warrantly.prototype
 - tapOn: "Appliances"
 - scrollUntilVisible: { element: "Price" }
 - waitForAnimationToEnd
-- tapOn: { below: "Price", leftOf: "Currency" }
+- tapOn: { id: "price" }
 - inputText: "19990"
 - hideKeyboard
 - takeScreenshot: 02-form

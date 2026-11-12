@@ -20,7 +20,8 @@ flow() { (cd out && maestro test --format junit --output "$1.xml" --debug-output
 flow main
 
 # Share into Warrantly (#3): a PDF sent from another app opens the add form with it attached.
-ID=$(adb shell content query --uri content://media/external/file --projection _id --where "_display_name=\'fixture-share.pdf\'" | sed -n 's/.*_id=\([0-9]*\).*/\1/p' | head -1)
+ID=$(adb shell content query --uri content://media/external/file --projection _id:_display_name | grep "fixture-share.pdf" | sed -n 's/.*_id=\([0-9]*\),.*/\1/p' | head -1)
+echo "shared file id: $ID"; [ -n "$ID" ] || echo "FAIL share-setup (file not in MediaStore)"
 adb shell am start -a android.intent.action.SEND -t application/pdf --eu android.intent.extra.STREAM "content://media/external/file/$ID" --grant-read-uri-permission -n "$APP/.MainActivity"
 sleep 8; adb exec-out screencap -p > out/after-share-intent.png
 flow share
