@@ -48,7 +48,7 @@ appId: dev.warrantly.prototype
       - takeScreenshot: 02d-top-after-save
 - extendedWaitUntil: { visible: "Philips HD9350", timeout: 20000 }
 - assertVisible: "Total value: .*"
-- tapOn: "Menu"
+- tapOn: "Filter"
 - tapOn: "Appliances"
 - assertVisible: "Showing: Appliances"
 - takeScreenshot: 03b-menu-filter
