@@ -20,12 +20,14 @@ appId: dev.warrantly.prototype
 - tapOn: "4"
 - extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
 - tapOn: "Settings"
-- extendedWaitUntil: { visible: "Magyar", timeout: 20000 }
+- extendedWaitUntil: { visible: "Settings", timeout: 20000 }
+- scrollUntilVisible: { element: "Magyar" }
 - takeScreenshot: L1-settings
 - tapOn: "Magyar"
 - takeScreenshot: L2-after-language
 - assertNotVisible: "Add meg a PIN-kódot|Enter your PIN"
 - tapOn: "Telefon nyelve"
+- scrollUntilVisible: { element: "60 days before", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "60 days before" }
 - waitForAnimationToEnd
 - tapOn: "60 days before"
@@ -34,6 +36,7 @@ appId: dev.warrantly.prototype
 - tapOn: { text: "Expiry reminders", index: 0 }
 - takeScreenshot: L4-after-reminders-toggle
 - assertNotVisible: "Enter your PIN"
+- scrollUntilVisible: { element: "Show product names on the widget", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Show product names on the widget" }
 - tapOn: "Show product names on the widget"
 - takeScreenshot: L5-after-widget-toggle
@@ -42,6 +45,7 @@ appId: dev.warrantly.prototype
 - takeScreenshot: L6-home
 - assertNotVisible: "Enter your PIN"
 - tapOn: "Settings"
+- scrollUntilVisible: { element: "Dark", direction: UP, timeout: 6000, optional: true }
 - scrollUntilVisible: { element: "Dark" }
 - waitForAnimationToEnd
 - tapOn: "Dark"
