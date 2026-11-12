@@ -147,7 +147,11 @@
     "deleteNoteHint": "Hosszan nyomva törlöd",
     "brandSupport": "{{brand}} ügyfélszolgálat keresése",
     "supportQuery": "garancia szerviz ügyfélszolgálat",
-    "share": "Garancia megosztása"
+    "share": "Garancia megosztása",
+    "photo": "Termékfotó",
+    "photoCamera": "Fotó készítése",
+    "photoLibrary": "Választás a galériából",
+    "photoRemove": "Fotó törlése"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",

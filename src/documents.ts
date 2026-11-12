@@ -1,4 +1,5 @@
 import * as DocumentPicker from 'expo-document-picker';
+import * as ImagePicker from 'expo-image-picker';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as MailComposer from 'expo-mail-composer';
 import * as Print from 'expo-print';
@@ -60,6 +61,20 @@ async function imagesToPdf(images: { uri: string; mimeType: string }[]): Promise
   await pdf.move(folder());
   return { text, localPath: pdf.name };
 }
+
+// Product photo (section 13): camera or gallery, cropped square, stored next to the documents.
+// Returns the stored file name, or null if the user backs out.
+export async function pickPhoto(source: 'camera' | 'library'): Promise<string | null> {
+  const options: ImagePicker.ImagePickerOptions = { mediaTypes: 'images', allowsEditing: true, aspect: [1, 1], quality: 0.7 };
+  if (source === 'camera' && !(await ImagePicker.requestCameraPermissionsAsync()).granted) return null;
+  const res = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
+  if (res.canceled || !res.assets.length) return null;
+  const photo = new File(folder(), `photo-${Date.now()}.jpg`);
+  await new File(res.assets[0].uri).copy(photo);
+  return photo.name;
+}
+
+export const documentUriOrNull = (localPath: string | null): string | null => (localPath && documentExists(localPath) ? fileFor(localPath).uri : null);
 
 // Downloaded mail PDFs (build step 4), stored next to scans. Returns the stored file name.
 export const mailDocuments = {

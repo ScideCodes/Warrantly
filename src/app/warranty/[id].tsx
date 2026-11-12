@@ -1,16 +1,16 @@
 import { useCallback, useState } from 'react';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { Alert, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import {
-  addAttachment, addHistory, deleteAttachment, deleteHistory, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, listHistory, otherCovers,
+  addAttachment, addHistory, deleteAttachment, setPhoto, deleteHistory, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, listHistory, otherCovers,
   type Attachment, type HistoryEntry, type Warranty,
 } from '@/db/repo.ts';
 import { shareWarranties } from '@/dataTools';
-import { deleteDocuments, documentExists, importDocument, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, documentUriOrNull, importDocument, pickPhoto, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
@@ -106,6 +106,28 @@ export default function WarrantyDetail() {
   // first word of the product name; the search does the rest.
   const brand = w.product_name?.trim().split(/\s+/)[0] ?? null;
 
+  // Product photo: camera or gallery; a new one replaces the old file.
+  function choosePhoto() {
+    const take = async (source: 'camera' | 'library' | null) => {
+      try {
+        const photo = source ? await pickPhoto(source) : null;
+        if (source && !photo) return;
+        const db = await getDb();
+        const old = await setPhoto(db, w!.id, photo);
+        if (old) deleteDocuments([old]);
+        setW(await getWarranty(db, w!.id));
+      } catch (e) {
+        Alert.alert(e instanceof Error ? e.message : String(e));
+      }
+    };
+    Alert.alert(t('detail.photo'), undefined, [
+      { text: t('detail.cancel'), style: 'cancel' },
+      ...(w!.photo_path ? [{ text: t('detail.photoRemove'), style: 'destructive' as const, onPress: () => void take(null) }] : []),
+      { text: t('detail.photoLibrary'), onPress: () => void take('library') },
+      { text: t('detail.photoCamera'), onPress: () => void take('camera') },
+    ]);
+  }
+
   async function notWarranty() {
     await ignoreWarranty(await getDb(), w!.id);
     goBack();
@@ -139,6 +161,13 @@ export default function WarrantyDetail() {
         }}
       />
       <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+        <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')} style={styles.photoWrap}>
+          {documentUriOrNull(w.photo_path) ? (
+            <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.photo} />
+          ) : (
+            <Text style={styles.photoAdd}>+ {t('detail.photo')}</Text>
+          )}
+        </Pressable>
         <Text style={styles.title} accessibilityRole="header">
           {product}
         </Text>
@@ -316,6 +345,9 @@ function Field({ label, value, url }: { label: string; value: string; url?: stri
 }
 
 const styles = StyleSheet.create({
+  photoWrap: { alignSelf: 'flex-start' },
+  photo: { width: 120, height: 120, borderRadius: 12 },
+  photoAdd: { fontSize: 15, fontWeight: '600', color: colors.primary, paddingVertical: 8 },
   history: { gap: 6 },
   noteRow: { flexDirection: 'row', gap: 8 },
   noteInput: { flex: 1, minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },

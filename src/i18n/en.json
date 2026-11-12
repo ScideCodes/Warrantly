@@ -147,7 +147,11 @@
     "deleteNoteHint": "Long-press to delete",
     "brandSupport": "Find {{brand}} support",
     "supportQuery": "warranty support service",
-    "share": "Share this warranty"
+    "share": "Share this warranty",
+    "photo": "Product photo",
+    "photoCamera": "Take a photo",
+    "photoLibrary": "Choose from gallery",
+    "photoRemove": "Remove photo"
   },
   "reminder": {
     "channel": "Warranty reminders",
