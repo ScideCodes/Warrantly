@@ -211,7 +211,8 @@
     "theme_system": "Like the phone",
     "theme_light": "Light",
     "theme_dark": "Dark",
-    "themeRestart": "Close and reopen Warrantly to apply the new look."
+    "themeRestart": "Close and reopen Warrantly to apply the new look.",
+    "rate": "Rate Warrantly"
   },
   "backup": {
     "section": "Backup",

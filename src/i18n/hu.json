@@ -211,7 +211,8 @@
     "theme_system": "Mint a telefon",
     "theme_light": "Világos",
     "theme_dark": "Sötét",
-    "themeRestart": "Zárd be és nyisd meg újra a Warrantlyt az új megjelenéshez."
+    "themeRestart": "Zárd be és nyisd meg újra a Warrantlyt az új megjelenéshez.",
+    "rate": "Értékeld a Warrantlyt"
   },
   "backup": {
     "section": "Mentés",
