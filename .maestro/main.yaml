@@ -70,7 +70,9 @@ appId: dev.warrantly.prototype
 - scrollUntilVisible: { element: "Add another warranty \\(e.g. extended plan\\)" }
 - waitForAnimationToEnd
 - tapOn: "Add another warranty \\(e.g. extended plan\\)"
-- extendedWaitUntil: { visible: "Extended plan", timeout: 20000 }
+- extendedWaitUntil: { visible: "Add warranty", timeout: 20000 }
+- scrollUntilVisible: { element: "Extended plan" }
+- waitForAnimationToEnd
 - tapOn: "Extended plan"
 - scrollUntilVisible: { element: "Save warranty" }
 - waitForAnimationToEnd
@@ -85,13 +87,14 @@ appId: dev.warrantly.prototype
 - waitForAnimationToEnd
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
-- extendedWaitUntil: { visible: "Open document", timeout: 30000 }
+- scrollUntilVisible: { element: "Open document", timeout: 30000 }
 - scrollUntilVisible: { element: "Attach a photo or PDF" }
 - waitForAnimationToEnd
 - tapOn: "Attach a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
-- extendedWaitUntil: { visible: "Philips HD9350 \\(2\\)\\.pdf", timeout: 30000 }
-- assertVisible: "Philips HD9350\\.pdf"
+- scrollUntilVisible: { element: "Philips HD9350 \\(2\\)\\.pdf", timeout: 30000 }
+- scrollUntilVisible: { element: "Philips HD9350\\.pdf", direction: UP }
+- waitForAnimationToEnd
 - takeScreenshot: 06-two-documents
 - tapOn: "Philips HD9350\\.pdf"
 - extendedWaitUntil: { visible: "100%", timeout: 30000 }
@@ -137,7 +140,11 @@ appId: dev.warrantly.prototype
 - takeScreenshot: 13-hungarian
 - tapOn: "Telefon nyelve"
 - assertVisible: "Settings"
+- scrollUntilVisible: { element: "60 days before" }
+- waitForAnimationToEnd
 - tapOn: "60 days before"
+- scrollUntilVisible: { element: "06:00 PM" }
+- waitForAnimationToEnd
 - tapOn: "06:00 PM"
 - takeScreenshot: 14-reminders
 - scrollUntilVisible: { element: "Import a shared list" }
@@ -147,14 +154,20 @@ appId: dev.warrantly.prototype
 - extendedWaitUntil: { visible: "1 warranty added\\.", timeout: 30000 }
 - takeScreenshot: 15-imported
 - tapOn: "OK"
+- scrollUntilVisible: { element: "Export list as PDF" }
+- waitForAnimationToEnd
 - tapOn: "Export list as PDF"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - takeScreenshot: 16-share-pdf
 - back
+- scrollUntilVisible: { element: "Export list as spreadsheet \\(CSV\\)" }
+- waitForAnimationToEnd
 - tapOn: "Export list as spreadsheet \\(CSV\\)"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - takeScreenshot: 17-share-csv
 - back
+- scrollUntilVisible: { element: "Export all my data" }
+- waitForAnimationToEnd
 - tapOn: "Export all my data"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - back
@@ -171,10 +184,14 @@ appId: dev.warrantly.prototype
 - waitForAnimationToEnd
 - takeScreenshot: 19-privacy
 - back
+- scrollUntilVisible: { element: "What's new" }
+- waitForAnimationToEnd
 - tapOn: "What's new"
 - assertVisible: ".*Several documents per warranty.*"
 - tapOn: "Got it"
 - back
+- scrollUntilVisible: { element: "Rate Warrantly", direction: UP }
+- waitForAnimationToEnd
 - tapOn: "Rate Warrantly"
 - runFlow:
     when: { notVisible: "Rate Warrantly" }
@@ -190,10 +207,12 @@ appId: dev.warrantly.prototype
 - assertVisible: ".*Shared Kettle.*"
 - takeScreenshot: 20-dark-home
 - tapOn: "Philips HD9350"
-- extendedWaitUntil: { visible: "Price", timeout: 20000 }
+- extendedWaitUntil: { visible: "Store", timeout: 20000 }
 - takeScreenshot: 21-dark-detail
 - back
 - tapOn: "Settings"
 - takeScreenshot: 22-dark-settings
+- scrollUntilVisible: { element: "Light", direction: UP }
+- waitForAnimationToEnd
 - tapOn: "Light"
 - extendedWaitUntil: { visible: "Hi, Tester!", timeout: 90000 }
