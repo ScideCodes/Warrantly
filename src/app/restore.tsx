@@ -92,7 +92,7 @@ const styles = StyleSheet.create({
   field: { gap: 6 },
   label: { fontSize: 15, fontWeight: '600', color: colors.text },
   input: { minHeight: 48, borderWidth: 1, borderColor: colors.border, borderRadius: 8, paddingHorizontal: 12, fontSize: 16, color: colors.text },
-  hint: { fontSize: 13, color: colors.muted },
+  hint: { fontSize: 14, color: colors.muted },
   error: { fontSize: 14, color: colors.soon.fg },
   button: { minHeight: 48, borderRadius: 8, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   buttonDisabled: { backgroundColor: colors.primaryDisabled },

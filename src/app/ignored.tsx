@@ -56,10 +56,10 @@ const styles = StyleSheet.create({
   list: { paddingHorizontal: 24, paddingBottom: 24 },
   hint: { fontSize: 14, color: colors.muted, paddingVertical: 16 },
   empty: { fontSize: 16, color: colors.muted, textAlign: 'center', marginTop: 32 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   text: { flex: 1, gap: 2 },
   title: { fontSize: 15, fontWeight: '600', color: colors.text },
-  meta: { fontSize: 13, color: colors.muted },
+  meta: { fontSize: 14, color: colors.muted },
   button: { minHeight: 44, paddingHorizontal: 14, borderRadius: 8, borderWidth: 1, borderColor: colors.primary, justifyContent: 'center' },
   buttonText: { fontSize: 14, fontWeight: '600', color: colors.primary },
 });

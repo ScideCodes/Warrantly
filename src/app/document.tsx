@@ -71,7 +71,7 @@ export default function DocumentViewer() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.expired.bg },
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, backgroundColor: colors.background, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.border },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 8, backgroundColor: colors.background, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   button: { minWidth: 48, minHeight: 48, borderRadius: 8, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
   buttonText: { fontSize: 22, fontWeight: '700', color: colors.text },
   disabled: { color: colors.primaryDisabled },

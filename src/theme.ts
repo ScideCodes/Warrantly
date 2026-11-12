@@ -8,7 +8,8 @@ export interface Palette {
   background: Hex;
   text: Hex;
   muted: Hex;
-  border: Hex;
+  border: Hex; // inputs and outlined buttons (3:1)
+  divider: Hex; // hairline list separators, decorative
   primary: Hex;
   primaryDisabled: Hex;
   onPrimary: Hex;
@@ -25,6 +26,7 @@ export const lightColors: Palette = {
   text: '#111827',
   muted: '#4B5563', // 7.6:1 on white
   border: '#6B7280', // 4.8:1, input borders need 3:1
+  divider: '#D1D5DB', // still visible on the grey settings cards
   primary: '#1D4ED8', // 6.7:1 with white text
   primaryDisabled: '#93A5D8',
   onPrimary: '#FFFFFF',
@@ -43,6 +45,7 @@ const darkColors: Palette = {
   text: '#F9FAFB', // 16:1
   muted: '#9CA3AF', // 6.9:1
   border: '#6B7280', // 3.3:1
+  divider: '#374151',
   primary: '#93C5FD', // 10:1 as text; buttons use dark text on it
   primaryDisabled: '#4B5563',
   onPrimary: '#111827',
