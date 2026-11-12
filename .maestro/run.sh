@@ -6,6 +6,8 @@ APP=dev.warrantly.prototype
 result() { if [ "$1" = 0 ]; then echo "PASS $2"; else echo "FAIL $2"; FAILED=1; fi; }
 FAILED=0
 adb install -r -g app.apk
+adb logcat -c
+adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E ExpoModulesCore:V expo-share-intent:V ExpoShareIntent:V '*:S' > out/applog.txt 2>&1 &
 for f in fixture-invoice.pdf fixture-share.pdf fixture-shared.json; do adb push "$f" /sdcard/Download/; done
 adb push fixture-photo.jpg /sdcard/Pictures/
 adb shell content call --uri content://media --method scan_volume --arg external_primary >/dev/null
@@ -31,5 +33,7 @@ flow cleanup
 adb logcat -d -b crash > out/crash.txt
 adb logcat -d > out/logcat.txt
 cp -r ~/.maestro/tests out/maestro-tests 2>/dev/null
+find "$PWD" "$HOME/.maestro" -name '*.png' -newer app.apk -not -path '*/out/*' -exec cp {} out/ \; 2>/dev/null
+ls -R out | head -80
 grep -q "$APP" out/crash.txt; [ $? = 0 ] && { echo "FAIL app crashed (see crash.txt)"; FAILED=1; } || echo "PASS no crashes"
 exit $FAILED
