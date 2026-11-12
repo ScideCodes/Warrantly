@@ -17,7 +17,7 @@ Don't open a pull request unless I ask.
 - Branch `ccr-c9f4753e-t639so`, pushed. No pull request.
 - App version 0.8.1 (`app.json`), installed on the owner's Android phone as an EAS "preview" APK.
 - Every feature in `docs/brainstorm.md` and the follow-up list is built. README "Status" lists each one.
-- Device tests (GitHub Actions emulator + Maestro) pass for all five flows: main, share, shortcut, cleanup, lock.
+- Device tests (GitHub Actions emulator + Maestro) pass for all flows: main, share, shortcut, cleanup, lock, fp-enroll + fingerprint (enrols an emulator finger, then cold-starts and unlocks by finger).
 - The owner's last on-phone check said everything works: Gmail sync, Drive backup, widget, PDF viewer, scanning.
 
 ## Stack
@@ -76,5 +76,5 @@ The owner wants this now. Known items:
 
 - Return-window reminders (14 days for online orders, reminder 2 days before) are only covered by unit tests.
 - "Rate the app" needs the Play Store listing.
-- Fingerprint prompt on app start (fixed last, in the 0.8.1 update): the owner should confirm on the phone that it stays open. If it still closes, Help → error log shows "fingerprint prompt closed by Android (...)" with the reason.
+- Fingerprint prompt on app start (fixed last, published as an update to 0.8.1; on the emulator it unlocks by finger after a cold start): the owner should confirm on the phone that it stays open. If it still closes, Help → error log shows "fingerprint prompt closed by Android (...)" with the reason.
 - Before and after a release, recheck Gmail sync, Drive backup and the widget on the phone. The emulator can't sign in to Google.
