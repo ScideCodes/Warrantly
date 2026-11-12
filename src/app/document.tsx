@@ -76,8 +76,9 @@ const styles = StyleSheet.create({
   buttonText: { fontSize: 22, fontWeight: '700', color: colors.text },
   disabled: { color: colors.primaryDisabled },
   zoom: { minWidth: 48, textAlign: 'center', fontSize: 15, color: colors.text },
-  share: { marginLeft: 'auto' },
-  shareText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  // Shrinks and wraps to two lines on narrow screens instead of running off the edge.
+  share: { marginLeft: 'auto', flexShrink: 1, paddingVertical: 4 },
+  shareText: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
   page: { marginBottom: 8, backgroundColor: colors.background },
   fill: { flex: 1 },
   loading: { marginTop: 48 },
