@@ -367,5 +367,78 @@
     "deleteBody": "Warranties, documents, settings and the PIN are removed from this phone, and Warrantly starts like new. This cannot be undone.",
     "deletePhone": "Delete from this phone",
     "deleteAll": "Also delete Drive backups"
+  },
+  "privacy": {
+    "title": "Privacy policy",
+    "body": [
+      "## In short",
+      "Warrantly keeps your warranties on your phone. There is no Warrantly server, no account, no ads and no tracking. The developer cannot see your data.",
+      "## Gmail",
+      "With your permission, Warrantly reads your Gmail (read-only) on this phone to find warranty documents and mails that state a warranty. Only those mails are downloaded, and only the details needed for a warranty are kept: store, product, dates, order number, contact details and attached PDFs. Mail is never sent anywhere else, and Warrantly never sends, deletes or changes mail.",
+      "Warrantly's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.",
+      "## Backups",
+      "If you turn backups on, your data is encrypted on this phone with your backup password and stored in your own Google Drive, in a folder only Warrantly can see. Without the password nobody can read it, the developer included.",
+      "## Scans and documents",
+      "Scanning and reading text from receipts happens on the phone (Google ML Kit, on-device). Documents are stored in the app on this phone and, if backups are on, encrypted in your Drive.",
+      "## Other services",
+      "App updates are downloaded from Expo (expo.dev), which sees your IP address like any website. Reminders are scheduled on the phone. Errors are logged on the phone and only leave it if you attach them to a feedback mail.",
+      "## Your choices",
+      "Settings > Your data exports everything or deletes everything, including the Drive backups. Disconnect a Gmail account in Settings, and remove Warrantly's access at myaccount.google.com/permissions.",
+      "## Changes",
+      "If this policy changes, the new version is shown in the app."
+    ]
+  },
+  "help": {
+    "title": "Help and feedback",
+    "feedbackTitle": "Send feedback",
+    "feedbackBody": "Found a bug or missing a feature? Write to us. The app version is added to the mail so we can help faster.",
+    "includeLog_one": "Include the error log ({{count}} entry)",
+    "includeLog_other": "Include the error log ({{count}} entries)",
+    "feedback": "Write feedback",
+    "feedbackSubject": "Warrantly feedback",
+    "faq": [
+      {
+        "q": "Why doesn't a purchase show up?",
+        "a": "Warrantly only imports warranty documents and mails that state a warranty length (for example \"24 months warranty\"), so plain order confirmations stay out. Add the purchase with + Add, or scan its receipt."
+      },
+      {
+        "q": "What is \"Needs your attention\"?",
+        "a": "Mails where something is missing, usually the product name or the warranty length. Open one, fill in what is missing, or mark it as not a warranty."
+      },
+      {
+        "q": "Does anyone else read my mail?",
+        "a": "No. Your mail is read on this phone only, and nothing is sent to a Warrantly server: there is none. See the privacy policy."
+      },
+      {
+        "q": "How do backups work?",
+        "a": "Your data is encrypted on the phone with your backup password and saved in your own Google Drive. Restore it on a new phone with the same password."
+      },
+      {
+        "q": "I forgot my PIN.",
+        "a": "Tap \"Forgot PIN\" on the lock screen. Your phone's own screen lock proves it is you, then you choose a new PIN."
+      },
+      {
+        "q": "How do I move to a new phone?",
+        "a": "Back up on the old phone, install Warrantly on the new one, then Settings > Restore from backup with your backup password."
+      },
+      {
+        "q": "How do I stop Warrantly reading my Gmail?",
+        "a": "Settings > Disconnect next to the account. You can also remove access at myaccount.google.com/permissions."
+      }
+    ]
+  },
+  "whatsNew": {
+    "title": "What's new",
+    "ok": "Got it",
+    "notes": [
+      "Several documents per warranty, and the PDF viewer.",
+      "Return-window reminders: online orders can be returned within 14 days.",
+      "Price, category and total value; filter the list by category.",
+      "Several warranties for one purchase (standard, store, extended plan).",
+      "Repair and claim history, and a shortcut to the brand's support.",
+      "Export to PDF or a spreadsheet, export all data, delete all data.",
+      "Choose which reminders you get and at what time.",
+      "Language picker, help, feedback and the privacy policy."
+    ]
   }
 }

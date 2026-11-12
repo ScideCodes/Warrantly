@@ -367,5 +367,78 @@
     "deleteBody": "A garanciák, dokumentumok, beállítások és a PIN törlődnek erről a telefonról, a Warrantly újként indul. Ez nem vonható vissza.",
     "deletePhone": "Törlés a telefonról",
     "deleteAll": "A Drive mentéseket is"
+  },
+  "privacy": {
+    "title": "Adatvédelem",
+    "body": [
+      "## Röviden",
+      "A Warrantly a telefonodon tárolja a garanciáidat. Nincs Warrantly szerver, fiók, hirdetés vagy követés. A fejlesztő nem látja az adataidat.",
+      "## Gmail",
+      "Az engedélyeddel a Warrantly ezen a telefonon olvassa a Gmail fiókodat (csak olvasásra), hogy megtalálja a garanciajegyeket és a garanciát említő leveleket. Csak ezeket tölti le, és csak a garanciához szükséges adatokat tartja meg: bolt, termék, dátumok, rendelésszám, elérhetőségek és a csatolt PDF-ek. A leveleket nem küldi tovább, és soha nem küld, töröl vagy módosít levelet.",
+      "A Warrantly a Google API-któl kapott adatokat a Google API Services User Data Policy szerint használja és továbbítja, a Limited Use követelményeket is beleértve.",
+      "## Mentések",
+      "Ha bekapcsolod a mentést, az adataid ezen a telefonon titkosítódnak a mentési jelszavaddal, és a saját Google Drive-odba kerülnek, egy mappába, amit csak a Warrantly lát. Jelszó nélkül senki nem tudja elolvasni, a fejlesztő sem.",
+      "## Beolvasás és dokumentumok",
+      "A nyugták beolvasása és a szöveg felismerése a telefonon történik (Google ML Kit, eszközön). A dokumentumok az alkalmazásban maradnak ezen a telefonon, mentés esetén titkosítva a Drive-odban.",
+      "## Más szolgáltatások",
+      "A frissítések az Expo (expo.dev) szervereiről töltődnek le, ami mint bármely weboldal, látja az IP-címedet. Az emlékeztetők a telefonon ütemeződnek. A hibák a telefonon naplózódnak, és csak akkor kerülnek ki, ha egy visszajelzéshez csatolod őket.",
+      "## Választási lehetőségeid",
+      "Beállítások > Adataid: mindent exportálhatsz vagy törölhetsz, a Drive mentéseket is. A Gmail fiókot a Beállításokban választhatod le, a hozzáférést a myaccount.google.com/permissions oldalon vonhatod vissza.",
+      "## Változások",
+      "Ha ez a tájékoztató változik, az új változat megjelenik az alkalmazásban."
+    ]
+  },
+  "help": {
+    "title": "Súgó és visszajelzés",
+    "feedbackTitle": "Visszajelzés küldése",
+    "feedbackBody": "Hibát találtál vagy hiányzik valami? Írj nekünk. A levélbe bekerül az alkalmazás verziója, így gyorsabban tudunk segíteni.",
+    "includeLog_one": "A hibanapló csatolása ({{count}} bejegyzés)",
+    "includeLog_other": "A hibanapló csatolása ({{count}} bejegyzés)",
+    "feedback": "Visszajelzés írása",
+    "feedbackSubject": "Warrantly visszajelzés",
+    "faq": [
+      {
+        "q": "Miért nem jelenik meg egy vásárlás?",
+        "a": "A Warrantly csak a garanciajegyeket és a garancia hosszát említő leveleket (pl. \"24 hó gar.\") veszi át, a sima rendelés-visszaigazolásokat nem. Add hozzá a + Hozzáadás gombbal, vagy olvasd be a nyugtát."
+      },
+      {
+        "q": "Mi az a \"Figyelmet igényel\"?",
+        "a": "Olyan levelek, amelyekből hiányzik valami, többnyire a termék neve vagy a garancia hossza. Nyisd meg, töltsd ki, vagy jelöld, hogy nem garancia."
+      },
+      {
+        "q": "Olvassa más a leveleimet?",
+        "a": "Nem. A leveleidet csak ez a telefon olvassa, és semmi nem megy Warrantly szerverre: nincs ilyen. Lásd az adatvédelmi tájékoztatót."
+      },
+      {
+        "q": "Hogyan működik a mentés?",
+        "a": "Az adataid a telefonon titkosítódnak a mentési jelszavaddal, és a saját Google Drive-odba kerülnek. Új telefonon ugyanazzal a jelszóval állíthatod vissza."
+      },
+      {
+        "q": "Elfelejtettem a PIN-kódot.",
+        "a": "Koppints az \"Elfelejtettem a PIN-t\" gombra a zárképernyőn. A telefon saját képernyőzára igazolja, hogy te vagy, aztán új PIN-t választasz."
+      },
+      {
+        "q": "Hogyan költözöm új telefonra?",
+        "a": "Ments a régi telefonon, telepítsd a Warrantlyt az újra, majd Beállítások > Visszaállítás mentésből a mentési jelszavaddal."
+      },
+      {
+        "q": "Hogyan tilthatom le, hogy a Warrantly olvassa a Gmailemet?",
+        "a": "Beállítások > Leválasztás a fiók mellett. A hozzáférést a myaccount.google.com/permissions oldalon is visszavonhatod."
+      }
+    ]
+  },
+  "whatsNew": {
+    "title": "Újdonságok",
+    "ok": "Rendben",
+    "notes": [
+      "Több dokumentum garanciánként, és PDF-nézegető.",
+      "Elállási határidő emlékeztető: online rendelést 14 napig küldhetsz vissza.",
+      "Ár, kategória és összérték; szűrés kategóriára.",
+      "Több garancia egy vásárláshoz (alap, bolti, kiterjesztett).",
+      "Javítási és reklamációs előzmények, és a gyártó ügyfélszolgálata egy koppintással.",
+      "Exportálás PDF-be vagy táblázatba, összes adat exportálása és törlése.",
+      "Kiválaszthatod, milyen emlékeztetőket kapsz és mikor.",
+      "Nyelvválasztó, súgó, visszajelzés és adatvédelmi tájékoztató."
+    ]
   }
 }

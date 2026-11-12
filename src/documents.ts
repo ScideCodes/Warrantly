@@ -91,9 +91,10 @@ export async function openDocument(localPath: string): Promise<void> {
 
 // Claim helper (section 20): the phone's mail composer with the document attached; plain mailto
 // (no attachment) when no composer is set up.
+// `to` may be empty (feedback before an address is set): the user fills it in.
 export async function sendClaim(to: string, subject: string, body: string, localPaths: string[]): Promise<void> {
   if (await MailComposer.isAvailableAsync()) {
-    await MailComposer.composeAsync({ recipients: [to], subject, body, attachments: localPaths.map((p) => fileFor(p).uri) });
+    await MailComposer.composeAsync({ recipients: to ? [to] : [], subject, body, attachments: localPaths.map((p) => fileFor(p).uri) });
   } else {
     await Linking.openURL(mailtoUrl(to, subject, body));
   }

@@ -15,6 +15,10 @@ export const setRemindersEnabled = (on: boolean): void => Storage.setItemSync('r
 export const getLanguageSetting = (): string => Storage.getItemSync('language') ?? 'system';
 export const setLanguageSetting = (code: string): void => Storage.setItemSync('language', code);
 
+// Which "What's new" notes were last shown (whatsNew.ts).
+export const getSeenWhatsNew = (): string | null => Storage.getItemSync('seen_whats_new');
+export const setSeenWhatsNew = (id: string): void => Storage.setItemSync('seen_whats_new', id);
+
 // Reminder time of day (hour) and which reminders (groups from warranty.ts), section 16.
 export const getReminderHour = (): number => Number(Storage.getItemSync('reminder_hour') ?? 9);
 export const setReminderHour = (hour: number): void => Storage.setItemSync('reminder_hour', String(hour));
