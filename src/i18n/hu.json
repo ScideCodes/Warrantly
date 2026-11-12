@@ -146,7 +146,8 @@
     "deleteNote": "Törlöd ezt a jegyzetet?",
     "deleteNoteHint": "Hosszan nyomva törlöd",
     "brandSupport": "{{brand}} ügyfélszolgálat keresése",
-    "supportQuery": "garancia szerviz ügyfélszolgálat"
+    "supportQuery": "garancia szerviz ügyfélszolgálat",
+    "share": "Garancia megosztása"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
@@ -366,7 +367,12 @@
     "deleteTitle": "Törlöd az összes adatodat?",
     "deleteBody": "A garanciák, dokumentumok, beállítások és a PIN törlődnek erről a telefonról, a Warrantly újként indul. Ez nem vonható vissza.",
     "deletePhone": "Törlés a telefonról",
-    "deleteAll": "A Drive mentéseket is"
+    "deleteAll": "A Drive mentéseket is",
+    "share": "Lista megosztása",
+    "shareHint": "A garanciáid a dokumentumokkal együtt egy fájlba kerülnek, amit a másik fél a saját Warrantlyjébe importál.",
+    "import": "Megosztott lista importálása",
+    "imported_one": "{{count}} garancia hozzáadva.",
+    "imported_other": "{{count}} garancia hozzáadva."
   },
   "privacy": {
     "title": "Adatvédelem",

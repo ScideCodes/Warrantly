@@ -358,6 +358,59 @@ export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
   return files;
 }
 
+// --- Sharing with another phone (household): warranties as a file, merged in on the other side ---
+
+export interface SharedWarranty {
+  warranty: Record<string, unknown>;
+  history: { date: string; note: string }[];
+  documents: { filename: string; local_path?: string; data?: string }[]; // local_path on the sending phone, data (base64) in the file
+}
+
+const SHARED_COLUMNS = ['product_name', 'store_name', 'store_domain', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
+  'serial_number', 'notes', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'coverage'] as const;
+
+export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWarranty[]> {
+  const out: SharedWarranty[] = [];
+  for (const id of ids) {
+    const w = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM warranties WHERE id = ?', [id]);
+    if (!w) continue;
+    out.push({
+      warranty: Object.fromEntries(SHARED_COLUMNS.map((c) => [c, w[c] ?? null])),
+      history: await db.getAllAsync('SELECT date, note FROM history WHERE warranty_id = ? ORDER BY id', [id]),
+      documents: await db.getAllAsync('SELECT filename, local_path FROM attachments WHERE warranty_id = ? ORDER BY id', [id]),
+    });
+  }
+  return out;
+}
+
+// Adds shared warranties to the Manual tab. One already here (same product, store and purchase day) is
+// skipped. `saveDocument` stores a document's bytes and returns its new file name (null: not in the file).
+// Returns how many were added.
+export async function importShared(db: Db, items: SharedWarranty[], saveDocument: (doc: SharedWarranty['documents'][number]) => Promise<string | null>, now = new Date().toISOString()): Promise<number> {
+  let added = 0;
+  for (const { warranty: src, history, documents } of items) {
+    const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, (src[c] ?? null) as Param]));
+    if (typeof w.store_name !== 'string' || typeof w.purchase_date !== 'string' || typeof w.warranty_start_date !== 'string' || typeof w.warranty_months !== 'number') continue;
+    const dup = await db.getFirstAsync(
+      `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored'`,
+      [w.product_name, w.store_name, w.purchase_date, w.coverage],
+    );
+    if (dup) continue;
+    const res = await db.runAsync(
+      `INSERT INTO warranties (origin, ${SHARED_COLUMNS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
+       VALUES ('manual', ${SHARED_COLUMNS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
+      [...SHARED_COLUMNS.map((c) => w[c]), now, now],
+    );
+    for (const h of history ?? []) await addHistory(db, res.lastInsertRowId, String(h.date), String(h.note));
+    for (const d of documents ?? []) {
+      const stored = await saveDocument(d);
+      if (stored) await addAttachment(db, res.lastInsertRowId, String(d.filename), stored);
+    }
+    added++;
+  }
+  return added;
+}
+
 // "Delete all my data": every table, children first.
 export async function wipeDb(db: Db): Promise<void> {
   await db.withTransactionAsync(async () => {

@@ -5,9 +5,12 @@ import * as SecureStore from 'expo-secure-store';
 import * as Sharing from 'expo-sharing';
 import Storage from 'expo-sqlite/kv-store';
 import { GoogleOneTapSignIn } from 'react-native-nitro-google-signin';
+import * as DocumentPicker from 'expo-document-picker';
 import { deleteDriveBackups } from '@/backup';
+import { fromBase64, toBase64 } from '@/backup/format.ts';
+import { documentExists, readDocument, writeDocument } from '@/documents';
 import { clearLock } from '@/lock/store';
-import { wipeDb, type Db } from '@/db/repo.ts';
+import { importShared, sharedWarranties, wipeDb, type Db } from '@/db/repo.ts';
 import { updateWidget } from '@/widget';
 
 // Export and "delete all my data" (GDPR: access and erasure).
@@ -30,6 +33,34 @@ export async function sharePdf(name: string, html: string): Promise<void> {
   if (file.exists) file.delete();
   await new File(uri).move(file);
   await share(file, 'application/pdf');
+}
+
+// Household sharing (section 13): warranties with their notes and documents as one file, sent with any
+// app (mail, chat, Drive) and merged in on the other phone.
+const SHARE_FORMAT = 'warrantly-share';
+
+export async function shareWarranties(db: Db, ids: number[], name: string): Promise<void> {
+  const items = await sharedWarranties(db, ids);
+  for (const item of items) {
+    item.documents = await Promise.all(
+      item.documents.filter((d) => documentExists(d.local_path!)).map(async (d) => ({ filename: d.filename, data: toBase64(await readDocument(d.local_path!)) })),
+    );
+  }
+  await shareText(name, JSON.stringify({ format: SHARE_FORMAT, v: 1, items }), 'application/json');
+}
+
+// Returns how many warranties were added, or null if the user backed out.
+export async function importSharedFile(db: Db): Promise<number | null> {
+  const picked = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', 'application/octet-stream'], copyToCacheDirectory: true });
+  if (picked.canceled || !picked.assets.length) return null;
+  const data = JSON.parse(await new File(picked.assets[0].uri).text());
+  if (data?.format !== SHARE_FORMAT || !Array.isArray(data.items)) throw new Error('Not a Warrantly file');
+  return importShared(db, data.items, async (doc) => {
+    if (typeof doc.data !== 'string') return null;
+    const name = `shared-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`;
+    await writeDocument(name, fromBase64(doc.data));
+    return name;
+  });
 }
 
 // Everything on this phone goes: warranties, documents, settings, PIN, backup key, reminders, Google
