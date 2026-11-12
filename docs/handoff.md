@@ -60,7 +60,7 @@ npx expo start                # dev server
 - Warranty names are shortened to at most 3 words in lists (`displayName` in `src/components/WarrantyRow.tsx`).
 - Home is Gmail-like: a search bar with a ☰ side menu (`src/components/SideMenu.tsx`) and an avatar that opens Settings. Below it are the tabs Active, Expiring soon and Expired, plus a "+ Add" button.
 - Settings uses cards: accounts, Reminders (checklist + "Time" row, no "at"), Privacy and security, App, Backup, Your data, Help and about. Version is at the bottom.
-- App lock: a PIN plus optional fingerprint. It relocks after 3 minutes in the background. A theme restart doesn't relock: `allowRelaunchWithoutLock` in `src/lock/store.ts` gives a 30-second pass. On the lock screen the fingerprint prompt opens by itself once the app is in front. If Android (not the person) closes it, it retries once and writes a note to the error log in Help (`src/components/LockScreen.tsx`).
+- App lock: a PIN plus optional fingerprint. It relocks after 3 minutes in the background. A theme restart doesn't relock: `allowRelaunchWithoutLock` in `src/lock/store.ts` gives a 30-second pass. On the lock screen the fingerprint prompt opens by itself once the app is in front. If Android (not the person) closes it, it retries once and writes a note to the error log in Help (`src/components/LockScreen.tsx`). The owner confirmed on the phone that this works.
 - It must be easy for both young and old people: big touch targets, plain words.
 - Privacy: no user name or email in fixtures, external requests or commits.
 
@@ -76,5 +76,4 @@ The owner wants this now. Known items:
 
 - Return-window reminders (14 days for online orders, reminder 2 days before) are only covered by unit tests.
 - "Rate the app" needs the Play Store listing.
-- Fingerprint prompt on app start (fixed last, published as an update to 0.8.1; on the emulator it unlocks by finger after a cold start): the owner should confirm on the phone that it stays open. If it still closes, Help → error log shows "fingerprint prompt closed by Android (...)" with the reason.
 - Before and after a release, recheck Gmail sync, Drive backup and the widget on the phone. The emulator can't sign in to Google.
