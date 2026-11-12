@@ -9,6 +9,7 @@ import {
   addAttachment, addHistory, deleteAttachment, deleteHistory, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, listHistory, otherCovers,
   type Attachment, type HistoryEntry, type Warranty,
 } from '@/db/repo.ts';
+import { shareWarranties } from '@/dataTools';
 import { deleteDocuments, documentExists, importDocument, scanDocument, sendClaim } from '@/documents';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
@@ -227,6 +228,13 @@ export default function WarrantyDetail() {
             ))}
           </View>
         )}
+        <Pressable
+          style={styles.secondary}
+          onPress={() => getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => Alert.alert(String(e)))}
+          accessibilityRole="button"
+        >
+          <Text style={styles.secondaryText}>{t('detail.share')}</Text>
+        </Pressable>
         <Pressable
           style={styles.secondary}
           onPress={() => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } })}

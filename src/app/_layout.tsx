@@ -10,6 +10,7 @@ import { isLockEnabled } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
+import { colors } from '@/theme';
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
@@ -42,7 +43,8 @@ export default function RootLayout() {
   return (
     <>
       <StatusBar style="dark" />
-      <Stack screenOptions={{ headerShown: false }}>
+      {/* Tablets and wide screens: screens keep a readable width, centred. */}
+      <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.background } }}>
         <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
       </Stack>
       {locked && <LockScreen onUnlock={() => setLocked(false)} />}

@@ -10,7 +10,7 @@ import { listAccounts, listWarranties, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
 import { restartIntoUpdate, versionLine } from '@/appUpdate';
-import { deleteAllData, sharePdf, shareText } from '@/dataTools';
+import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties } from '@/dataTools';
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
@@ -180,6 +180,27 @@ export default function Settings() {
     try {
       const data = await dumpDb(await getDb(), settingsSnapshot());
       await shareText(`warrantly-all-data-${data.createdAt.slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json');
+    } catch (e) {
+      Alert.alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function shareAll() {
+    try {
+      const db = await getDb();
+      const ids = (await listWarranties(db, 'complete')).map((w) => w.id);
+      await shareWarranties(db, ids, `warrantly-shared-${new Date().toISOString().slice(0, 10)}.json`);
+    } catch (e) {
+      Alert.alert(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  async function importShared() {
+    try {
+      const db = await getDb();
+      const added = await importSharedFile(db);
+      if (added !== null) Alert.alert(t('data.imported', { count: added }));
+      await rescheduleReminders(db);
     } catch (e) {
       Alert.alert(e instanceof Error ? e.message : String(e));
     }
@@ -394,6 +415,15 @@ export default function Settings() {
         </Pressable>
         <Pressable style={styles.row} onPress={() => exportList('csv')} accessibilityRole="button">
           <Text style={[styles.label, styles.link]}>{t('data.exportCsv')}</Text>
+        </Pressable>
+        <Pressable style={styles.row} onPress={shareAll} accessibilityRole="button">
+          <View style={styles.rowText}>
+            <Text style={[styles.label, styles.link]}>{t('data.share')}</Text>
+            <Text style={styles.hint}>{t('data.shareHint')}</Text>
+          </View>
+        </Pressable>
+        <Pressable style={styles.row} onPress={importShared} accessibilityRole="button">
+          <Text style={[styles.label, styles.link]}>{t('data.import')}</Text>
         </Pressable>
         <Pressable style={styles.row} onPress={exportEverything} accessibilityRole="button">
           <View style={styles.rowText}>

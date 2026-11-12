@@ -146,7 +146,8 @@
     "deleteNote": "Delete this note?",
     "deleteNoteHint": "Long-press to delete",
     "brandSupport": "Find {{brand}} support",
-    "supportQuery": "warranty support service"
+    "supportQuery": "warranty support service",
+    "share": "Share this warranty"
   },
   "reminder": {
     "channel": "Warranty reminders",
@@ -366,7 +367,12 @@
     "deleteTitle": "Delete all your data?",
     "deleteBody": "Warranties, documents, settings and the PIN are removed from this phone, and Warrantly starts like new. This cannot be undone.",
     "deletePhone": "Delete from this phone",
-    "deleteAll": "Also delete Drive backups"
+    "deleteAll": "Also delete Drive backups",
+    "share": "Share list with someone",
+    "shareHint": "Sends your warranties with their documents as a file. They import it in their Warrantly.",
+    "import": "Import a shared list",
+    "imported_one": "{{count}} warranty added.",
+    "imported_other": "{{count}} warranties added."
   },
   "privacy": {
     "title": "Privacy policy",

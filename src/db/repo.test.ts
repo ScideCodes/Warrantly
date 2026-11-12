@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { importShared, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -333,4 +333,30 @@ test('wipeDb empties every table', async () => {
   await wipeDb(db);
   const tables = (db.raw.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
   for (const t of tables) assert.equal((db.raw.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as { n: number }).n, 0, t);
+});
+
+test('sharing: warranties with notes and documents move to another phone once', async () => {
+  const a = nodeDb();
+  await migrate(a);
+  const id = await addManual(a, {
+    account_id: null, product_name: 'Fridge', store_name: 'Shop', purchase_date: '2026-01-01', warranty_start_date: '2026-01-02',
+    warranty_months: 36, order_number: 'A1', serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null,
+    price: 300000, currency: 'HUF', category: 'appliances',
+  });
+  await addHistory(a, id, '2026-05-01', 'Door seal replaced');
+  await addAttachment(a, id, 'Invoice.pdf', 'scan-1.pdf');
+  const shared = JSON.parse(JSON.stringify(await sharedWarranties(a, [id]))); // through the file
+
+  const b = nodeDb();
+  await migrate(b);
+  const saved: string[] = [];
+  const save = async (d: { local_path?: string }) => (saved.push(d.local_path!), `copy-of-${d.local_path}`);
+  assert.equal(await importShared(b, shared, save), 1);
+  assert.equal(await importShared(b, shared, save), 0); // already there
+  const [w] = await listWarranties(b, 'complete');
+  assert.deepEqual([w.product_name, w.account_id, w.origin, w.price, w.category, w.end_date], ['Fridge', null, 'manual', 300000, 'appliances', '2029-01-02']);
+  assert.deepEqual((await listHistory(b, w.id)).map((h) => h.note), ['Door seal replaced']);
+  assert.deepEqual((await listAttachments(b, w.id)).map((d) => [d.filename, d.local_path]), [['Invoice.pdf', 'copy-of-scan-1.pdf']]);
+  // A file with junk instead of a warranty is skipped, not imported half-way.
+  assert.equal(await importShared(b, [{ warranty: { product_name: 'x' }, history: [], documents: [] }], save), 0);
 });
