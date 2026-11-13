@@ -489,8 +489,8 @@ export default function Settings() {
 
 const useStyles = themed(() => StyleSheet.create({
   profile: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundImage: 'linear-gradient(#a5abb8, #858a96)', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 21, lineHeight: 24, fontWeight: '600', color: '#fff' },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.tintSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 21, lineHeight: 24, fontWeight: '600', color: colors.tintInk },
   profileName: { ...TYPE.title3, color: colors.ink },
   profileHint: { ...TYPE.sub, color: colors.ink2 },
   row: { gap: 15 },

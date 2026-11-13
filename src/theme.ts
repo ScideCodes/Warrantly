@@ -45,6 +45,7 @@ const t = (fontSize: number, lineHeight: number, fontWeight: TextStyle['fontWeig
   fontSize,
   lineHeight,
   fontWeight,
+  includeFontPadding: false,
   letterSpacing: Math.round(em * fontSize * 100) / 100,
 });
 export const TYPE = {
@@ -90,9 +91,9 @@ export function useRoom(): (needed: number) => boolean {
 // that every word fits and stack (or drop an icon) otherwise.
 export const wordWidth = (label: string, size = 16): number => Math.max(0, ...label.split(/\s+/).map((w) => w.length)) * size * 0.6;
 
-// Text-adjusted dp two icon Buttons need side by side (padding 2 × 16, icon 20, gap 6, 8 between them), plus the
+// Text-adjusted dp two icon Buttons need side by side (padding 2 × 12, icon 20, gap 6, 8 between them), plus the
 // inset of the box they sit in. Never below 240, the narrowest a pair still looks calm. For useRoom().
-export const pairWidth = (a: string, b: string, inset = 0): number => Math.max(240, 2 * (58 + wordWidth(`${a} ${b}`)) + 8) + inset;
+export const pairWidth = (a: string, b: string, inset = 0): number => Math.max(240, 2 * (50 + wordWidth(`${a} ${b}`)) + 8) + inset;
 
 // Motion (ios.css lines 45-48, 85; chrome.js). Springs: the reference's response/damping as stiffness/damping.
 export const SPRING = { stiffness: 223.8, damping: 23.34, mass: 1 }; // response .42 s, damping ratio .78

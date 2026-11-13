@@ -49,5 +49,5 @@ const useStyles = themed(() => StyleSheet.create({
   value: { ...TYPE.body, color: colors.ink },
   valueSide: { flex: 1, textAlign: 'right' },
   link: { color: colors.link },
-  line: { position: 'absolute', left: ROW_X, right: ROW_X, bottom: 0, height: 1, backgroundColor: colors.line },
+  line: { position: 'absolute', left: ROW_X, right: ROW_X, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
 }));

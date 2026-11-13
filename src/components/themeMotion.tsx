@@ -52,11 +52,11 @@ export const View = forwardRef<ComponentRef<typeof Animated.View>, ViewProps>(fu
 
 export const Text = forwardRef<ComponentRef<typeof Animated.Text>, TextProps>(function ThemeText({ style, ...props }, ref) {
   const transition = useThemeTransition();
-  return <Animated.Text {...props} ref={ref} style={[style, transition, { transitionProperty: [...transition.transitionProperty, 'color'] }]} />;
+  return <Animated.Text {...props} ref={ref} style={[{ includeFontPadding: false }, style, transition, { transitionProperty: [...transition.transitionProperty, 'color'] }]} />;
 });
 
 const AnimatedPressable = Animated.createAnimatedComponent(NativePressable);
-export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, PressableProps>(function ThemePressable({ style, ...props }, ref) {
+export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, PressableProps & { pressScale?: number }>(function ThemePressable({ style, pressScale, ...props }, ref) {
   const transition = useThemeTransition();
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -67,7 +67,14 @@ export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, Pressa
     onPressOut={(event) => { setPressed(false); props.onPressOut?.(event); }}
     onHoverIn={(event) => { setHovered(true); props.onHoverIn?.(event); }}
     onHoverOut={(event) => { setHovered(false); props.onHoverOut?.(event); }}
-    style={[typeof style === 'function' ? style({ pressed, hovered }) : style, transition, pressed && { transitionDuration: '0ms' }]}
+    style={[typeof style === 'function' ? style({ pressed, hovered }) : style, transition,
+      pressed && { transitionDuration: '0ms' },
+      pressScale !== undefined && {
+        transform: [{ scale: pressed && !reduceMotion() ? pressScale : 1 }],
+        transitionProperty: [...transition.transitionProperty, 'transform'],
+        transitionDuration: [...transition.transitionProperty.map(() => pressed ? '0ms' : transition.transitionDuration), reduceMotion() ? '0ms' : '110ms'],
+      },
+    ]}
   />;
 });
 

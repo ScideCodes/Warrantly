@@ -25,6 +25,7 @@ export default function PinSetup() {
   const insets = useSafeAreaInsets();
 
   function onDigit(d: string) {
+    if (mismatch) setMismatch(false);
     const next = value + d;
     if (next.length > MAX_PIN) return;
     if (first === null) return setValue(next);
@@ -46,7 +47,8 @@ export default function PinSetup() {
       <PinLayout
         icon="lock-closed"
         title={first === null ? t('pin.titleNew') : t('pin.confirm')}
-        message={mismatch ? t('pin.mismatch') : t('pin.hint')}
+        message={mismatch ? t('pin.mismatch') : first === null ? t('pin.chooseHint') : t('pin.confirmHint')}
+        step={first === null ? 1 : 2}
         error={mismatch}
         top={insets.top + BAR_H}
         pad={<PinPad value={value} dots={first?.length ?? Math.max(MIN_PIN, value.length)} onDigit={onDigit} onDelete={() => setValue((v) => v.slice(0, -1))} shake={shake} />}

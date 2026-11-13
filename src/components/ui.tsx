@@ -32,16 +32,6 @@ export function glass(sheen = true): ViewStyle {
   };
 }
 
-// A pressable that scales while held: buttons .97 in .1 s, released over .16 s on the strong ease-out.
-function useScale(to: number, inMs: number, outMs: number) {
-  const scale = useState(() => new Animated.Value(1))[0];
-  const run = (v: number, ms: number) => {
-    if (reduceMotion()) return;
-    Animated.timing(scale, { toValue: v, duration: ms, easing: ease, useNativeDriver: true }).start();
-  };
-  return { scale, onPressIn: () => run(to, inMs), onPressOut: () => run(1, outMs) };
-}
-
 type ButtonKind = 'prominent' | 'glass' | 'destructive';
 // Capsule buttons: Glass Prominent (accent) and Glass (material, label colour). 44 tall; the hit area reaches 48.
 export function Button({
@@ -66,27 +56,23 @@ export function Button({
   accessibilityLabel?: string;
 }) {
   const styles = useStyles();
-  const press = useScale(0.97, 100, 160);
   const prominent = kind === 'prominent';
-  const ink = prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
+  const ink = disabled ? colors.ink2 : prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
   return (
-    <Animated.View style={[{ transform: [{ scale: press.scale }] }, (disabled || busy) && styles.disabled, style]}>
-      <Pressable
-        testID={testID}
-        onPress={onPress}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        disabled={disabled || busy}
-        hitSlop={4}
-        style={({ pressed }) => [styles.button, prominent ? { backgroundColor: pressed ? colors.accentDown : colors.accent } : glass(), kind === 'destructive' && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined }]}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
-      >
-        {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
-        <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      pressScale={0.97}
+      testID={testID}
+      onPress={onPress}
+      disabled={disabled || busy}
+      hitSlop={4}
+      style={({ pressed }) => [styles.button, prominent ? { backgroundColor: pressed ? colors.accentDown : colors.accent } : glass(), (disabled || kind === 'destructive') && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined }, busy && styles.disabled, style]}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
+    >
+      {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
+      <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
+    </Pressable>
   );
 }
 
@@ -318,8 +304,8 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
 }
 
 const useStyles = themed(() => StyleSheet.create({
-  disabled: { opacity: 0.35 },
-  button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: CONTROL_H / 2 },
+  disabled: { opacity: 0.45 },
+  button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 12, borderRadius: CONTROL_H / 2 },
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
   glassButton: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center' },
   sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 20, marginBottom: 6, paddingHorizontal: 4 },
@@ -327,7 +313,7 @@ const useStyles = themed(() => StyleSheet.create({
   group: { backgroundColor: colors.card, borderRadius: RADIUS, overflow: 'hidden' },
   row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: ROW_PAD, paddingHorizontal: ROW_X },
   rowSelected: { backgroundColor: colors.tintSoft },
-  separator: { position: 'absolute', top: 0, right: ROW_X, height: 1, backgroundColor: colors.line },
+  separator: { position: 'absolute', top: 0, right: ROW_X, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
   chevron: { marginLeft: 'auto' },
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   input: inputStyle(),

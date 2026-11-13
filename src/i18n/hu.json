@@ -208,6 +208,7 @@
     "returnSoon_other": "{{count}} nap múlva lejár az elállási idő. Ha vissza akarod küldeni, most tedd."
   },
   "lock": {
+    "hint": "Oldd fel a garanciáid és dokumentumaid.",
     "title": "Add meg a PIN-kódod",
     "wrong": "Hibás PIN. Próbáld újra.",
     "wait_one": "Túl sok próbálkozás. Próbáld újra {{count}} másodperc múlva.",
@@ -221,6 +222,9 @@
     "noDeviceLock": "Ezen a telefonon nincs képernyőzár, ezért a PIN nem állítható vissza. Töröld a Warrantly adatait az Android beállításokban, majd állítsd vissza egy mentésből."
   },
   "pin": {
+    "chooseHint": "Védd a garanciáidat egy 4–6 számjegyű kóddal.",
+    "confirmHint": "Add meg még egyszer ugyanazt a PIN-kódot.",
+    "step": "{{current}}. lépés / 2",
     "titleNew": "Válassz PIN-kódot",
     "confirm": "Add meg újra a PIN-t",
     "continue": "Tovább",
