@@ -378,6 +378,8 @@
     "empty": "Nincs aktív garancia"
   },
   "viewer": {
+    "scrollDown": "Görgetés lefelé",
+    "scrollUp": "Görgetés felfelé",
     "title": "Dokumentum",
     "zoomIn": "Nagyítás",
     "zoomOut": "Kicsinyítés",
