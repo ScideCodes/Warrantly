@@ -102,4 +102,4 @@ npx expo lint
 
 ## Docs
 
-[Privacy policy](docs/privacy.md) · [Visual reference](docs/visual-reference.md) · [UI polish notes](docs/ui-polish.md) · [Development notes](docs/development.md) · [Original plan](docs/brainstorm.md)
+[Privacy policy](docs/privacy.md) · [Releasing](docs/releasing.md) · [Visual reference](docs/visual-reference.md) · [UI polish notes](docs/ui-polish.md) · [Development notes](docs/development.md) · [Original plan](docs/brainstorm.md)
