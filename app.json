@@ -3,7 +3,7 @@
     "name": "Warrantly",
     "slug": "warrantly",
     "scheme": "warrantly",
-    "version": "0.8.1",
+    "version": "0.9.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -49,14 +49,15 @@
             {
               "name": "NextExpiry",
               "label": "Warrantly",
-              "description": "The next warranty to expire",
+              "description": "Warranties ending soon, return deadlines and quick actions",
               "minWidth": "180dp",
               "minHeight": "80dp",
               "targetCellWidth": 3,
               "targetCellHeight": 1,
               "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview.png",
-              "updatePeriodMillis": 10800000
+              "updatePeriodMillis": 10800000,
+              "widgetFeatures": "reconfigurable|configuration_optional"
             }
           ]
         }
@@ -78,6 +79,13 @@
           "photosPermission": "Warrantly uses your photos to add a picture of a product.",
           "cameraPermission": "Warrantly uses the camera to photograph a product.",
           "microphonePermission": false
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Warrantly uses the camera to read a serial number or barcode.",
+          "recordAudioAndroid": false
         }
       ],
       "./plugins/withShortcuts"

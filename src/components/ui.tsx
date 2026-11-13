@@ -152,6 +152,7 @@ function usePressColor() {
 export function Row({
   children,
   onPress,
+  onLongPress,
   separator,
   iconInset,
   chevron,
@@ -165,6 +166,7 @@ export function Row({
 }: {
   children: ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   separator?: boolean;
   iconInset?: boolean;
   chevron?: boolean;
@@ -190,6 +192,7 @@ export function Row({
     <AnimatedPressable
       testID={testID}
       onPress={onPress}
+      onLongPress={onLongPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
       unstable_pressDelay={PRESS_DELAY}

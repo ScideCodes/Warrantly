@@ -5,6 +5,7 @@ import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
+import { plannedCustomReminders } from '@/db/features.ts';
 import { getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
 import { reminderDays, reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
 
@@ -41,12 +42,16 @@ async function reschedule(db: Db): Promise<void> {
   const returns = getReturnRemindersEnabled();
   const items = warranties.map((w) => ({ ...w, return_by: returns ? returnDeadline(w) : null }));
   const time = getReminderTime();
-  const jobs = (getRemindersEnabled() ? reminderPlan(items, todayYmd(now), 60, reminderDays(getReminderGroups())) : [])
+  // Custom dates (shortlist 12) are the user's own: sent even when the automatic ones are switched off.
+  const custom = await plannedCustomReminders(db);
+  const notes = new Map(custom.map((c) => [`${c.warranty_id}:${c.date}`, c.note]));
+  const groups = getRemindersEnabled() ? reminderDays(getReminderGroups()) : [];
+  const jobs = reminderPlan(getRemindersEnabled() ? items : items.map((w) => ({ ...w, return_by: null })), todayYmd(now), 60, groups, custom.map((c) => ({ warrantyId: c.warranty_id, date: c.date })))
     .map((r) => {
       const [y, m, d] = r.date.split('-').map(Number);
       const w = byId.get(r.warrantyId)!;
       return {
-        content: r.kind === 'return' ? returnContent(w) : content(w, r.daysLeft),
+        content: r.kind === 'return' ? returnContent(w) : r.kind === 'custom' ? customContent(w, notes.get(`${r.warrantyId}:${r.date}`) ?? null) : content(w, r.daysLeft),
         date: new Date(y, m - 1, d, Math.floor(time / 60), time % 60),
         channelId: r.kind === 'expiry' && r.daysLeft === 0 ? 'expiry' : 'reminders',
       };
@@ -74,6 +79,10 @@ function content(w: Warranty, daysLeft: number): Notifications.NotificationConte
     body: daysLeft === 0 ? i18n.t('reminder.today') : i18n.t('reminder.daysLeft', { count: daysLeft }),
     data: { url: `/warranty/${w.id}` },
   };
+}
+
+function customContent(w: Warranty, note: string | null): Notifications.NotificationContentInput {
+  return { ...content(w, 0), body: note || i18n.t('reminder.custom') };
 }
 
 function returnContent(w: Warranty): Notifications.NotificationContentInput {

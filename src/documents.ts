@@ -9,6 +9,7 @@ import { Linking } from 'react-native';
 import DocumentScanner, { ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
 import { mailtoUrl } from '@/claim';
 import { saveDocumentCopy } from './documentSave';
+import PdfPages from '../modules/pdf-pages';
 
 // Documents kept with warranties (brainstorm section 18): scans become one PDF in the app's own folder.
 const folder = () => {
@@ -94,6 +95,12 @@ export async function writeDocument(localPath: string, bytes: Uint8Array): Promi
 }
 
 export const documentExists = (localPath: string): boolean => fileFor(localPath).exists;
+// A second stored copy (a file waiting in the inbox becomes a new warranty's own document).
+export async function copyStoredDocument(localPath: string): Promise<string> {
+  const copy = new File(folder(), `import-${Date.now()}-${Math.random().toString(36).slice(2, 6)}.pdf`);
+  await fileFor(localPath).copy(copy);
+  return copy.name;
+}
 export const documentUri = (localPath: string): string => fileFor(localPath).uri;
 
 export function deleteDocuments(localPaths: string[]): void {
@@ -109,6 +116,45 @@ export async function saveDocument(localPath: string, name: string): Promise<boo
   const source = fileFor(localPath);
   if (!source.exists) throw new Error('missing');
   return saveDocumentCopy(() => source.bytes(), () => Directory.pickDirectoryAsync(), name);
+}
+
+// Bulk export (shortlist 5): one folder picked once, every document copied into it. Returns how many were
+// written, or null when the picker was cancelled. Missing files are skipped and counted apart.
+export async function exportDocuments(items: { local_path: string; name: string }[]): Promise<{ written: number; missing: number } | null> {
+  let dir: Directory;
+  try {
+    dir = await Directory.pickDirectoryAsync();
+  } catch (e) {
+    if (/cancel/i.test(e instanceof Error ? e.message : String(e))) return null;
+    throw e;
+  }
+  let written = 0, missing = 0;
+  for (const item of items) {
+    const source = fileFor(item.local_path);
+    if (!source.exists) { missing++; continue; }
+    if (await saveDocumentCopy(() => source.bytes(), async () => dir, item.name)) written++;
+  }
+  return { written, missing };
+}
+
+// First page as a small picture (shortlist 14), cached by the native side; null for a missing/broken file.
+export async function documentThumbnail(localPath: string, width: number): Promise<string | null> {
+  try {
+    if (!documentExists(localPath)) return null;
+    return (await PdfPages.thumbnail(documentUri(localPath), Math.round(width))).uri;
+  } catch {
+    return null;
+  }
+}
+
+// A product photo as a small JPEG for the widget (shortlist 26); null when missing or unreadable.
+export async function photoForWidget(localPath: string, size: number): Promise<string | null> {
+  try {
+    if (!documentExists(localPath)) return null;
+    return `data:image/jpeg;base64,${await PdfPages.smallJpeg(documentUri(localPath), size)}`;
+  } catch {
+    return null;
+  }
 }
 
 // Android cannot open a private file:// link; the share sheet hands it to a PDF viewer or another app.

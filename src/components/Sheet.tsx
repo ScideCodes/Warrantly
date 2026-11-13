@@ -110,6 +110,12 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   );
 }
 
+// Free content in a sheet, scrolling with the same insets as the option lists.
+export function SheetBody({ children }: { children: ReactNode }) {
+  const styles = useStyles();
+  return <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>;
+}
+
 // Choices and less-used actions (filter, add a document, more actions) as grouped rows in a sheet.
 export function Sheet({ open, onClose, title, subtitle, sections }: { open: boolean; onClose: () => void; title: string; subtitle?: string; sections: SheetSection[] }) {
   const styles = useStyles();

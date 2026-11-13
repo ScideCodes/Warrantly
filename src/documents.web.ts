@@ -17,3 +17,6 @@ export const saveDocument = async (_localPath: string, _name: string): Promise<b
 export const sendClaim = async (to: string, subject: string, body: string, _localPaths: string[]): Promise<void> => {
   await Linking.openURL(mailtoUrl(to, subject, body));
 };
+export const exportDocuments = async (_items: { local_path: string; name: string }[]): Promise<{ written: number; missing: number } | null> => null;
+export const documentThumbnail = async (_localPath: string, _width: number): Promise<string | null> => null;
+export const photoForWidget = async (_localPath: string, _size: number): Promise<string | null> => null;

@@ -3,7 +3,10 @@ import { AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
-import { putSharedFile } from '@/shareInbox';
+import { addInbox } from '@/db/features.ts';
+import { fileToDocument, deleteDocuments } from '@/documents';
+import { setLockShowing } from '@/lock/gate';
+import { UndoHost } from '@/components/UndoHost';
 import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
@@ -20,7 +23,9 @@ import { colors, useTheme } from '@/theme';
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
 
-// Share into Warrantly (section 18): a PDF or photo sent from another app opens the add form with it.
+// Share into Warrantly (section 18, shortlist 16): a PDF or photo sent from another app is stored at once in
+// the document inbox, so it survives the app closing; the inbox then offers to add or attach it. The same
+// share delivered twice (Android re-sends an intent after a restart) is taken in once.
 function SharedFiles() {
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntentContext();
   useEffect(() => {
@@ -29,9 +34,14 @@ function SharedFiles() {
   useEffect(() => {
     const file = shareIntent.files?.[0];
     if (!hasShareIntent || !file) return;
-    putSharedFile({ uri: file.path, name: file.fileName, mimeType: file.mimeType });
     resetShareIntent();
-    router.push({ pathname: '/warranty/edit', params: { shared: '1' } });
+    const sourceKey = `${file.path}|${file.fileName}|${file.size ?? ''}`;
+    void (async () => {
+      const db = await getDb();
+      const doc = await fileToDocument(file.path, file.fileName, file.mimeType);
+      if (!(await addInbox(db, { local_path: doc.localPath, text: doc.text, filename: file.fileName, source_key: sourceKey }))) deleteDocuments([doc.localPath]);
+      router.push('/inbox');
+    })().catch((e) => showAlert(i18n.t('share.failed'), e instanceof Error ? e.message : String(e)));
   }, [hasShareIntent, shareIntent, resetShareIntent]);
   return null;
 }
@@ -50,7 +60,11 @@ export default function RootLayout() {
   useReminderTaps();
 
   // App lock (section 19): locked on every cold start; again after more than 3 minutes in the background.
-  const [locked, setLocked] = useState(() => isLockEnabled() && !takeRelaunchPass());
+  const [locked, setLocked] = useState(() => {
+    const on = isLockEnabled() && !takeRelaunchPass();
+    setLockShowing(on); // before any screen's first effect (a shortcut's scan waits for it)
+    return on;
+  });
   const unlock = useCallback(() => setLocked(false), []); // stable, so the lock screen's fingerprint prompt starts once
   const hiddenAt = useRef<number | null>(null);
   useEffect(() => {
@@ -66,6 +80,7 @@ export default function RootLayout() {
     });
     return () => sub.remove();
   }, []);
+  useEffect(() => setLockShowing(locked), [locked]);
   const locales = useLocales();
   useEffect(() => {
     i18n.changeLanguage(appLanguage()); // the phone's language changed; a language chosen in Settings stays
@@ -80,6 +95,7 @@ export default function RootLayout() {
         <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.bg } }}>
           <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
         </Stack>
+        <UndoHost />
         {locked && <LockScreen onUnlock={unlock} />}
         <DialogHost />
       </ThemeProvider>
