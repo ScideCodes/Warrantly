@@ -192,13 +192,29 @@ export function filterWarranties<W extends { product_name: string | null; store_
 ): W[] {
   const words = plain(f.query).split(/\s+/).filter(Boolean);
   return list.filter((w) => {
-    const days = daysUntil(w.end_date, today);
-    if ((days >= 0) !== (f.tab === 'active')) return false;
+    // ISO calendar dates sort chronologically; most filters need no Date allocations.
+    if ((w.end_date >= today) !== (f.tab === 'active')) return false;
     if (f.account !== 'all' && (f.account === 'manual' ? w.account_id !== null : w.account_id !== f.account)) return false;
     if (f.store && w.store_name !== f.store) return false;
     if (f.category && w.category !== f.category) return false;
-    if (f.soon && (days < 0 || days > 30)) return false;
+    if (f.soon && (w.end_date < today || daysUntil(w.end_date, today) > 30)) return false;
+    if (!words.length) return true;
     const text = plain(`${w.product_name ?? ''} ${w.store_name}`);
     return words.every((word) => text.includes(word));
   });
+}
+
+// Count all filter choices together, once per data change rather than rescanning the
+// entire library for every store/category each time the search field changes.
+export function warrantyFacets(list: { account_id: number | null; category?: string | null; store_name: string }[]) {
+  const accounts = new Map<number | 'manual', number>();
+  const categories = new Map<string, number>();
+  const stores = new Map<string, number>();
+  for (const w of list) {
+    const account = w.account_id ?? 'manual';
+    accounts.set(account, (accounts.get(account) ?? 0) + 1);
+    if (w.category) categories.set(w.category, (categories.get(w.category) ?? 0) + 1);
+    stores.set(w.store_name, (stores.get(w.store_name) ?? 0) + 1);
+  }
+  return { total: list.length, accounts, categories, stores };
 }

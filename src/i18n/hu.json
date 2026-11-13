@@ -12,6 +12,8 @@
     "later": "Később"
   },
   "home": {
+    "syncStarting": "Új garanciák keresése…",
+    "resetFilters": "Keresés és szűrők törlése",
     "emptyTitle": "Még nincs garanciád",
     "emptyBody": "Kapcsold össze a Gmailt, és a Warrantly magától megkeresi a számláidat és a garanciáidat.",
     "connectGmail": "Gmail összekapcsolása",

@@ -21,7 +21,7 @@ import { useProductPhoto } from '@/components/useProductPhoto';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
-import { NavBar, Page } from '@/components/Page';
+import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, GlassButton, IconTile, Input, Row, TILE } from '@/components/ui';
 import { colors, pairWidth, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
@@ -39,6 +39,9 @@ export default function WarrantyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [pictureBusy, setPictureBusy] = useState(false);
   const [docs, setDocs] = useState<Attachment[]>([]);
   const [others, setOthers] = useState<Warranty[]>([]);
@@ -60,14 +63,27 @@ export default function WarrantyDetail() {
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
+      let active = true;
       void getDb().then(async (db) => {
-        const found = await getWarranty(db, Number(id));
+        const [found, attachments, entries] = await Promise.all([
+          getWarranty(db, Number(id)), listAttachments(db, Number(id)), listHistory(db, Number(id)),
+        ]);
+        if (!active) return;
         setW(found);
-        setDocs(await listAttachments(db, Number(id)));
-        setOthers(found ? await otherCovers(db, found) : []);
-        setHistory(await listHistory(db, Number(id)));
+        setDocs(attachments);
+        setHistory(entries);
+        setLoadError(null);
+        setLoading(false);
+        // Related covers must not hold up the documents the user came to open.
+        const related = found ? await otherCovers(db, found) : [];
+        if (active) setOthers(related);
+      }).catch((e) => {
+        if (active) { setLoadError(e instanceof Error ? e.message : String(e)); setLoading(false); }
       });
-    }, [id]),
+      return () => { active = false; };
+    // loadAttempt deliberately restarts the focused loader when Retry is tapped.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, loadAttempt]),
   );
 
   // Hooks run before the loading return: the picture falls back (user photo, found picture, camera tile).
@@ -75,9 +91,15 @@ export default function WarrantyDetail() {
 
   if (!w)
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <NavBar />
-      </View>
+      <Page title={t(loading ? 'form.loading' : loadError ? 'form.loadFailedTitle' : 'form.missingTitle')}>
+        {loading ? <ActivityIndicator color={colors.tint} /> : (
+          <View style={{ gap: 16 }}>
+            <Text style={{ ...TYPE.body, color: colors.ink2 }}>{t(loadError ? 'form.loadFailedBody' : 'form.missingBody', { detail: loadError })}</Text>
+            {loadError && <Button title={t('home.retry')} onPress={() => { setLoading(true); setLoadAttempt((n) => n + 1); }} />}
+            <Button title={t('form.backToList')} kind="glass" onPress={() => router.replace('/')} />
+          </View>
+        )}
+      </Page>
     );
 
   const today = todayYmd();
