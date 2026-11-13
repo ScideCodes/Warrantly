@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { router } from 'expo-router';
 import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -34,7 +34,7 @@ export default function Help() {
           <View key={i}>
             <Row separator={i > 0} onPress={() => setOpen(open === i ? null : i)} accessibilityState={{ expanded: open === i }}>
               <Text style={styles.q}>{item.q}</Text>
-              <Ionicons name="add" size={16} color={colors.ink3} style={open === i && styles.turned} />
+              <AppIcon name="add" size={16} color={colors.ink3} style={open === i && styles.turned} />
             </Row>
             {open === i && <Text style={styles.a}>{item.a}</Text>}
           </View>

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { Redirect, router, useFocusEffect } from 'expo-router';
 import { AccessibilityInfo, ActivityIndicator, Animated, Pressable, RefreshControl, SectionList, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -178,14 +178,14 @@ export default function Home() {
         />
         {query !== '' && (
           <Pressable style={styles.clear} onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel={t('home.clearSearch')}>
-            <Ionicons name="close-circle" size={18} color={colors.ink2} />
+            <AppIcon name="close-circle" size={18} color={colors.ink2} />
           </Pressable>
         )}
       </View>
       {filter.kind !== 'all' && (
         <Pressable style={styles.filterChip} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
           <Text style={styles.filterChipText}>{t('home.showing', { name: filterName(filter) })}</Text>
-          <Ionicons name="close" size={18} color={colors.tintInk} />
+          <AppIcon name="close" size={18} color={colors.tintInk} />
         </Pressable>
       )}
       {sync.kind === 'syncing' && (
@@ -218,7 +218,7 @@ export default function Home() {
       <Group style={styles.expiredToggle}>
         <Row onPress={() => setShowExpired((v) => !v)} accessibilityState={{ expanded: showExpired }}>
           <Text style={styles.expiredToggleText}>{showExpired ? t('home.hideExpired') : t('home.showExpired', { count: expired.length })}</Text>
-          <Ionicons name={showExpired ? 'chevron-up' : 'chevron-down'} size={16} color={colors.chevron} />
+          <AppIcon name={showExpired ? 'chevron-up' : 'chevron-down'} size={16} color={colors.chevron} />
         </Row>
       </Group>
     ) : undefined;
@@ -284,7 +284,7 @@ function StatusRow({ icon, color, label, action, onPress, separator }: { icon: I
   return (
     <Row onPress={onPress} separator={separator} iconInset>
       <View style={styles.glyph}>
-        <Ionicons name={icon} size={22} color={color} />
+        <AppIcon name={icon} size={22} color={color} />
       </View>
       <Text style={styles.statusText}>{label}</Text>
       <Text style={styles.statusAction}>{action}</Text>
@@ -351,11 +351,13 @@ function TabBar({ tabs, current, compact, onExpand }: { tabs: Tab[]; current: st
 // Tab glyphs shrink to .86 while held and settle back on the bouncier spring.
 function TabButton({ tab, on, labelOpacity }: { tab: Tab; on: boolean; labelOpacity: Animated.AnimatedInterpolation<number> }) {
   const scale = useState(() => new Animated.Value(1))[0];
+  const [labelHeight, setLabelHeight] = useState(12);
   const press = (v: number) => {
     if (!reduceMotion()) Animated.spring(scale, { toValue: v, useNativeDriver: true, ...SPRING_BOUNCE }).start();
   };
   return (
     <Pressable
+      testID={`tab-${tab.key}`}
       style={styles.tab}
       onPress={tab.onPress}
       onPressIn={() => press(0.86)}
@@ -364,10 +366,12 @@ function TabButton({ tab, on, labelOpacity }: { tab: Tab; on: boolean; labelOpac
       accessibilityLabel={tab.accessibilityLabel ?? tab.label}
       accessibilityState={{ selected: on }}
     >
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <Ionicons name={on && tab.iconOn ? tab.iconOn : tab.icon} size={24} color={on ? colors.tint : colors.ink} />
+      {/* The faded label still takes space. Move the glyph by half that space plus
+          the gap so the compact tab is visually centered, at every label scale. */}
+      <Animated.View style={{ transform: [{ scale }, { translateY: labelOpacity.interpolate({ inputRange: [0, 1], outputRange: [(labelHeight + 2) / 2, 0] }) }] }}>
+        <AppIcon name={on && tab.iconOn ? tab.iconOn : tab.icon} size={24} color={on ? colors.tint : colors.ink} />
       </Animated.View>
-      <Animated.Text style={[styles.tabLabel, on && { color: colors.tintInk }, { opacity: labelOpacity }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
+      <Animated.Text onLayout={(e) => setLabelHeight(e.nativeEvent.layout.height)} style={[styles.tabLabel, on && { color: colors.tintInk }, { opacity: labelOpacity }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
         {tab.label}
       </Animated.Text>
     </Pressable>

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, Image, PixelRatio, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -133,7 +133,7 @@ function ToolButton({ icon, label, onPress, disabled }: { icon: IconName; label:
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
     >
-      <Ionicons name={icon} size={20} color={colors.ink} />
+      <AppIcon name={icon} size={20} color={colors.ink} />
     </Pressable>
   );
 }

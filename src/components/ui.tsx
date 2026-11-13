@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon, { type IconName } from '@/components/Icon';
 import {
   AccessibilityInfo,
   ActivityIndicator,
@@ -20,7 +20,7 @@ import {
 import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE } from '@/theme';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
-export type IconName = keyof typeof Ionicons.glyphMap;
+export type { IconName } from '@/components/Icon';
 const ease = Easing.bezier(...EASE);
 
 // Reduced motion collapses the press scales and springs (ios.css lines 672-678).
@@ -88,7 +88,7 @@ export function Button({
         accessibilityLabel={accessibilityLabel}
         accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
       >
-        {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <Ionicons name={icon} size={20} color={ink} /> : null}
+        {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
         <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
       </Pressable>
     </Animated.View>
@@ -118,7 +118,7 @@ export function GlassButton({ icon, label, onPress, size = 20, color = colors.in
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled, selected }}
       >
-        <Ionicons name={icon} size={size} color={color} />
+        <AppIcon name={icon} size={size} color={color} />
       </Pressable>
     </Animated.View>
   );
@@ -215,14 +215,14 @@ export function Row({
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Chevron() {
-  return <Ionicons name="chevron-forward" size={14} color={colors.chevron} style={styles.chevron} />;
+  return <AppIcon name="chevron-forward" size={14} color={colors.chevron} style={styles.chevron} />;
 }
 
 // 29dp rounded tile with a white 18dp glyph (settings and hardware rows).
 export function IconTile({ name, color, glyph = '#fff' }: { name: IconName; color: string; glyph?: string }) {
   return (
     <View style={[styles.tile, { backgroundColor: color }]} importantForAccessibility="no-hide-descendants">
-      <Ionicons name={name} size={18} color={glyph} />
+      <AppIcon name={name} size={18} color={glyph} />
     </View>
   );
 }
@@ -295,7 +295,7 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
           >
-            {o.icon && <Ionicons name={o.icon} size={17} color={colors.ink} />}
+            {o.icon && <AppIcon name={o.icon} size={17} color={colors.ink} />}
             <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={2}>
               {o.label}
             </Text>

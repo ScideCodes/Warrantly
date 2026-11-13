@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { colors, TYPE } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
@@ -26,7 +26,7 @@ export function PinPad({ value, dots, onDigit, onDelete, extra }: { value: strin
         <View style={[styles.key, styles.plain]}>{extra}</View>
         {key('0')}
         <Pressable style={({ pressed }) => [styles.key, styles.plain, pressed && styles.pressed]} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('lock.delete')}>
-          <Ionicons name="backspace-outline" size={28} color={colors.ink} />
+          <AppIcon name="backspace-outline" size={28} color={colors.ink} />
         </Pressable>
       </View>
     </View>

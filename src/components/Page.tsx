@@ -32,13 +32,18 @@ export function NavBar({ title, t, back = true, leading, trailing }: { title?: s
   const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
+  const [leadingWidth, setLeadingWidth] = useState(44);
+  const [trailingWidth, setTrailingWidth] = useState(44);
+  const sideWidth = Math.max(44, leadingWidth, trailingWidth);
   const show = t ?? ALWAYS;
   const titleOpacity = show.interpolate({ inputRange: [0.55, 0.95], outputRange: [0, 1], extrapolate: 'clamp' });
   return (
     <View style={[styles.bar, { height: BAR_H + insets.top, paddingTop: insets.top }]} pointerEvents="box-none">
       <Animated.View style={[styles.edge, { opacity: show }]} pointerEvents="none" />
       <View style={[styles.barIn, { paddingHorizontal: gutter(width) }]} pointerEvents="box-none">
-        <View style={styles.side}>{leading ?? (back && <GlassButton icon="chevron-back" size={22} label={tr('nav.back')} onPress={goBack} testID="nav-back" />)}</View>
+        <View style={[styles.side, { minWidth: sideWidth }]}>
+          <View style={styles.sideContent} onLayout={(e) => setLeadingWidth(e.nativeEvent.layout.width)}>{leading ?? (back && <GlassButton icon="chevron-back" size={22} label={tr('nav.back')} onPress={goBack} testID="nav-back" />)}</View>
+        </View>
         <Animated.Text
           style={[styles.title, { opacity: titleOpacity, transform: [{ translateY: titleOpacity.interpolate({ inputRange: [0, 1], outputRange: [4, 0] }) }] }]}
           numberOfLines={1}
@@ -46,7 +51,9 @@ export function NavBar({ title, t, back = true, leading, trailing }: { title?: s
         >
           {title}
         </Animated.Text>
-        <View style={[styles.side, styles.trail]}>{trailing}</View>
+        <View style={[styles.side, styles.trail, { minWidth: sideWidth }]}>
+          <View style={styles.sideContent} onLayout={(e) => setTrailingWidth(e.nativeEvent.layout.width)}>{trailing}</View>
+        </View>
       </View>
     </View>
   );
@@ -97,6 +104,7 @@ const styles = StyleSheet.create({
   barIn: { height: BAR_H, flexDirection: 'row', alignItems: 'center', gap: 8 },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   trail: { justifyContent: 'flex-end', gap: 8 },
+  sideContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   title: { ...TYPE.bar, color: colors.ink, textAlign: 'center', flexShrink: 1, maxWidth: '50%' },
   head: { paddingTop: 4, paddingBottom: 8 },
   large: { ...TYPE.large, color: colors.ink },

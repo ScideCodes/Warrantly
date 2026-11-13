@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { Animated, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -137,7 +137,7 @@ export function Sheet({ open, onClose, title, subtitle, sections }: { open: bool
                 >
                   {o.icon && (
                     <View style={styles.glyph}>
-                      <Ionicons name={o.icon} size={22} color={o.destructive ? colors.bad : colors.tint} />
+                      <AppIcon name={o.icon} size={22} color={o.destructive ? colors.bad : colors.tint} />
                     </View>
                   )}
                   <Text style={[styles.label, o.selected && styles.labelSelected, o.destructive && { color: colors.bad }]}>{o.label}</Text>
