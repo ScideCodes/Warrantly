@@ -8,6 +8,7 @@ import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
+import { runPictureLookups } from '@/productImageLookup';
 import { runDueBackup } from '@/backup';
 import { Sheet, type IconName, type SheetSection } from '@/components/Sheet';
 import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
@@ -70,6 +71,8 @@ export default function Home() {
     rescheduleReminders(db).catch((e) => console.warn('reminders', e)); // must not break the list
     void runDueBackup(db); // section 17: a due backup runs on app open
     updateWidget(db).catch((e) => console.warn('widget', e)); // section 13
+    // Product pictures (when turned on): a few lookups after the list is shown, never from the rows themselves.
+    void runPictureLookups(db).then(async (changed) => changed && setWarranties(await listWarranties(db, 'complete')));
   }, []);
 
   const runSync = useCallback(async () => {

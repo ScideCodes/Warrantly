@@ -24,6 +24,7 @@ import { showAlert } from '@/components/Dialog';
 import { Button, Group, IconTile, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { colors, RADIUS, ROW_X, TYPE } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
+import { autoPictures, setAutoPictures } from '@/productImageLookup';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 type Icon = IconName;
@@ -41,6 +42,7 @@ export default function Settings() {
   const [theme, setTheme] = useState(getThemeSetting);
   const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
+  const [pictures, setPictures] = useState(autoPictures);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
   const [backupBusy, setBackupBusy] = useState(false);
@@ -406,6 +408,10 @@ export default function Settings() {
           {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), () => router.push('/pin'))}
           {lock && canBiometric && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
           {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
+          {row('image-outline', TILE.teal, t('settings.pictures'), t('settings.picturesHint'), pictures, (on) => {
+            setAutoPictures(on);
+            setPictures(on);
+          })}
         </>,
       )}
 

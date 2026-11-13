@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 11);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 12);
 });
 
 test('new warranty and PDF roll back together; retry creates exactly one complete warranty', async () => {

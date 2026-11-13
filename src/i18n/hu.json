@@ -191,7 +191,12 @@
     "support": "Ügyfélszolgálat és reklamáció",
     "supportSearch": "Gyártói ügyfélszolgálat",
     "more": "További műveletek",
-    "shareRecord": "Garancia adatainak megosztása (fájl)"
+    "shareRecord": "Garancia adatainak megosztása (fájl)",
+    "pictureFind": "Kép keresése az interneten",
+    "pictureRemove": "Talált kép törlése",
+    "pictureNone": "Ehhez a terméknévhez nem találtunk biztosan illő képet, ezért a kategória ikonja marad.",
+    "pictureFailed": "Nem sikerült képet keresni. Ellenőrizd az internetkapcsolatot, és próbáld újra.",
+    "pictureCredit": "Kép: {{artist}}, {{license}}, Wikimedia Commons"
   },
   "reminder": {
     "channel": "Garancia emlékeztetők",
@@ -255,7 +260,9 @@
     "rate": "Értékeld a Warrantlyt",
     "security": "Adatvédelem és biztonság",
     "about": "Súgó és névjegy",
-    "remindersSection": "Emlékeztetők"
+    "remindersSection": "Emlékeztetők",
+    "pictures": "Termékképek",
+    "picturesHint": "Képet mutat a termékről, ha a pontos modell megtalálható a Wikimedia Commonsban. Csak a terméknév kerül elküldésre."
   },
   "backup": {
     "section": "Mentés",
@@ -442,6 +449,8 @@
       "Ha bekapcsolod a mentést, az adataid ezen a telefonon titkosítódnak a mentési jelszavaddal, és a saját Google Drive-odba kerülnek, egy mappába, amit csak a Warrantly lát. Jelszó nélkül senki nem tudja elolvasni, a fejlesztő sem.",
       "## Beolvasás és dokumentumok",
       "A nyugták beolvasása és a szöveg felismerése a telefonon történik (Google ML Kit, eszközön). A dokumentumok az alkalmazásban maradnak ezen a telefonon, mentés esetén titkosítva a Drive-odban.",
+      "## Termékképek",
+      "A termékképek ki vannak kapcsolva, amíg be nem kapcsolod őket a Beállításokban, vagy egy garanciánál nem koppintasz a „Kép keresése az interneten” gombra. Ekkor csak a terméknév kerül el a Wikidatához és a Wikimedia Commonshoz (a Wikimedia Foundation üzemelteti), hogy megtaláljuk a pontos modell képét. A kép a telefonon marad, a szerzőjével és a licencével együtt jelenik meg. A Wikimedia látja az IP-címedet, mint bármely weboldal.",
       "## Más szolgáltatások",
       "A frissítések az Expo (expo.dev) szervereiről töltődnek le, ami mint bármely weboldal, látja az IP-címedet. Az emlékeztetők a telefonon ütemeződnek. A hibák a telefonon naplózódnak, és csak akkor kerülnek ki, ha egy visszajelzéshez csatolod őket.",
       "## Választási lehetőségeid",

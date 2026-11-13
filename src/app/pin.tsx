@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { goBack } from '@/nav';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { PinPad } from '@/components/PinPad';
+import { PinLayout, PinPad } from '@/components/PinPad';
 import { MAX_PIN, MIN_PIN } from '@/lock/pin.ts';
 import { getDb } from '@/db/client';
 import { isLockEnabled, setPin } from '@/lock/store';
@@ -10,7 +11,7 @@ import { setWidgetNames } from '@/settings';
 import { updateWidget } from '@/widget';
 import { NavBar } from '@/components/Page';
 import { Button } from '@/components/ui';
-import { colors, TYPE } from '@/theme';
+import { BAR_H } from '@/theme';
 
 // Choose a PIN (turn the lock on, change it, or after "Forgot PIN"): enter, then confirm.
 export default function PinSetup() {
@@ -18,6 +19,8 @@ export default function PinSetup() {
   const [first, setFirst] = useState<string | null>(null);
   const [value, setValue] = useState('');
   const [mismatch, setMismatch] = useState(false);
+  const [shake, setShake] = useState(0);
+  const insets = useSafeAreaInsets();
 
   function onDigit(d: string) {
     const next = value + d;
@@ -33,43 +36,40 @@ export default function PinSetup() {
     setFirst(null);
     setValue('');
     setMismatch(true);
+    setShake((n) => n + 1);
   }
 
   return (
     <>
-      <View style={styles.screen}>
-        <View style={styles.top}>
-          <Text style={styles.title} accessibilityRole="header">
-            {first === null ? t('pin.titleNew') : t('pin.confirm')}
-          </Text>
-          <Text style={[styles.hint, mismatch && styles.error]} accessibilityLiveRegion="polite">
-            {mismatch ? t('pin.mismatch') : t('pin.hint')}
-          </Text>
-        </View>
-        <PinPad value={value} dots={first?.length ?? Math.max(MIN_PIN, value.length)} onDigit={onDigit} onDelete={() => setValue((v) => v.slice(0, -1))} />
-        {first === null && (
-          <Button
-            title={t('pin.continue')}
-            disabled={value.length < MIN_PIN}
-            style={styles.button}
-            onPress={() => {
-              setFirst(value);
-              setValue('');
-              setMismatch(false);
-            }}
-          />
-        )}
-      </View>
-      <NavBar title={t('settings.lock')} />
+      <PinLayout
+        icon="lock-closed"
+        title={first === null ? t('pin.titleNew') : t('pin.confirm')}
+        message={mismatch ? t('pin.mismatch') : t('pin.hint')}
+        error={mismatch}
+        top={insets.top + BAR_H}
+        pad={<PinPad value={value} dots={first?.length ?? Math.max(MIN_PIN, value.length)} onDigit={onDigit} onDelete={() => setValue((v) => v.slice(0, -1))} shake={shake} />}
+        footer={
+          // Kept in the layout when confirming (hidden), so the keys stay where they were at any text size.
+          <View style={first !== null && styles.hidden} pointerEvents={first === null ? 'auto' : 'none'} importantForAccessibility={first === null ? 'auto' : 'no-hide-descendants'}>
+            <Button
+              title={t('pin.continue')}
+              disabled={first !== null || value.length < MIN_PIN}
+              style={styles.button}
+              onPress={() => {
+                setFirst(value);
+                setValue('');
+                setMismatch(false);
+              }}
+            />
+          </View>
+        }
+      />
+      <NavBar />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'space-evenly', padding: 24, paddingTop: 84 },
-  top: { alignItems: 'center', gap: 8 },
-  title: { ...TYPE.title2, color: colors.ink, textAlign: 'center' },
-  hint: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', maxWidth: 320 },
-  error: { color: colors.bad },
-  button: { minWidth: 200 },
+  button: { minWidth: 220 },
+  hidden: { opacity: 0 },
 });

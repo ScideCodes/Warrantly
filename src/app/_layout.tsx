@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { Appearance, AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
@@ -15,6 +15,8 @@ import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
 import { colors, isDark } from '@/theme';
+import { getThemeSetting } from '@/settings';
+import { logError } from '@/errorLog';
 
 // Headers and screen backgrounds follow the app palette (dark mode).
 const navTheme = {
@@ -60,6 +62,15 @@ export default function RootLayout() {
         if (isLockEnabled() && shouldRelock(hiddenAt.current, Date.now())) setLocked(true);
         hiddenAt.current = null;
       }
+    });
+    return () => sub.remove();
+  }, []);
+  // Diagnostic for a one-off "black screen" report: the palette is chosen at start, so a system theme
+  // change while the app runs leaves it in the old one until the next start. Logged (no user data) so a
+  // feedback mail shows whether that happened.
+  useEffect(() => {
+    const sub = Appearance.addChangeListener(({ colorScheme }) => {
+      if (getThemeSetting() === 'system' && (colorScheme === 'dark') !== isDark) logError(`system theme now ${colorScheme}, app shows ${isDark ? 'dark' : 'light'} until restart`, 'theme');
     });
     return () => sub.remove();
   }, []);

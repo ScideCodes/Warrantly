@@ -122,6 +122,12 @@ const MIGRATIONS = [
    );`,
   // v11: a photo of the product (file name in the attachments folder, like documents).
   `ALTER TABLE warranties ADD COLUMN photo_path TEXT;`,
+  // v12: a product picture found online (src/productImage.ts), kept apart from the user's own photo, which
+  // always wins. found_photo_key is the product name it was looked up for: a renamed product is looked up
+  // again. A key with no path means nothing certain was found, or the user removed the picture.
+  `ALTER TABLE warranties ADD COLUMN found_photo_path TEXT;
+   ALTER TABLE warranties ADD COLUMN found_photo_key TEXT;
+   ALTER TABLE warranties ADD COLUMN found_photo_credit TEXT;`,
 ];
 
 export async function migrate(db: Db): Promise<void> {
@@ -263,6 +269,9 @@ export interface WarrantyRow {
   category: string | null;
   coverage: 'store' | 'extended' | null;
   photo_path: string | null;
+  found_photo_path: string | null;
+  found_photo_key: string | null;
+  found_photo_credit: string | null; // JSON PictureCredit
   status: 'complete' | 'needs_input' | 'ignored';
   missing_fields: string;
 }
@@ -359,8 +368,8 @@ export async function ignoreWarranty(db: Db, id: number): Promise<void> {
 // the mail back; they just stop pointing at the deleted record. Returns the attachment files the
 // caller must delete from disk.
 export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
-  const photo = (await db.getFirstAsync<{ photo_path: string | null }>('SELECT photo_path FROM warranties WHERE id = ?', [id]))?.photo_path;
-  const files = [...(await listAttachments(db, id)).map((a) => a.local_path), ...(photo ? [photo] : [])];
+  const row = await db.getFirstAsync<{ photo_path: string | null; found_photo_path: string | null }>('SELECT photo_path, found_photo_path FROM warranties WHERE id = ?', [id]);
+  const files = [...(await listAttachments(db, id)).map((a) => a.local_path), ...[row?.photo_path, row?.found_photo_path].filter((p): p is string => !!p)];
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
     // SQLite reuses ids: a return question left behind would later show up on an unrelated new warranty.
@@ -464,6 +473,14 @@ export async function setPhoto(db: Db, warrantyId: number, photo: string | null)
   return old;
 }
 
+// Records a lookup result for the product name `key`: a picture (path and credit) or none. Returns the previous
+// found picture's file, for the caller to delete.
+export async function setFoundPhoto(db: Db, warrantyId: number, key: string | null, path: string | null, credit: string | null): Promise<string | null> {
+  const old = (await db.getFirstAsync<{ found_photo_path: string | null }>('SELECT found_photo_path FROM warranties WHERE id = ?', [warrantyId]))?.found_photo_path ?? null;
+  await db.runAsync('UPDATE warranties SET found_photo_path = ?, found_photo_key = ?, found_photo_credit = ? WHERE id = ?', [path, key, credit, warrantyId]);
+  return old === path ? null : old;
+}
+
 export async function addAttachment(db: Db, warrantyId: number, filename: string, localPath: string): Promise<void> {
   await db.runAsync('INSERT INTO attachments (warranty_id, filename, local_path) VALUES (?, ?, ?)', [warrantyId, filename, localPath]);
 }
@@ -504,8 +521,9 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
 export async function deleteAccount(db: Db, accountId: number): Promise<string[]> {
   const files = await db.getAllAsync<{ local_path: string }>(
     `SELECT local_path FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)
-     UNION ALL SELECT photo_path FROM warranties WHERE account_id = ? AND photo_path IS NOT NULL`,
-    [accountId, accountId],
+     UNION ALL SELECT photo_path FROM warranties WHERE account_id = ? AND photo_path IS NOT NULL
+     UNION ALL SELECT found_photo_path FROM warranties WHERE account_id = ? AND found_photo_path IS NOT NULL`,
+    [accountId, accountId, accountId],
   );
   await db.withTransactionAsync(async () => {
     await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
