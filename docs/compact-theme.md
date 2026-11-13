@@ -130,3 +130,27 @@ and `.maestro/theme-draft.yaml`; pass `-e N=<screenshot-prefix>`, flip the emula
 and use synthetic app data (lock disabled or the test PIN 1234).
 The final cycle also passed at 360 dp width and 140% text, followed by an Auto change with Android animations
 disabled; the draft and scroll position survived, with no React Native or Android runtime errors in logcat.
+
+## 6. Follow-up (same day): fidelity and press behaviour
+
+Reported on a phone after the first compact build: pictures not showing, rows flashing while scrolling Settings,
+and a look that no longer read as iOS 27.
+
+- **Press highlight while scrolling.** A held finger on a row filled it with the press colour at once (measured on
+  the emulator: about 109 000 grey pixels from the first frame), so every touch that started a scroll flashed a row.
+  Rows, segmented options and buttons now wait `PRESS_DELAY` (100 ms, src/theme.ts) before showing a press, like
+  UIKit's scroll views. Counted press-in events on the emulator: a 120 ms flick 0, a tap 1, a 600 ms hold 1, a slow
+  drag that rests 100 ms 1 (cancelled when the scroll starts). Controls outside scrolling content (tab bar, PIN
+  keys) still react at once. The shared Pressable no longer tracks hover (a phone has none).
+- **Ghost text under the title bar.** Scrolled content showed through the bar at about 25 % behind the title and
+  back button. The bar's own height is now solid page colour and the scroll edge fades over 28 dp below it
+  (light and dark checked).
+- **iOS 27 hierarchy restored where it costs no density.** Large title 34/41, Title 2 22/28, Title 3 and section
+  headers 20/25, grouped card radius 26, text field radius 14, bar 60, section spacing 24/8. Rows, body text and
+  fields stay compact.
+- **Pictures.** Product pictures is a Settings switch that is off by default (only the product name is sent to
+  Wikimedia when it is on). With it on, the emulator fetched and showed a picture for "Logitech MX Master 3S" in
+  the list and on the detail screen within about 90 s, with its credit. Names with extra suffixes or no exact
+  Wikidata model get the category icon, as designed. The default was not changed.
+
+Emulator only; not measured on a phone.

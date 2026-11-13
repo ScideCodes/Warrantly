@@ -116,18 +116,18 @@ dp: body 17, large title 34, section headers 20), rigid row heights (52 rows, 68
 
 | Item | Reference | Warrantly |
 |---|---|---|
-| Large Title / Title 2 / Title 3 and section | 34/41, 22/28, 20/25 | 30/36, 20/25, 18/23 (same weights and tracking) |
+| Large Title / Title 2 / Title 3 and section | 34/41, 22/28, 20/25 | unchanged (the hierarchy that makes a screen read as iOS 27) |
 | Body, Headline, Button | 17/22 | 16/21 (Material's body size) |
 | Subhead / Footnote / Caption / Segmented | 15/20, 13/18, 12/16, 13.33/18 | 14/19, 13/17, 12/15, 13/17 |
 | Page margin | 16 below 375, 20 from 375 | 16 on phones, 20 from 600 dp |
-| Grouped card radius / text field radius | 26 / 14 | 22 / 12 |
+| Grouped card radius / text field radius | 26 / 14 | unchanged (round shapes are part of the look) |
 | Row | min 52, padding 15 | min 46, padding 11 (rows still reach 44 dp+, text size grows them) |
 | Detail and contact fields | 68 dp, label above value | one line: label (secondary, up to 45 %) left, value right; each wraps in its own column; label above value only when the column is under 260 text-adjusted dp |
 | Form fields | label above a 44 dp field | label beside the field (32 %) from 300 text-adjusted dp; notes always full width |
 | Library row | name, store, badge + date (3–4 lines) | name with the days-left badge beside it (badge wraps below only when the name would get under 55 %), then store · end date on one line; the date never breaks inside |
 | Action pairs (View/Save, Save/Share) | side by side above 360 text-adjusted dp | side by side down to 240 text-adjusted dp |
-| Section header spacing | 28 above, 8 below | 20 above, 6 below |
-| Navigation bar | 60 | 56 |
+| Section header spacing | 28 above, 8 below | 24 above, 8 below |
+| Navigation bar | 60 | unchanged |
 | Buttons | padding 11 × 20 | padding 10 × 16, still 44 tall |
 | Large segmented | track 50, options 46 | options 40 (8 dp hit slop keeps 48+) |
 | Settings avatar / detail photo | 60 / 56 | 48 / 52 |

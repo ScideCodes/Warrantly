@@ -37,9 +37,9 @@ export function themed<T>(make: () => T): () => T {
 // The reference's sheen on glass: a soft light from the top left (`::after`, ios.css line 145).
 export const SHEEN = 'radial-gradient(120% 90% at 25% 0%, rgba(255,255,255,0.5), transparent 55%)';
 
-// Type ramp: the reference's hierarchy (ios.css lines 34-43: weights, tracking, which size steps up from
-// which), one step more compact for phones. iOS point sizes copied 1:1 read about 6 % larger on Android at
-// the same dp; body 16 is Material's body size. Letter spacing is the reference's em value times the size.
+// Type ramp: the reference's (ios.css lines 34-43) for the titles and section headers that give a screen its
+// hierarchy; body text and everything inside rows is one step more compact for phones (iOS point sizes copied
+// 1:1 read about 6 % larger on Android at the same dp; body 16 is Material's body size). Letter spacing is the reference's em value times the size.
 // Text still scales with the phone's font size setting.
 const t = (fontSize: number, lineHeight: number, fontWeight: TextStyle['fontWeight'], em = 0): TextStyle => ({
   fontSize,
@@ -49,10 +49,10 @@ const t = (fontSize: number, lineHeight: number, fontWeight: TextStyle['fontWeig
   letterSpacing: Math.round(em * fontSize * 100) / 100,
 });
 export const TYPE = {
-  large: t(30, 36, '700', 0.011),
-  title2: t(20, 25, '700', 0.015),
-  title3: t(18, 23, '600'),
-  section: t(18, 23, '600', -0.022),
+  large: t(34, 41, '700', 0.011),
+  title2: t(22, 28, '700', 0.015),
+  title3: t(20, 25, '600'),
+  section: t(20, 25, '600', -0.022),
   headline: t(16, 21, '600', -0.0255),
   body: t(16, 21, '400', -0.0255),
   button: t(16, 21, '500', -0.0255),
@@ -67,14 +67,14 @@ export const TYPE = {
 // Geometry (dp), compact density. Page margin 16 on phones, 20 from 600 (tablets). Rows keep a 44dp minimum
 // (the touch target); padding, not fixed heights, sets their size, so larger text grows them naturally.
 export const gutter = (width: number) => (width < 600 ? 16 : 20);
-export const RADIUS = 22; // grouped card
+export const RADIUS = 26; // grouped card (the reference's value: rounded shapes are part of the look)
 export const ROW_H = 46; // one-line row
 export const ROW_PAD = 11; // row padding above and below its text
 export const ROW_X = 16; // row inset
 export const SEP_ICON = 59; // separator start after a 29dp icon tile
-export const BAR_H = 56; // navigation bar
+export const BAR_H = 60; // navigation bar
 export const CONTROL_H = 44; // buttons, text fields, glass buttons
-export const FIELD_RADIUS = 12;
+export const FIELD_RADIUS = 14;
 export const MAX_WIDTH = 720; // Warrantly's content cap on tablets (not in the reference)
 
 // Room for side-by-side content: true while the page's content column, in text-size-adjusted dp, is at least
@@ -94,6 +94,11 @@ export const wordWidth = (label: string, size = 16): number => Math.max(0, ...la
 // Text-adjusted dp two icon Buttons need side by side (padding 2 × 12, icon 20, gap 6, 8 between them), plus the
 // inset of the box they sit in. Never below 240, the narrowest a pair still looks calm. For useRoom().
 export const pairWidth = (a: string, b: string, inset = 0): number => Math.max(240, 2 * (50 + wordWidth(`${a} ${b}`)) + 8) + inset;
+
+// A touch lights a row, option or button only once it has rested this long (ms). A finger that lands to scroll
+// moves before that, so lists never flash under it; a quick tap still shows its highlight on release. UIKit's
+// scroll views make the same delay. Controls outside scrolling content (tab bar, PIN keys) show at once.
+export const PRESS_DELAY = 100;
 
 // Motion (ios.css lines 45-48, 85; chrome.js). Springs: the reference's response/damping as stiffness/damping.
 export const SPRING = { stiffness: 223.8, damping: 23.34, mass: 1 }; // response .42 s, damping ratio .78
