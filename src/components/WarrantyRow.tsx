@@ -102,8 +102,8 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
         </View>
       )}
       <View style={styles.text}>
-        {/* The name and the days-left badge share a line; the badge drops below only when the name would get
-            narrower than 55 % (large text, small phones). */}
+        {/* Keep the counter in the trailing column for every row. Long names use the remaining space;
+            large translated counters can wrap inside their badge without moving underneath the name. */}
         <View style={styles.top}>
           {!!w.favorite && (
             <View style={styles.pin} accessible accessibilityLabel={t('row.pinned')}>
@@ -167,13 +167,13 @@ const useStyles = themed(() => StyleSheet.create({
   docPressed: { backgroundColor: colors.press },
   docCount: { ...TYPE.cap, color: colors.tint, position: 'absolute', right: 6, bottom: 6, fontWeight: '700' },
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
-  text: { flex: 1, gap: 2 },
-  top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 8, rowGap: 3 },
-  title: { ...TYPE.body, color: colors.ink, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: '55%' },
+  text: { flex: 1, minWidth: 0, gap: 2 },
+  top: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'flex-start', columnGap: 8 },
+  title: { ...TYPE.body, color: colors.ink, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4 },
   meta: { ...TYPE.foot, color: colors.ink2 },
   store: { flexShrink: 1 },
-  badge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
+  badge: { flexShrink: 0, maxWidth: '50%', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
   badgeText: { ...TYPE.foot, fontWeight: '600' },
   quietBadge: { fontWeight: '400' },
 }));
