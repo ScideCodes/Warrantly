@@ -1,9 +1,10 @@
 import { useEffect } from 'react';
-import { Stack } from 'expo-router';
-import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { goBack } from '@/nav';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { Page } from '@/components/Page';
+import { Button, Group, Row } from '@/components/ui';
+import { colors, TYPE } from '@/theme';
 import { markWhatsNewSeen } from '@/whatsNew';
 
 // What's new in this version (section 13). Opened once after an update, and from Help.
@@ -12,26 +13,19 @@ export default function WhatsNew() {
   const notes = t('whatsNew.notes', { returnObjects: true }) as string[];
   useEffect(markWhatsNewSeen, []);
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t('whatsNew.title') }} />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
+    <Page title={t('whatsNew.title')} footer={<Button title={t('whatsNew.ok')} onPress={goBack} />}>
+      <Group style={styles.group}>
         {notes.map((n, i) => (
-          <Text key={i} style={styles.note}>
-            •  {n}
-          </Text>
+          <Row key={i} separator={i > 0}>
+            <Text style={styles.note}>{n}</Text>
+          </Row>
         ))}
-        <Pressable style={styles.button} onPress={goBack} accessibilityRole="button">
-          <Text style={styles.buttonText}>{t('whatsNew.ok')}</Text>
-        </Pressable>
-      </ScrollView>
-    </>
+      </Group>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 12 },
-  note: { fontSize: 16, lineHeight: 23, color: colors.text },
-  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
-  buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  group: { marginTop: 8 },
+  note: { ...TYPE.body, color: colors.ink, flex: 1 },
 });

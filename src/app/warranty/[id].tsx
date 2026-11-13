@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
 import { Sheet, type SheetSection } from '@/components/Sheet';
@@ -18,7 +18,10 @@ import { DocumentDraft } from '@/documentDraft';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
-import { BUTTON_HEIGHT, BUTTON_RADIUS, CARD_RADIUS, colors, FONT, SPACE } from '@/theme';
+import { NavBar, Page } from '@/components/Page';
+import { showAlert } from '@/components/Dialog';
+import { Button, GlassButton, IconTile, Input, Row, TILE } from '@/components/ui';
+import { colors, ROW_X, TONE, TYPE } from '@/theme';
 import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
 type SheetKind = null | 'more' | 'add' | { doc: Attachment };
@@ -60,18 +63,23 @@ export default function WarrantyDetail() {
     }, [id]),
   );
 
-  if (!w) return <Stack.Screen options={{ headerShown: true, title: '' }} />;
+  if (!w)
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg }}>
+        <NavBar />
+      </View>
+    );
 
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
-  const tone = colors[urgency(days)];
+  const tone = TONE[urgency(days)];
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
   const product = displayName(t, w);
   const photo = documentUriOrNull(w.photo_path);
 
   function confirmRemoveDocument(d: Attachment) {
-    Alert.alert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
+    showAlert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
       { text: t('detail.cancel'), style: 'cancel' },
       {
         text: t('detail.removeDocument'),
@@ -87,7 +95,7 @@ export default function WarrantyDetail() {
   }
 
   const viewDocument = (d: Attachment) =>
-    documentExists(d.local_path) ? router.push({ pathname: '/document', params: { path: d.local_path, title: product, name: d.filename } }) : Alert.alert(t('detail.documentMissing'));
+    documentExists(d.local_path) ? router.push({ pathname: '/document', params: { path: d.local_path, title: product, name: d.filename } }) : showAlert(t('detail.documentMissing'));
 
   // Save asks Android where to put the copy; backing out of the folder picker is not an error.
   async function save(d: Attachment) {
@@ -95,10 +103,10 @@ export default function WarrantyDetail() {
     operation.current = true;
     setDocumentBusy(d.id);
     try {
-      if (!documentExists(d.local_path)) return Alert.alert(t('detail.documentMissing'));
-      if (await saveDocument(d.local_path, d.filename) && mounted.current) Alert.alert(t('detail.saved'));
+      if (!documentExists(d.local_path)) return showAlert(t('detail.documentMissing'));
+      if (await saveDocument(d.local_path, d.filename) && mounted.current) showAlert(t('detail.saved'));
     } catch (e) {
-      if (mounted.current) Alert.alert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
+      if (mounted.current) showAlert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       operation.current = false;
       if (mounted.current) setDocumentBusy(null);
@@ -110,10 +118,10 @@ export default function WarrantyDetail() {
     operation.current = true;
     setDocumentBusy('share');
     try {
-      if (!documentExists(d.local_path)) return Alert.alert(t('detail.documentMissing'));
+      if (!documentExists(d.local_path)) return showAlert(t('detail.documentMissing'));
       await openDocument(d.local_path);
     } catch (e) {
-      if (mounted.current) Alert.alert(t('detail.shareFailed', { detail: e instanceof Error ? e.message : String(e) }));
+      if (mounted.current) showAlert(t('detail.shareFailed', { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       operation.current = false;
       if (mounted.current) setDocumentBusy(null);
@@ -138,7 +146,7 @@ export default function WarrantyDetail() {
     } catch (e) {
       current.dispose();
       draft.current = new DocumentDraft(deleteDocuments);
-      if (mounted.current) Alert.alert(t('form.scanFailed', { detail: e instanceof Error ? e.message : String(e) }));
+      if (mounted.current) showAlert(t('form.scanFailed', { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       operation.current = false;
       if (mounted.current) setDocumentBusy(null);
@@ -155,7 +163,7 @@ export default function WarrantyDetail() {
   }
 
   function confirmDeleteNote(h: HistoryEntry) {
-    Alert.alert(t('detail.deleteNote'), h.note, [
+    showAlert(t('detail.deleteNote'), h.note, [
       { text: t('detail.cancel'), style: 'cancel' },
       {
         text: t('detail.deleteConfirm'),
@@ -184,10 +192,10 @@ export default function WarrantyDetail() {
         if (old) deleteDocuments([old]);
         setW(await getWarranty(db, w!.id));
       } catch (e) {
-        Alert.alert(e instanceof Error ? e.message : String(e));
+        showAlert(e instanceof Error ? e.message : String(e));
       }
     };
-    Alert.alert(t('detail.photo'), undefined, [
+    showAlert(t('detail.photo'), undefined, [
       { text: t('detail.cancel'), style: 'cancel' },
       ...(w!.photo_path ? [{ text: t('detail.photoRemove'), style: 'destructive' as const, onPress: () => void take(null) }] : []),
       { text: t('detail.photoLibrary'), onPress: () => void take('library') },
@@ -201,7 +209,7 @@ export default function WarrantyDetail() {
   }
 
   function confirmDelete() {
-    Alert.alert(t('detail.deleteTitle', { product }), t('detail.deleteBody'), [
+    showAlert(t('detail.deleteTitle', { product }), t('detail.deleteBody'), [
       { text: t('detail.cancel'), style: 'cancel' },
       {
         text: t('detail.deleteConfirm'),
@@ -223,7 +231,7 @@ export default function WarrantyDetail() {
       serialNumber: w!.serial_number,
       name: getUsername(),
     });
-    sendClaim(w!.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => Alert.alert(t('detail.noMailApp')));
+    sendClaim(w!.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => showAlert(t('detail.noMailApp')));
   }
 
   const sheets: Record<'more' | 'add', { title: string; sections: SheetSection[] }> = {
@@ -247,7 +255,7 @@ export default function WarrantyDetail() {
               key: 'share',
               icon: 'share-outline',
               label: t('detail.shareRecord'),
-              onPress: () => void getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => Alert.alert(String(e))),
+              onPress: () => void getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => showAlert(String(e))),
             },
             { key: 'cover', icon: 'add-circle-outline', label: t('detail.addCover'), onPress: () => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } }) },
             {
@@ -255,7 +263,7 @@ export default function WarrantyDetail() {
               icon: 'notifications-outline',
               label: t('detail.testReminder'),
               onPress: async () => {
-                if (!(await sendTestReminder(w, days))) Alert.alert(t('detail.noPermission'));
+                if (!(await sendTestReminder(w, days))) showAlert(t('detail.noPermission'));
               },
             },
             ...(w.status === 'needs_input' ? [{ key: 'ignore', icon: 'eye-off-outline' as const, label: t('detail.notWarranty'), onPress: () => void notWarranty() }] : []),
@@ -302,91 +310,84 @@ export default function WarrantyDetail() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          title: w.store_name,
-          headerRight: () => (
-            <View style={styles.headerButtons}>
-              <Pressable
-                style={styles.headerButton}
-                onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })}
-                accessibilityRole="button"
-              >
-                <Text style={styles.headerButtonText}>{t('detail.edit')}</Text>
+      <Page
+        title={w.product_name ?? product}
+        trailing={
+          <>
+            <GlassButton icon="create-outline" label={t('detail.edit')} onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })} />
+            <GlassButton icon="ellipsis-horizontal" label={t('detail.more')} onPress={() => setSheet('more')} />
+          </>
+        }
+        head={
+          // 1. What it is, and how long it is covered: the reference's detail hero (56dp tile, Title 2, Subheadline).
+          <View style={styles.hero}>
+            <View style={styles.heroTop}>
+              <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')}>
+                {photo ? (
+                  <Image source={{ uri: photo }} style={styles.photo} />
+                ) : (
+                  <View style={[styles.photo, styles.photoEmpty]}>
+                    <Ionicons name="camera-outline" size={28} color={colors.tint} />
+                  </View>
+                )}
               </Pressable>
-              <Pressable style={styles.headerButton} onPress={() => setSheet('more')} accessibilityRole="button" accessibilityLabel={t('detail.more')}>
-                <Ionicons name="ellipsis-vertical" size={22} color={colors.primary} />
-              </Pressable>
+              <View style={styles.flex}>
+                <Text style={styles.title} accessibilityRole="header">
+                  {w.product_name ?? product}
+                </Text>
+                <Text style={styles.store}>{w.store_name}</Text>
+              </View>
             </View>
-          ),
-        }}
-      />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        {/* 1. What it is, and how long it is covered. */}
-        <View style={styles.summary}>
-          <View style={styles.summaryTop}>
-            <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')}>
-              {photo ? (
-                <Image source={{ uri: photo }} style={styles.photo} />
-              ) : (
-                <View style={[styles.photo, styles.photoEmpty]}>
-                  <Ionicons name="camera-outline" size={26} color={colors.primary} />
-                </View>
-              )}
-            </Pressable>
-            <View style={styles.flex}>
-              <Text style={styles.title} accessibilityRole="header">
-                {w.product_name ?? product}
-              </Text>
-              <Text style={styles.store}>{w.store_name}</Text>
+            <View style={styles.status}>
+              <View style={[styles.badge, { backgroundColor: tone.bg }]}>
+                <Text style={[styles.badgeText, { color: tone.fg }]}>{daysLabel(t, days)}</Text>
+              </View>
+              <Text style={styles.store}>{t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: date(w.end_date) })}</Text>
             </View>
+            {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
           </View>
-          <View style={styles.status}>
-            <View style={[styles.badge, { backgroundColor: tone.bg }]}>
-              <Text style={[styles.badgeText, { color: tone.fg }]}>{daysLabel(t, days)}</Text>
-            </View>
-            <Text style={styles.store}>{t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: date(w.end_date) })}</Text>
-          </View>
-          {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
-        </View>
-
+        }
+      >
         {/* 2. Documents: right under the summary, one row each with View and Save. */}
         <Section title={t('detail.documents')}>
           {docs.length === 0 && <Text style={styles.empty}>{t('detail.noDocuments')}</Text>}
-          {docs.map((d) => {
+          {docs.map((d, i) => {
             const missing = !documentExists(d.local_path);
             return (
               <View key={d.id} style={styles.doc}>
+                {i > 0 && <View style={styles.line} />}
                 <View style={styles.docTop}>
-                  <Ionicons name={missing ? 'alert-circle-outline' : 'document-text-outline'} size={26} color={missing ? colors.soon.fg : colors.primary} />
+                  <IconTile name={missing ? 'alert-circle-outline' : 'document-text-outline'} color={missing ? TILE.grey : TILE.red} />
                   <View style={styles.flex}>
                     <Text style={styles.docName}>{d.filename}</Text>
                     <Text style={[styles.docType, missing && styles.docMissing]}>{missing ? t('detail.fileMissing') : t('detail.pdf')}</Text>
                   </View>
-                  <Pressable style={styles.iconButton} onPress={() => setSheet({ doc: d })} accessibilityRole="button" accessibilityLabel={t('detail.documentOptions', { name: d.filename })}>
-                    <Ionicons name="ellipsis-vertical" size={22} color={colors.muted} />
+                  <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => setSheet({ doc: d })} accessibilityRole="button" accessibilityLabel={t('detail.documentOptions', { name: d.filename })}>
+                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.ink} />
                   </Pressable>
                 </View>
                 {!missing && (
                   <View style={[styles.docActions, stackActions && styles.stacked]}>
-                    <Pressable style={[styles.docButton, stackActions && styles.stackedButton, styles.docPrimary]} onPress={() => viewDocument(d)} accessibilityRole="button" accessibilityLabel={`${t('detail.view')}: ${d.filename}`}>
-                      <Ionicons name="eye-outline" size={20} color={colors.onPrimary} />
-                      <Text style={styles.docPrimaryText}>{t('detail.view')}</Text>
-                    </Pressable>
-                    <Pressable style={[styles.docButton, stackActions && styles.stackedButton, documentBusy !== null && styles.disabled]} onPress={() => void save(d)} disabled={documentBusy !== null} accessibilityRole="button" accessibilityState={{ disabled: documentBusy !== null, busy: documentBusy === d.id }} accessibilityLabel={`${t('detail.save')}: ${d.filename}`}>
-                      {documentBusy === d.id ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="download-outline" size={20} color={colors.primary} />}
-                      <Text style={styles.docButtonText}>{t(documentBusy === d.id ? 'viewer.saving' : 'detail.save')}</Text>
-                    </Pressable>
+                    <Button title={t('detail.view')} icon="eye-outline" onPress={() => viewDocument(d)} accessibilityLabel={`${t('detail.view')}: ${d.filename}`} style={!stackActions && styles.docButton} />
+                    <Button
+                      kind="glass"
+                      title={t(documentBusy === d.id ? 'viewer.saving' : 'detail.save')}
+                      icon="download-outline"
+                      onPress={() => void save(d)}
+                      disabled={documentBusy !== null && documentBusy !== d.id}
+                      busy={documentBusy === d.id}
+                      accessibilityLabel={`${t('detail.save')}: ${d.filename}`}
+                      style={!stackActions && styles.docButton}
+                    />
                   </View>
                 )}
               </View>
             );
           })}
-          <Pressable style={[styles.addRow, documentBusy !== null && styles.disabled]} onPress={() => setSheet('add')} disabled={documentBusy !== null} accessibilityRole="button" accessibilityState={{ disabled: documentBusy !== null, busy: documentBusy === 'attach' }}>
-            {documentBusy === 'attach' ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="add-circle-outline" size={24} color={colors.primary} />}
+          <Row separator={docs.length > 0} iconInset onPress={() => setSheet('add')} disabled={documentBusy !== null} accessibilityState={{ busy: documentBusy === 'attach' }}>
+            <View style={styles.glyph}>{documentBusy === 'attach' ? <ActivityIndicator color={colors.tint} /> : <Ionicons name="add-circle-outline" size={22} color={colors.tint} />}</View>
             <Text style={styles.addText}>{t(documentBusy === 'attach' ? 'form.scanning' : 'detail.addDocument')}</Text>
-          </Pressable>
+          </Row>
         </Section>
 
         {/* 3. Purchase and coverage details. */}
@@ -399,7 +400,7 @@ export default function WarrantyDetail() {
         {others.length > 0 && (
           <Section title={t('detail.otherCovers')}>
             {others.map((o, i) => (
-              <WarrantyRow key={o.id} warranty={o} style={i === others.length - 1 && styles.lastRow} />
+              <WarrantyRow key={o.id} warranty={o} separator={i > 0} />
             ))}
           </Section>
         )}
@@ -409,15 +410,14 @@ export default function WarrantyDetail() {
           {days >= 0 &&
             // Section 20: not offered once the warranty has expired.
             (w.contact_email ? (
-              <Pressable style={styles.claim} onPress={claim} accessibilityRole="button">
-                <Ionicons name="mail-outline" size={20} color={colors.onPrimary} />
-                <Text style={styles.claimText}>{t('detail.claim')}</Text>
-              </Pressable>
+              <View style={styles.claim}>
+                <Button title={t('detail.claim')} icon="mail-outline" onPress={claim} />
+              </View>
             ) : (
               <Text style={styles.empty}>{t('detail.claimNoEmail')}</Text>
             ))}
-          {contacts.map((c) => (
-            <Field key={c.url} label={c.label} value={c.value} onPress={() => void Linking.openURL(c.url)} />
+          {contacts.map((c, i) => (
+            <Field key={c.url} label={c.label} value={c.value} onPress={() => void Linking.openURL(c.url)} last={!brand && i === contacts.length - 1} />
           ))}
           {brand && (
             <Field
@@ -431,78 +431,58 @@ export default function WarrantyDetail() {
 
         {/* 5. History and notes. */}
         <Section title={t('detail.history')}>
-          {history.map((h) => (
-            <View key={h.id} style={styles.noteItem}>
+          {history.map((h, i) => (
+            <Row key={h.id} separator={i > 0} style={styles.noteItem}>
               <Text style={[styles.noteText, styles.flex]}>
                 {date(h.date)}: {h.note}
               </Text>
               {/* A visible button, not a long-press: hidden gestures are hard to discover. */}
-              <Pressable style={styles.iconButton} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
-                <Ionicons name="trash-outline" size={20} color={colors.soon.fg} />
+              <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
+                <Ionicons name="trash-outline" size={20} color={colors.bad} />
               </Pressable>
-            </View>
+            </Row>
           ))}
-          <View style={styles.noteRow}>
-            <TextInput
-              style={styles.noteInput}
-              value={note}
-              onChangeText={setNote}
-              placeholder={t('detail.notePlaceholder')}
-              placeholderTextColor={colors.muted}
-              accessibilityLabel={t('detail.history')}
-              onSubmitEditing={addNote}
-            />
-            <Pressable style={styles.noteAdd} onPress={addNote} accessibilityRole="button">
-              <Text style={styles.docButtonText}>{t('detail.addNote')}</Text>
-            </Pressable>
+          <View style={[styles.noteRow, history.length > 0 && styles.noteRowLine]}>
+            <Input style={styles.noteInput} value={note} onChangeText={setNote} placeholder={t('detail.notePlaceholder')} accessibilityLabel={t('detail.history')} onSubmitEditing={addNote} />
+            <Button kind="glass" title={t('detail.addNote')} onPress={addNote} />
           </View>
         </Section>
-      </ScrollView>
+      </Page>
       <Sheet open={openSheet !== null} onClose={() => setSheet(null)} title={openSheet?.title ?? ''} sections={openSheet?.sections ?? []} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: SPACE.screen, paddingBottom: 40 },
-  flex: { flex: 1, minWidth: 0 },
-  headerButtons: { flexDirection: 'row', alignItems: 'center' },
-  headerButton: { minHeight: 48, minWidth: 48, paddingHorizontal: 8, alignItems: 'center', justifyContent: 'center' },
-  headerButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
-  summary: { gap: 12, padding: SPACE.group, borderRadius: CARD_RADIUS, backgroundColor: colors.surface },
-  summaryTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 14 },
-  photo: { width: 64, height: 64, borderRadius: 14 },
-  photoEmpty: { backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 24, fontWeight: '700', color: colors.text },
-  store: { fontSize: 16, color: colors.muted },
-  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 10, rowGap: 6 },
-  badge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontSize: 15, fontWeight: '700' },
-  note: { fontSize: 15, color: colors.warning.fg },
-  empty: { fontSize: 16, color: colors.muted, paddingVertical: 14 },
-  doc: { paddingVertical: 12, gap: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  docTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  docName: { fontSize: FONT.body, fontWeight: '600', color: colors.text },
-  docType: { fontSize: 14, color: colors.muted },
-  docMissing: { color: colors.soon.fg },
-  docActions: { flexDirection: 'row', gap: 10 },
+  flex: { flex: 1 },
+  hero: { gap: 12, paddingTop: 8, paddingHorizontal: 4 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  photo: { width: 56, height: 56, borderRadius: 14 },
+  photoEmpty: { backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
+  title: { ...TYPE.title2, color: colors.ink },
+  store: { ...TYPE.sub, color: colors.ink2 },
+  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 },
+  badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
+  badgeText: { ...TYPE.foot, fontWeight: '600' },
+  note: { ...TYPE.sub, color: colors.warn },
+  empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 15, paddingHorizontal: ROW_X },
+  doc: { paddingVertical: 12, paddingHorizontal: ROW_X, gap: 12 },
+  line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: 1, backgroundColor: colors.line },
+  docTop: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  docName: { ...TYPE.body, color: colors.ink },
+  docType: { ...TYPE.foot, color: colors.ink2 },
+  docMissing: { color: colors.bad },
+  docActions: { flexDirection: 'row', gap: 8 },
+  docButton: { flex: 1, minWidth: 0 },
   stacked: { flexDirection: 'column' },
-  stackedButton: { flex: 0 },
-  disabled: { opacity: 0.5 },
-  docButton: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
-  docPrimary: { backgroundColor: colors.primary },
-  docPrimaryText: { flexShrink: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.onPrimary },
-  docButtonText: { flexShrink: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.primary },
-  iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
-  addRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: BUTTON_HEIGHT, paddingVertical: 10 },
-  addText: { flex: 1, fontSize: FONT.body, fontWeight: '600', color: colors.primary },
-  lastRow: { borderBottomWidth: 0 },
-  claim: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, marginVertical: 14, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary },
-  claimText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.onPrimary, textAlign: 'center' },
-  noteItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  noteText: { fontSize: 16, color: colors.text },
-  noteRow: { flexDirection: 'row', gap: 8, paddingVertical: 14 },
-  noteInput: { flex: 1, minWidth: 0, minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text, backgroundColor: colors.background },
-  noteAdd: { minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, borderRadius: BUTTON_RADIUS, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.primarySoft },
+  round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  roundPressed: { backgroundColor: colors.press, transform: [{ scale: 0.94 }] },
+  glyph: { width: 29, alignItems: 'center' },
+  addText: { ...TYPE.body, flex: 1, color: colors.link },
+  claim: { paddingVertical: 12, paddingHorizontal: ROW_X },
+  noteItem: { paddingVertical: 4 },
+  noteText: { ...TYPE.body, color: colors.ink },
+  noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: ROW_X },
+  noteRowLine: { borderTopWidth: 1, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
+  noteInput: { flex: 1, minWidth: 0 },
 });
