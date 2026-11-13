@@ -1,6 +1,7 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';

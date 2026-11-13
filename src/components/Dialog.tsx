@@ -1,5 +1,6 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
-import { Animated, BackHandler, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type AlertButton } from 'react-native';
+import { Animated, BackHandler, Easing, Modal, ScrollView, StyleSheet, useWindowDimensions, type AlertButton } from 'react-native';
 import i18n from '@/i18n';
 import { colors, EASE, TYPE, themed, wordWidth } from '@/theme';
 import { reduceMotion } from '@/components/ui';

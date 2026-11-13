@@ -1,0 +1,9 @@
+appId: dev.warrantly.prototype
+---
+# After the phone switched themes under the open form: same screen, text kept, no lock prompt.
+- assertVisible: "Unsaved draft 42"
+- assertNotVisible: { id: "pin-key-1" }
+- takeScreenshot: ${N}-07-form-after
+- back
+- waitForAnimationToEnd
+- takeScreenshot: ${N}-08-home-after

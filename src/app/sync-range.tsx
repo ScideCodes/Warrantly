@@ -1,7 +1,8 @@
+import { Text } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { syncAllAccounts } from '@/accounts';
 import { getDb } from '@/db/client';

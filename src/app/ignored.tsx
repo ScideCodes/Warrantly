@@ -1,6 +1,7 @@
+import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { formatDate } from '@/components/WarrantyRow';
 import { ListPage } from '@/components/Page';

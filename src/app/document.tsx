@@ -1,7 +1,8 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, Image, PixelRatio, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, FlatList, Image, PixelRatio, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import PdfPages, { type PdfPage } from '../../modules/pdf-pages';

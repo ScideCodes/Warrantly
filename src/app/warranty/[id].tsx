@@ -1,8 +1,9 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
 import { Sheet, type SheetSection } from '@/components/Sheet';

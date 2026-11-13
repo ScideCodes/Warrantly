@@ -1,7 +1,8 @@
+import { Text, View } from '@/components/themeMotion';
 import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { runBackup, setBackupPassword } from '@/backup';
 import { getDb } from '@/db/client';

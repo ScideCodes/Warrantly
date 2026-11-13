@@ -1,16 +1,12 @@
+import { Pressable, Text, TextInput, View, reduceMotion } from '@/components/themeMotion';
 import { useEffect, useState, type ReactNode } from 'react';
 import AppIcon, { type IconName } from '@/components/Icon';
 import {
-  AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Easing,
-  Pressable,
   StyleSheet,
-  Text,
-  TextInput,
   useWindowDimensions,
-  View,
   type PressableProps,
   type StyleProp,
   type TextInputProps,
@@ -24,11 +20,8 @@ import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, S
 export type { IconName } from '@/components/Icon';
 const ease = Easing.bezier(...EASE);
 
-// Reduced motion collapses the press scales and springs (ios.css lines 672-678).
-let reduced = false;
-void AccessibilityInfo.isReduceMotionEnabled().then((v) => (reduced = v));
-AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => (reduced = v));
-export const reduceMotion = () => reduced;
+// Shared accessibility preference also controls theme colour transitions.
+export { reduceMotion } from '@/components/themeMotion';
 
 // Glass without a backdrop blur: the reference's defined fallback (--material-solid), its lit edge and sheen.
 export function glass(sheen = true): ViewStyle {
@@ -43,7 +36,7 @@ export function glass(sheen = true): ViewStyle {
 function useScale(to: number, inMs: number, outMs: number) {
   const scale = useState(() => new Animated.Value(1))[0];
   const run = (v: number, ms: number) => {
-    if (reduced) return;
+    if (reduceMotion()) return;
     Animated.timing(scale, { toValue: v, duration: ms, easing: ease, useNativeDriver: true }).start();
   };
   return { scale, onPressIn: () => run(to, inMs), onPressOut: () => run(1, outMs) };
@@ -103,7 +96,7 @@ export function GlassButton({ icon, label, onPress, size = 20, color = colors.in
   const styles = useStyles();
   const scale = useState(() => new Animated.Value(1))[0];
   const to = (v: number, fast: boolean) => {
-    if (reduced) return;
+    if (reduceMotion()) return;
     // press: the bounce spring compressed into .22 s; release: the reference's .5 s bounce
     Animated.spring(scale, { toValue: v, useNativeDriver: true, ...(fast ? { stiffness: 1153, damping: 42.1, mass: 1 } : SPRING_BOUNCE) }).start();
   };
@@ -159,7 +152,7 @@ function usePressColor() {
       v.stopAnimation();
       v.setValue(1);
     },
-    onPressOut: () => Animated.timing(v, { toValue: 0, duration: reduced ? 0 : 300, easing: ease, useNativeDriver: false }).start(),
+    onPressOut: () => Animated.timing(v, { toValue: 0, duration: reduceMotion() ? 0 : 300, easing: ease, useNativeDriver: false }).start(),
   };
 }
 
@@ -267,7 +260,7 @@ export function Switch({ value, onValueChange, accessibilityLabel, disabled }: {
   const knob = useState(() => new Animated.Value(value ? 1 : 0))[0];
   const track = useState(() => new Animated.Value(value ? 1 : 0))[0];
   useEffect(() => {
-    if (reduced) {
+    if (reduceMotion()) {
       knob.setValue(value ? 1 : 0);
       track.setValue(value ? 1 : 0);
       return;

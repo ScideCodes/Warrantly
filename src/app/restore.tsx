@@ -1,6 +1,7 @@
+import { Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { latestBackup, PasswordNeededError, restoreBackup } from '@/backup';
 import { WrongPasswordError } from '@/backup/format.ts';

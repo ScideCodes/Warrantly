@@ -1,5 +1,6 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import type { ReactNode } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { colors, ROW_H, ROW_PAD, ROW_X, TYPE, themed, useRoom } from '@/theme';
 import { Group, SectionHeader } from '@/components/ui';
 

@@ -1,0 +1,38 @@
+appId: dev.warrantly.prototype
+---
+# Live theme: pick Dark, Light, Auto in Settings with the lock on (no restart, no lock prompt, same scroll).
+# Ends in the Add form with unsaved text, for the system-flip check that follows (theme-b.yaml).
+- launchApp: { stopApp: true }
+- extendedWaitUntil: { visible: { id: "tab-settings" }, timeout: 60000 }
+- waitForAnimationToEnd
+- runFlow:
+    when: { visible: { id: "pin-key-1" } }
+    commands:
+      - tapOn: { id: "pin-key-1" }
+      - tapOn: { id: "pin-key-2" }
+      - tapOn: { id: "pin-key-3" }
+      - tapOn: { id: "pin-key-4" }
+- tapOn: { id: "tab-settings" }
+- scrollUntilVisible: { element: "Appearance|Megjelen.s", timeout: 20000, centerElement: true }
+- takeScreenshot: ${N}-01-before
+- tapOn: "Dark|S.t.t"
+- waitForAnimationToEnd
+- takeScreenshot: ${N}-02-dark
+- assertVisible: "Appearance|Megjelen.s"
+- assertNotVisible: { id: "pin-key-1" }
+- tapOn: "Light|Vil.gos"
+- waitForAnimationToEnd
+- takeScreenshot: ${N}-03-light
+- tapOn: "Dark|S.t.t"
+- tapOn: "Auto"
+- waitForAnimationToEnd
+- takeScreenshot: ${N}-04-auto
+- assertVisible: "Appearance|Megjelen.s"
+- assertNotVisible: { id: "pin-key-1" }
+- back
+- tapOn: { id: "tab-add" }
+- extendedWaitUntil: { visible: { id: "product_name" }, timeout: 15000 }
+- tapOn: { id: "product_name" }
+- inputText: "Unsaved draft 42"
+- hideKeyboard
+- takeScreenshot: ${N}-05-form
