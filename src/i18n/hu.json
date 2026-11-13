@@ -267,7 +267,7 @@
     "about": "Súgó és névjegy",
     "remindersSection": "Emlékeztetők",
     "pictures": "Termékképek",
-    "picturesHint": "Képet mutat a termékről, ha a pontos modell megtalálható a Wikimedia Commonsban. Csak a terméknév kerül elküldésre."
+    "picturesHint": "A korábban és az újonnan hozzáadott garanciákhoz is keres képet a háttérben. A Wikimedia Commonsban megtalált pontos modell képét mutatja. Csak a terméknév kerül elküldésre."
   },
   "backup": {
     "section": "Mentés",

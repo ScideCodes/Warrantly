@@ -14,7 +14,8 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed, wordWidth } from '@/theme';
+import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
+import { segmentedLayout } from '@/segmentedLayout';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
 export type { IconName } from '@/components/Icon';
@@ -275,10 +276,7 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
   const styles = useStyles();
   const { fontScale } = useWindowDimensions();
   const [width, setWidth] = useState(0);
-  // Icons only while every word still fits beside its icon (track padding and gaps shared out, minus each
-  // option's padding): a word broken in the middle is worse than a missing icon.
-  const inner = (width - 4 - 4 * (options.length - 1)) / options.length - 2 * (large ? 8 : 12);
-  const icons = !width || inner >= Math.max(...options.map((o) => wordWidth(o.label, 13))) * fontScale + 17 + 6;
+  const { columns, optionWidth, icons } = segmentedLayout(width, fontScale, options.map((o) => o.label), large);
   return (
     <View style={[styles.seg, large && styles.segLarge]} accessibilityRole="radiogroup" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {options.map((o) => {
@@ -288,12 +286,13 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
             key={o.key}
             onPress={() => onChange(o.key)}
             hitSlop={{ top: 8, bottom: 8 }}
-            style={[styles.segOption, large && styles.segOptionLarge, on && styles.segOn]}
+            style={[styles.segOption, large && styles.segOptionLarge, optionWidth !== undefined && { flex: 0, width: optionWidth }, columns < options.length && { minHeight: 44 }, on && styles.segOn]}
             accessibilityRole="radio"
+            accessibilityLabel={o.label}
             accessibilityState={{ checked: on }}
           >
             {o.icon && icons && <AppIcon name={o.icon} size={17} color={colors.ink} />}
-            <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={2}>
+            <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={1}>
               {o.label}
             </Text>
           </Pressable>
@@ -321,7 +320,7 @@ const useStyles = themed(() => StyleSheet.create({
   switchHit: { width: 64, minHeight: CONTROL_H, justifyContent: 'center' },
   switchTrack: { width: 64, height: 28, borderRadius: 14 },
   switchKnob: { position: 'absolute', top: 2, left: 2, width: 38, height: 24, borderRadius: 12, backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04)' },
-  seg: { flexDirection: 'row', gap: 4, padding: 2, borderRadius: 16, backgroundColor: colors.fill },
+  seg: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, padding: 2, borderRadius: 16, backgroundColor: colors.fill },
   segLarge: { borderRadius: 22 },
   segOption: { flex: 1, minHeight: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14 },
   segOptionLarge: { minHeight: 40, paddingHorizontal: 8, borderRadius: 20 },
