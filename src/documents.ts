@@ -77,9 +77,16 @@ export async function pickPhoto(source: 'camera' | 'library'): Promise<string | 
 }
 
 // A product picture found online (src/productImageLookup.ts): a small Commons thumbnail kept with the photos,
-// so it shows offline. Returns the stored file name.
-export async function saveFoundPicture(url: string): Promise<string> {
+// so it shows offline. `png` is a cut-out already downloaded and checked: it is written as is. Returns the
+// stored file name.
+export async function saveFoundPicture(url: string, png?: Uint8Array): Promise<string> {
   if (!isWikimediaFile(url)) throw new Error('Unexpected picture address');
+  if (png) {
+    const file = new File(folder(), `found-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
+    file.create();
+    await file.write(png);
+    return file.name;
+  }
   const file = new File(folder(), `found-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`);
   const saved = await File.downloadFileAsync(url, file, { headers: WIKIMEDIA_HEADERS });
   if (saved.size > 2_000_000) {

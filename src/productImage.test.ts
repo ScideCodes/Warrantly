@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { candidatesFrom, chooseCandidate, firstWorking, lookupKey, photoChoices, pictureFrom, searchQueries, type Candidate } from './productImage.ts';
+import { candidatesFrom, chooseCandidate, cutoutQuery, fileCandidates, firstWorking, lookupKey, LOOKUP_VERSION, needsLookup, photoChoices, pictureFrom, searchQueries, type Candidate } from './productImage.ts';
 
 const c = (id: string, names: string[], description = 'smartphone model', image: string | null = `${id}.jpg`): Candidate => ({ id, names, description, image });
 
@@ -64,7 +64,9 @@ test('Wikidata entities become candidates', () => {
     },
     ['Q1', 'Q404'],
   );
-  assert.deepEqual(got, [{ id: 'Q1', names: ['Samsung Galaxy S24', 'Galaxy S24'], description: 'smartphone model ', image: 'S24.jpg' }]);
+  assert.deepEqual(got, [{ id: 'Q1', names: ['Samsung Galaxy S24', 'Galaxy S24'], description: 'smartphone model', image: 'S24.jpg' }]);
+  // Many items keep their name only as the multilingual ('mul') label.
+  assert.deepEqual(candidatesFrom({ Q2: { id: 'Q2', labels: { mul: { value: 'PlayStation 5' } } } }, ['Q2'])[0].names, ['PlayStation 5']);
 });
 
 test('Commons image info gives a thumbnail and credit only with a licence', () => {
@@ -98,4 +100,52 @@ test('picture fallback: usable user photo, then matching found picture, then the
   assert.equal(firstWorking(choices, [])?.path, 'photo-1.jpg');
   assert.equal(firstWorking(choices, ['photo-1.jpg'])?.path, 'found-1.jpg');
   assert.equal(firstWorking(choices, ['photo-1.jpg', 'found-1.jpg']), null);
+});
+
+const page = (title: string, index: number, colorType = 'truecolour-alpha') => ({
+  title: `File:${title}`,
+  index,
+  imageinfo: [{
+    thumburl: `https://upload.wikimedia.org/thumb/${index}.png`,
+    descriptionurl: `https://commons.wikimedia.org/wiki/File:${index}`,
+    metadata: [{ name: 'colorType', value: colorType }],
+    extmetadata: { LicenseShortName: { value: 'CC BY-SA 4.0' }, Artist: { value: 'Someone' } },
+  }],
+});
+const search = (...pages: ReturnType<typeof page>[]) => ({ query: { pages: Object.fromEntries(pages.map((p) => [String(p.index), p])) } });
+
+test('PNG files named after the exact model come first; variants, charts and opaque files are dropped', () => {
+  const json = search(
+    page('IPhone 15 pro.png', 1),
+    page('Apple iPhone 15 transparent background.png', 2),
+    page('IPhone 15 (Vector).png', 3),
+    page('IPhone 15 机型价格 & 性能数据对比图.png', 4),
+    page('IPhone 15 comparison chart.png', 5),
+    page('Samsung Galaxy S24 (webtekno) 001.png', 6, 'truecolour'),
+    page('IPhone 15 photo.jpg', 7),
+  );
+  assert.deepEqual(fileCandidates(json, 'Apple iPhone 15 128GB fekete', false).map((f) => f.credit.file), ['Apple iPhone 15 transparent background.png', 'IPhone 15 (Vector).png']);
+});
+
+test('files depicting the matched item are trusted without a name match, but never a variant', () => {
+  const json = search(page('PlayStation 5 and DualSense with transparent background.png', 1), page('Nintendo Switch Lite representation.png', 2));
+  assert.deepEqual(fileCandidates(json, 'Sony PlayStation 5 konzol', true).map((f) => f.credit.file), ['PlayStation 5 and DualSense with transparent background.png']);
+  assert.deepEqual(fileCandidates(json, 'Nintendo Switch OLED', true).map((f) => f.credit.file), ['PlayStation 5 and DualSense with transparent background.png']);
+  assert.deepEqual(fileCandidates(json, 'Sony PlayStation 5 konzol', false), []);
+});
+
+test('cut-out search uses the matched label, else brand and model', () => {
+  assert.equal(cutoutQuery('Apple iPhone 15 128GB fekete', 'iPhone 15'), 'iPhone 15 filemime:image/png');
+  assert.equal(cutoutQuery('Apple iPhone 15 128GB fekete okostelefon', null), 'Apple iPhone 15 filemime:image/png');
+});
+
+test('existing pictures are looked up again once after a lookup upgrade, never against the user', () => {
+  const w = { product_name: 'Apple iPhone 15', photo_path: null, found_photo_key: 'apple iphone 15', found_photo_path: 'found-1.jpg', found_photo_credit: '{"file":"a.jpg"}' };
+  const exists = () => true;
+  assert.equal(needsLookup(w, exists), true); // found before cut-outs existed
+  assert.equal(needsLookup({ ...w, found_photo_credit: `{"v":${LOOKUP_VERSION}}` }, exists), false);
+  assert.equal(needsLookup({ ...w, found_photo_credit: null }, exists), true); // an old "no match"
+  assert.equal(needsLookup({ ...w, found_photo_credit: 'removed' }, exists), false);
+  assert.equal(needsLookup({ ...w, photo_path: 'photo-1.jpg' }, exists), false);
+  assert.equal(needsLookup({ ...w, found_photo_credit: `{"v":${LOOKUP_VERSION}}` }, () => false), true); // file gone
 });
