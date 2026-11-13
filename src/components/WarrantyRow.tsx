@@ -1,9 +1,9 @@
 import { memo } from 'react';
-import { Pressable, Text, View } from '@/components/themeMotion';
+import { Text, View } from '@/components/themeMotion';
 import AppIcon, { ProductIcon } from '@/components/Icon';
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, Pressable, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { Warranty } from '@/db/repo.ts';
@@ -69,6 +69,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
   const tone = TONE[level];
   const product = displayName(t, w);
   const left = daysLabel(t, days);
+  const counter = t(days === 0 ? 'warranty.counterToday' : days < 0 ? 'warranty.counterExpired' : 'warranty.counterDays', { count: Math.abs(days) });
   // No-break spaces: the end date wraps as a whole, never as "Ends Dec" / "17, 2027".
   const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) }).replace(/ /g, ' ');
   const store = w.coverage ? `${w.store_name} · ${t(`coverage.${w.coverage}`)}` : w.store_name;
@@ -80,11 +81,14 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
   return (
     <Row
       onPress={selecting ? () => onToggle?.(w.id) : () => router.push(to ?? `/warranty/${w.id}`)}
-      onLongPress={onLongPress && !selecting ? () => onLongPress(w.id) : undefined}
+      // Keep the handler present after bulk mode starts: removing it while a finger is down makes
+      // Pressability treat release as another tap and immediately toggle the selected item back off.
+      onLongPress={onLongPress ? () => { if (!selecting) onLongPress(w.id); } : undefined}
       separator={separator}
       iconInset
       chevron={!selecting && !onDocument}
       accessibilityRole={selecting ? 'checkbox' : 'button'}
+      accessibilityLabel={`${product}, ${left}, ${store}, ${ends}`}
       accessibilityState={selecting ? { checked: !!selected } : undefined}
       selected={selecting && selected}
       style={[styles.row, compact && styles.rowCompact, style]} // TalkBack reads the texts inside in order: name, store, time left, end date
@@ -102,8 +106,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
         </View>
       )}
       <View style={styles.text}>
-        {/* Keep the counter in the trailing column for every row. Long names use the remaining space;
-            large translated counters can wrap inside their badge without moving underneath the name. */}
+        {/* Compact, single-line counter; full wording remains available to accessibility readers. */}
         <View style={styles.top}>
           {!!w.favorite && (
             <View style={styles.pin} accessible accessibilityLabel={t('row.pinned')}>
@@ -113,8 +116,9 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
           <Text style={styles.title} numberOfLines={2}>
             {product}
           </Text>
-          <View style={[styles.badge, { backgroundColor: tone.bg }]}>
-            <Text style={[styles.badgeText, { color: tone.fg }, (level === 'ok' || level === 'expired') && styles.quietBadge]}>{left}</Text>
+          <View style={[styles.badge, { backgroundColor: tone.bg }]} accessible accessibilityLabel={left}>
+            <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}
+              style={[styles.badgeText, { color: tone.fg }, (level === 'ok' || level === 'expired') && styles.quietBadge]}>{counter}</Text>
           </View>
         </View>
         {/* Store and end date share a line; a long store is cut to one line and the date moves below it, so
@@ -173,7 +177,7 @@ const useStyles = themed(() => StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4 },
   meta: { ...TYPE.foot, color: colors.ink2 },
   store: { flexShrink: 1 },
-  badge: { flexShrink: 0, maxWidth: '50%', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
+  badge: { flexShrink: 0, maxWidth: '65%', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
   badgeText: { ...TYPE.foot, fontWeight: '600' },
   quietBadge: { fontWeight: '400' },
 }));

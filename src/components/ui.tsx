@@ -135,15 +135,15 @@ export function Group({ children, style, inSheet, ...rest }: ViewProps & { inShe
 }
 
 // The row press: --press at once, fading back over .3 s on the ease-out.
-function usePressColor() {
+function usePressOpacity() {
   const v = useState(() => new Animated.Value(0))[0];
   return {
-    bg: v.interpolate({ inputRange: [0, 1], outputRange: ['rgba(0,0,0,0)', colors.press] }),
+    opacity: v,
     onPressIn: () => {
       v.stopAnimation();
       v.setValue(1);
     },
-    onPressOut: () => Animated.timing(v, { toValue: 0, duration: reduceMotion() ? 0 : 300, easing: ease, useNativeDriver: false }).start(),
+    onPressOut: () => Animated.timing(v, { toValue: 0, duration: reduceMotion() ? 0 : 300, easing: ease, useNativeDriver: true }).start(),
   };
 }
 
@@ -179,7 +179,7 @@ export function Row({
   disabled?: boolean;
 }) {
   const styles = useStyles();
-  const press = usePressColor();
+  const press = usePressOpacity();
   const body = (
     <>
       {separator && <View style={[styles.separator, { left: iconInset ? SEP_ICON : ROW_X }]} />}
@@ -189,7 +189,7 @@ export function Row({
   );
   if (!onPress) return <View style={[styles.row, selected && styles.rowSelected, style]}>{body}</View>;
   return (
-    <AnimatedPressable
+    <NativePressable
       testID={testID}
       onPress={onPress}
       onLongPress={onLongPress}
@@ -197,16 +197,19 @@ export function Row({
       onPressOut={press.onPressOut}
       unstable_pressDelay={PRESS_DELAY}
       disabled={disabled}
-      style={[styles.row, { backgroundColor: press.bg }, selected && styles.rowSelected, disabled && styles.disabled, style]}
+      style={[styles.row, selected && styles.rowSelected, disabled && styles.disabled, style]}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled, ...accessibilityState }}
     >
+      {/* Animate only a non-interactive overlay. Driving the touch surface's background with both
+          Animated and theme CSS transitions made row holds and nested document buttons flash. */}
+      <Animated.View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.press, opacity: press.opacity }]} />
       {body}
-    </AnimatedPressable>
+    </NativePressable>
   );
 }
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Chevron() {
   const styles = useStyles();
