@@ -193,6 +193,18 @@ test('merge: documents, notes, claims, reminders and collections move; empty fie
   await assert.rejects(mergeWarranties(db, keep, extended), /covers/);
 });
 
+test('merge preserves a live shared document when the retained copy is pending deletion', async () => {
+  const db = await fresh();
+  const keep = await addManual(db, base);
+  const drop = await addManual(db, base);
+  const removed = await addAttachment(db, keep, 'receipt.pdf', 'shared.pdf');
+  await addAttachment(db, drop, 'receipt.pdf', 'shared.pdf');
+  await softDeleteAttachment(db, removed, '2026-01-01');
+  await mergeWarranties(db, keep, drop);
+  assert.deepEqual(await purgeDeleted(db, '2026-01-02'), []);
+  assert.deepEqual((await listAttachments(db, keep)).map((d) => d.local_path), ['shared.pdf']);
+});
+
 test('bundles: leaving down to one dissolves it; each keeps its own dates', async () => {
   const db = await fresh();
   const a = await addManual(db, base);

@@ -5,13 +5,13 @@ import { getDb } from '@/db/client';
 import { cleanDocText, indexCounts, saveDocText, unindexedDocuments } from '@/db/features.ts';
 import { documentExists, documentUri } from '@/documents';
 import { plain } from '@/warranty';
+import { IndexCancelled, readPdfText } from './pdfText';
 
 // Document text search (shortlist 8): each stored file is read once on the phone (Android's PdfRenderer for
 // the pages, ML Kit text recognition through expo-text-extractor), in small batches after the list has shown,
 // never while scrolling or typing. The original file is never changed. Text is stored plain (lower case, no
 // accents) in doc_text; files that are gone are cleaned out. A file that cannot be read is marked failed and
 // only tried again on request.
-const PAGES = 4; // receipts and warranty cards: order and serial numbers sit on the first pages
 const WIDTH = 1400; // px; enough for ML Kit to read small print
 
 export interface IndexState { running: boolean; done: number; total: number; failed: number }
@@ -33,21 +33,23 @@ export async function saveKnownText(localPath: string, text: string): Promise<vo
 }
 
 async function readFile(localPath: string): Promise<string> {
-  const { pages } = await PdfPages.renderForText(documentUri(localPath), WIDTH, 0, PAGES);
-  const parts: string[] = [];
-  for (const uri of pages) parts.push((await extractTextFromImage(uri)).join('\n'));
-  return parts.join('\n');
+  return readPdfText(
+    (first, count) => PdfPages.renderForText(documentUri(localPath), WIDTH, first, count),
+    extractTextFromImage,
+    () => cancelled,
+  );
 }
 
 // `limit` files per run: the home screen asks for a few each time it loads; the Documents screen for all.
 export async function runIndex(limit = 3): Promise<void> {
   if (state.running) return;
   cancelled = false;
-  const db = await getDb();
-  await cleanDocText(db);
-  const counts = await indexCounts(db);
-  set({ running: true, done: counts.done, total: counts.total, failed: counts.failed });
+  set({ running: true }); // Acquire before the first await: home and Documents share the native cache.
   try {
+    const db = await getDb();
+    await cleanDocText(db);
+    const counts = await indexCounts(db);
+    set({ done: counts.done, total: counts.total, failed: counts.failed });
     let left = limit;
     while (left > 0 && !cancelled) {
       const batch = await unindexedDocuments(db, Math.min(2, left));
@@ -57,7 +59,8 @@ export async function runIndex(limit = 3): Promise<void> {
         try {
           if (!documentExists(path)) throw new Error('missing');
           await saveDocText(db, path, storedText(await readFile(path)), 'done');
-        } catch {
+        } catch (error) {
+          if (error instanceof IndexCancelled) break;
           await saveDocText(db, path, '', 'failed');
         }
         left--;
