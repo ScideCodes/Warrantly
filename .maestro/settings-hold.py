@@ -47,7 +47,7 @@ def hold(label):
     assert device(description=label, checked=True).wait(timeout=10)
 
 
-if device(resourceId='tab-settings').wait(timeout=2):
+if device(resourceId='tab-settings').exists:
     device(resourceId='tab-settings').click()
 find('English', down=False)
 hold('English')
