@@ -116,6 +116,26 @@ export function candidatesFrom(entities: Record<string, WbEntity>, order: string
   });
 }
 
+// --- Which picture a warranty shows ---
+
+export interface PhotoChoice {
+  path: string;
+  found: boolean; // a picture found online (shown with its credit), not the user's photo
+}
+type PhotoFields = { photo_path: string | null; product_name: string | null; found_photo_key: string | null; found_photo_path: string | null };
+
+// The pictures to try, best first: the user's photo, then a found picture for the current name. A file
+// that is gone (`usable` false) is skipped, so a missing photo of the user's never hides a good found one.
+export function photoChoices(w: PhotoFields, usable: (path: string) => boolean): PhotoChoice[] {
+  const out: PhotoChoice[] = [];
+  if (w.photo_path && usable(w.photo_path)) out.push({ path: w.photo_path, found: false });
+  if (w.found_photo_path && w.found_photo_key === lookupKey(w.product_name) && usable(w.found_photo_path)) out.push({ path: w.found_photo_path, found: true });
+  return out;
+}
+
+// The first choice whose image has not failed to load (corrupt or unsupported file), or null: the category icon.
+export const firstWorking = <T extends { path: string }>(choices: T[], failed: readonly string[]): T | null => choices.find((c) => !failed.includes(c.path)) ?? null;
+
 // Wikimedia's user-agent policy: requests without an identifying agent (Android's default okhttp one) get 403.
 export const WIKIMEDIA_HEADERS = { 'User-Agent': 'Warrantly/0.8 (Android app; https://github.com/ScideCodes/Warrantly)', 'Api-User-Agent': 'Warrantly/0.8' };
 

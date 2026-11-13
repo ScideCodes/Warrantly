@@ -89,8 +89,6 @@ export async function saveFoundPicture(url: string): Promise<string> {
   return saved.name;
 }
 
-export const documentUriOrNull = (localPath: string | null): string | null => (localPath && documentExists(localPath) ? fileFor(localPath).uri : null);
-
 // Downloaded mail PDFs (build step 4), stored next to scans. Returns the stored file name.
 export const mailDocuments = {
   async save(bytes: Uint8Array, _filename: string): Promise<string> {

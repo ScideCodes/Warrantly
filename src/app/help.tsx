@@ -10,11 +10,12 @@ import { FEEDBACK_EMAIL } from '@/support';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, Group, Row, SectionHeader, Switch } from '@/components/ui';
-import { colors, ROW_X, TYPE } from '@/theme';
+import { colors, ROW_X, TYPE, themed } from '@/theme';
 
 // Help and feedback (section 13): short answers to the usual questions, and a feedback mail that carries
 // the app version and, if wanted, the error log from this phone.
 export default function Help() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const faq = t('help.faq', { returnObjects: true }) as { q: string; a: string }[];
   const [open, setOpen] = useState<number | null>(null);
@@ -63,12 +64,12 @@ export default function Help() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   first: { marginTop: 8 },
   q: { ...TYPE.body, flex: 1, color: colors.ink },
   turned: { transform: [{ rotate: '45deg' }] },
   a: { ...TYPE.sub, color: colors.ink2, paddingTop: 8, paddingBottom: 12, paddingHorizontal: ROW_X },
   note: { ...TYPE.sub, color: colors.ink2, paddingHorizontal: 4 },
   gap: { marginTop: 16 },
-  links: { marginTop: 28 },
-});
+  links: { marginTop: 20 },
+}));

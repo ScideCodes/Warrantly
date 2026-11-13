@@ -3,6 +3,10 @@
 Warrantly's look is taken from the bencepc.hu design system. This file records where every value comes from, so a
 later change can be checked against the source instead of memory.
 
+Since November 2026 the owner's preference is a **compact** phone layout: Warrantly keeps the reference's colours,
+materials, shapes, type hierarchy and optical alignment, but not every size 1:1. The departures are listed in
+"Compact density" below; everything else still matches the measured values.
+
 ## Source and deployed version
 
 - Repository: `ScideCodes/BencePC`, branch `main` at `551a366` (matches `origin/main`, fetched 13 Nov 2026).
@@ -101,6 +105,39 @@ on Android, so Warrantly keeps the system font and does not bundle one.
 | Sheet (phone) | floats 6 from sides and bottom; corners 38 top, 58 bottom; grabber 60 × 4 (#ccc, dark #636366) 6 from the top; toolbar 54 with a 44 glass close button leading (18 px X, stroke 2.2) and a 15/20 semibold centred title; content padding 4 16 24 | lines 506–563, 1062 |
 | Alert | width min(300, width − 32), padding 14, radius 34, `--material`; title Headline, message Footnote, centred; actions min 48, radius 24, gap 8; Cancel `--fill`/ink, primary `--accent`/white 600 17/22 | lines 567–580 |
 | Toast | capsule radius 24, padding 10 × 18, `--material`, 0.5 px `--material-edge`, `--shadow`, 600 15/20 | lines 494–502 |
+
+### Compact density (Warrantly's sizes, not the reference's)
+
+Measured on the emulator before the change: 1080 × 2400 px at 420 dpi = 411 × 914 dp, font scale 1.0, a 371 dp
+content column. The extra size came from the type ramp (iOS point sizes read about 6 % larger on Android at the same
+dp: body 17, large title 34, section headers 20), rigid row heights (52 rows, 68 dp label-above-value fields, about
+100 dp library rows) and stacking (store on its own line, every detail label above its value, actions stacked below
+360 text-adjusted dp). Spacing itself was moderate.
+
+| Item | Reference | Warrantly |
+|---|---|---|
+| Large Title / Title 2 / Title 3 and section | 34/41, 22/28, 20/25 | 30/36, 20/25, 18/23 (same weights and tracking) |
+| Body, Headline, Button | 17/22 | 16/21 (Material's body size) |
+| Subhead / Footnote / Caption / Segmented | 15/20, 13/18, 12/16, 13.33/18 | 14/19, 13/17, 12/15, 13/17 |
+| Page margin | 16 below 375, 20 from 375 | 16 on phones, 20 from 600 dp |
+| Grouped card radius / text field radius | 26 / 14 | 22 / 12 |
+| Row | min 52, padding 15 | min 46, padding 11 (rows still reach 44 dp+, text size grows them) |
+| Detail and contact fields | 68 dp, label above value | one line: label (secondary, up to 45 %) left, value right; each wraps in its own column; label above value only when the column is under 260 text-adjusted dp |
+| Form fields | label above a 44 dp field | label beside the field (32 %) from 300 text-adjusted dp; notes always full width |
+| Library row | name, store, badge + date (3–4 lines) | name with the days-left badge beside it (badge wraps below only when the name would get under 55 %), then store · end date on one line; the date never breaks inside |
+| Action pairs (View/Save, Save/Share) | side by side above 360 text-adjusted dp | side by side down to 240 text-adjusted dp |
+| Section header spacing | 28 above, 8 below | 20 above, 6 below |
+| Navigation bar | 60 | 56 |
+| Buttons | padding 11 × 20 | padding 10 × 16, still 44 tall |
+| Large segmented | track 50, options 46 | options 40 (8 dp hit slop keeps 48+) |
+| Settings avatar / detail photo | 60 / 56 | 48 / 52 |
+| Sheet toolbar | 54 | 50 |
+
+"Text-adjusted dp" is the content column divided by the font scale (`useRoom()` in `src/theme.ts`), the one rule
+every beside-or-below choice uses. Button pairs also need room for their longest word (`pairWidth()`, so long
+Hungarian words stack earlier); segmented controls drop their icons and dialog buttons take a full row before a word
+would break in the middle. Font scaling stays on everywhere; nothing is forced onto one line or scaled with
+transforms.
 
 ### Material (lines 23–25, 70–72, 142–150, 680–691)
 

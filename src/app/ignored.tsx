@@ -7,10 +7,11 @@ import { ListPage } from '@/components/Page';
 import { Button, Row } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { listIgnored, restoreIgnored, type IgnoredRow } from '@/db/repo.ts';
-import { colors, RADIUS, TYPE } from '@/theme';
+import { colors, RADIUS, TYPE, themed } from '@/theme';
 
 // Ignored mails (section 8): hidden from the lists, but reviewable and restorable.
 export default function Ignored() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const [rows, setRows] = useState<IgnoredRow[]>([]);
   const reload = useCallback(() => {
@@ -48,7 +49,7 @@ export default function Ignored() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   gap: { height: 20 },
   empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 32 },
   card: { backgroundColor: colors.card, paddingVertical: 8 },
@@ -57,4 +58,4 @@ const styles = StyleSheet.create({
   text: { flex: 1 },
   title: { ...TYPE.body, color: colors.ink },
   meta: { ...TYPE.foot, color: colors.ink2 },
-});
+}));

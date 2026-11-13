@@ -105,13 +105,6 @@ export function runPictureLookups(db: Db, limit = 6): Promise<number> {
   return running;
 }
 
-// The picture to show: the user's own photo first, then a found picture for the current name.
-export function shownPhoto(w: Pick<Warranty, 'photo_path' | 'product_name' | 'found_photo_key' | 'found_photo_path'>): { path: string; found: boolean } | null {
-  if (w.photo_path) return { path: w.photo_path, found: false };
-  if (w.found_photo_path && w.found_photo_key === lookupKey(w.product_name)) return { path: w.found_photo_path, found: true };
-  return null;
-}
-
 export function creditOf(w: Pick<Warranty, 'found_photo_credit'>): PictureCredit | null {
   try {
     const c = JSON.parse(w.found_photo_credit ?? 'null') as PictureCredit | null;

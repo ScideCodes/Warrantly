@@ -9,6 +9,7 @@ import {
   StyleSheet,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
   type PressableProps,
   type StyleProp,
@@ -17,7 +18,7 @@ import {
   type ViewProps,
   type ViewStyle,
 } from 'react-native';
-import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE } from '@/theme';
+import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed, wordWidth } from '@/theme';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
 export type { IconName } from '@/components/Icon';
@@ -71,6 +72,7 @@ export function Button({
   testID?: string;
   accessibilityLabel?: string;
 }) {
+  const styles = useStyles();
   const press = useScale(0.97, 100, 160);
   const prominent = kind === 'prominent';
   const ink = prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
@@ -98,6 +100,7 @@ export function Button({
 // Round 44dp glass button for bars and sheet toolbars: label-coloured glyph, swells to 1.1 on press and
 // settles back on the bouncier spring.
 export function GlassButton({ icon, label, onPress, size = 20, color = colors.ink, testID, disabled, selected }: { icon: IconName; label: string; onPress: () => void; size?: number; color?: string; testID?: string; disabled?: boolean; selected?: boolean }) {
+  const styles = useStyles();
   const scale = useState(() => new Animated.Value(1))[0];
   const to = (v: number, fast: boolean) => {
     if (reduced) return;
@@ -124,8 +127,9 @@ export function GlassButton({ icon, label, onPress, size = 20, color = colors.in
   );
 }
 
-// Section header above a group: Prominent title, primary label colour, 28 above and 8 below.
+// Section header above a group: Prominent title, primary label colour, 20 above and 6 below.
 export function SectionHeader({ title, first, trailing }: { title: string; first?: boolean; trailing?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={[styles.sectionHead, first && { marginTop: 8 }]}>
       <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -138,6 +142,7 @@ export function SectionHeader({ title, first, trailing }: { title: string; first
 
 // A grouped card: opaque, 26 radius, clips its rows. In a sheet the dark card is one step lighter.
 export function Group({ children, style, inSheet, ...rest }: ViewProps & { inSheet?: boolean }) {
+  const styles = useStyles();
   return (
     <View {...rest} style={[styles.group, inSheet && { backgroundColor: colors.sheetGroup }, style]}>
       {children}
@@ -158,7 +163,7 @@ function usePressColor() {
   };
 }
 
-// One row in a group: 52 minimum, 15/16 padding, Body text. `separator` draws the 1px line above it, inset 16
+// One row in a group: 46 minimum, 11/16 padding, Body text. `separator` draws the 1px line above it, inset 16
 // at both ends (or from 59 after an icon tile). `chevron` marks rows that open something.
 export function Row({
   children,
@@ -187,6 +192,7 @@ export function Row({
   testID?: string;
   disabled?: boolean;
 }) {
+  const styles = useStyles();
   const press = usePressColor();
   const body = (
     <>
@@ -215,11 +221,13 @@ export function Row({
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Chevron() {
+  const styles = useStyles();
   return <AppIcon name="chevron-forward" size={14} color={colors.chevron} style={styles.chevron} />;
 }
 
 // 29dp rounded tile with a white 18dp glyph (settings and hardware rows).
 export function IconTile({ name, color, glyph = '#fff' }: { name: IconName; color: string; glyph?: string }) {
+  const styles = useStyles();
   return (
     <View style={[styles.tile, { backgroundColor: color }]} importantForAccessibility="no-hide-descendants">
       <AppIcon name={name} size={18} color={glyph} />
@@ -231,6 +239,7 @@ export const TILE = { blue: '#007aff', orange: '#ff9500', green: '#34c759', grey
 
 // Text field: 44 tall, 9/12 padding, 14 radius, filled with --card-2; focus draws a 2dp tint ring.
 export function Input({ style, inSheet, ...props }: TextInputProps & { inSheet?: boolean }) {
+  const styles = useStyles();
   const [focused, setFocused] = useState(false);
   return (
     <TextInput
@@ -249,10 +258,12 @@ export function Input({ style, inSheet, ...props }: TextInputProps & { inSheet?:
     />
   );
 }
-export const inputStyle: TextStyle = { minHeight: CONTROL_H, paddingVertical: 9, paddingHorizontal: 12, borderRadius: FIELD_RADIUS, backgroundColor: colors.card2, color: colors.ink, ...TYPE.body };
+// A function, not a constant: it reads the live palette (a constant would keep the colours from start-up).
+export const inputStyle = (): TextStyle => ({ minHeight: CONTROL_H, paddingVertical: 9, paddingHorizontal: 12, borderRadius: FIELD_RADIUS, backgroundColor: colors.card2, color: colors.ink, ...TYPE.body });
 
 // iOS 27 switch: 64 x 28 track, 38 x 24 white knob 2dp in, 22dp travel on the spring; drawn in a 44dp hit area.
 export function Switch({ value, onValueChange, accessibilityLabel, disabled }: { value: boolean; onValueChange: (v: boolean) => void; accessibilityLabel?: string; disabled?: boolean }) {
+  const styles = useStyles();
   const knob = useState(() => new Animated.Value(value ? 1 : 0))[0];
   const track = useState(() => new Animated.Value(value ? 1 : 0))[0];
   useEffect(() => {
@@ -280,10 +291,17 @@ export function Switch({ value, onValueChange, accessibilityLabel, disabled }: {
   );
 }
 
-// Segmented control. Small: 32 track, 28 options. Large (`seg-3`): 50 track, 46 options, optional glyphs.
+// Segmented control. Small: 32 track, 28 options. Large: 44 track, 40 options, optional glyphs (8dp hit slop).
 export function Segmented<K extends string>({ options, value, onChange, large }: { options: { key: K; label: string; icon?: IconName }[]; value: K; onChange: (k: K) => void; large?: boolean }) {
+  const styles = useStyles();
+  const { fontScale } = useWindowDimensions();
+  const [width, setWidth] = useState(0);
+  // Icons only while every word still fits beside its icon (track padding and gaps shared out, minus each
+  // option's padding): a word broken in the middle is worse than a missing icon.
+  const inner = (width - 4 - 4 * (options.length - 1)) / options.length - 2 * (large ? 8 : 12);
+  const icons = !width || inner >= Math.max(...options.map((o) => wordWidth(o.label, 13))) * fontScale + 17 + 6;
   return (
-    <View style={[styles.seg, large && styles.segLarge]} accessibilityRole="radiogroup">
+    <View style={[styles.seg, large && styles.segLarge]} accessibilityRole="radiogroup" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
       {options.map((o) => {
         const on = o.key === value;
         return (
@@ -295,7 +313,7 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
             accessibilityRole="radio"
             accessibilityState={{ checked: on }}
           >
-            {o.icon && <AppIcon name={o.icon} size={17} color={colors.ink} />}
+            {o.icon && icons && <AppIcon name={o.icon} size={17} color={colors.ink} />}
             <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={2}>
               {o.label}
             </Text>
@@ -306,28 +324,28 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   disabled: { opacity: 0.35 },
-  button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 11, paddingHorizontal: 20, borderRadius: 22 },
+  button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 16, borderRadius: CONTROL_H / 2 },
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
   glassButton: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center' },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 28, marginBottom: 8, paddingHorizontal: 4 },
+  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 20, marginBottom: 6, paddingHorizontal: 4 },
   sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1 },
   group: { backgroundColor: colors.card, borderRadius: RADIUS, overflow: 'hidden' },
-  row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, paddingHorizontal: ROW_X },
+  row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: ROW_PAD, paddingHorizontal: ROW_X },
   rowSelected: { backgroundColor: colors.tintSoft },
   separator: { position: 'absolute', top: 0, right: ROW_X, height: 1, backgroundColor: colors.line },
   chevron: { marginLeft: 'auto' },
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  input: inputStyle,
+  input: inputStyle(),
   inputFocus: { outlineWidth: 2, outlineColor: colors.tint, outlineStyle: 'solid' },
   switchHit: { width: 64, minHeight: CONTROL_H, justifyContent: 'center' },
   switchTrack: { width: 64, height: 28, borderRadius: 14 },
   switchKnob: { position: 'absolute', top: 2, left: 2, width: 38, height: 24, borderRadius: 12, backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04)' },
   seg: { flexDirection: 'row', gap: 4, padding: 2, borderRadius: 16, backgroundColor: colors.fill },
-  segLarge: { borderRadius: 25 },
+  segLarge: { borderRadius: 22 },
   segOption: { flex: 1, minHeight: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14 },
-  segOptionLarge: { minHeight: 46, paddingHorizontal: 8, borderRadius: 23 },
+  segOptionLarge: { minHeight: 40, paddingHorizontal: 8, borderRadius: 20 },
   segOn: { backgroundColor: colors.segOn, boxShadow: colors.segShadow },
   segText: { ...TYPE.seg, color: colors.ink, textAlign: 'center', flexShrink: 1 },
-});
+}));

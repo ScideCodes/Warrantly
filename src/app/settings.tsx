@@ -22,7 +22,7 @@ import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, Group, IconTile, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
-import { colors, RADIUS, ROW_X, TYPE } from '@/theme';
+import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 import { autoPictures, setAutoPictures } from '@/productImageLookup';
 
@@ -31,6 +31,7 @@ type Icon = IconName;
 
 // Settings (section 13): mail accounts, app lock, reminders and backup.
 export default function Settings() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const [lock, setLock] = useState(isLockEnabled);
   const [biometric, setBiometric] = useState(isBiometricEnabled);
@@ -102,11 +103,11 @@ export default function Settings() {
     await rescheduleReminders(await getDb()); // reminder texts are written in the app language
   }
 
-  // Styles are built at start, so a new theme needs a restart.
+  // Applies at once: the palette is live, so Settings stays open where it was (no restart, no update).
   function chooseTheme(next: string) {
     setThemeSetting(next);
     setTheme(next);
-    restartIntoUpdate().catch(() => showAlert(t('settings.themeRestart')));
+    applyTheme();
   }
 
   // Reminder time: Android's own clock picker; elsewhere (web preview) 9:00 and 18:00 alternate.
@@ -313,7 +314,7 @@ export default function Settings() {
 
   return (
     <Page title={t('settings.title')}>
-      {/* The reference's profile row: a 60dp grey avatar, the name in Title 3 and a Subheadline hint. */}
+      {/* The reference's profile row: a 48dp grey avatar, the name in Title 3 and a Subheadline hint. */}
       <View style={styles.profile}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
@@ -485,10 +486,10 @@ export default function Settings() {
   );
 }
 
-const styles = StyleSheet.create({
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
-  avatar: { width: 60, height: 60, borderRadius: 30, backgroundImage: 'linear-gradient(#a5abb8, #858a96)', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 26, lineHeight: 26, fontWeight: '600', color: '#fff' },
+const useStyles = themed(() => StyleSheet.create({
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
+  avatar: { width: 48, height: 48, borderRadius: 24, backgroundImage: 'linear-gradient(#a5abb8, #858a96)', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 21, lineHeight: 24, fontWeight: '600', color: '#fff' },
   profileName: { ...TYPE.title3, color: colors.ink },
   profileHint: { ...TYPE.sub, color: colors.ink2 },
   row: { gap: 15 },
@@ -501,8 +502,8 @@ const styles = StyleSheet.create({
   linkSmall: { ...TYPE.sub, color: colors.link },
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: colors.tint, borderColor: colors.tint },
-  block: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  block: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   error: { ...TYPE.foot, color: colors.bad },
   version: { ...TYPE.cap, color: colors.ink2, textAlign: 'center', paddingTop: 24 },
-});
+}));

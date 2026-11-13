@@ -3,7 +3,7 @@ import AppIcon from '@/components/Icon';
 import { Animated, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { colors, ROW_X, SHEET_SPRING, TYPE } from '@/theme';
+import { colors, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
 import { GlassButton, Group, reduceMotion, Row, type IconName } from '@/components/ui';
 
 export type { IconName };
@@ -26,6 +26,7 @@ export interface SheetSection {
 // bottom with 38/58 corners, a 60 x 4 grabber, a 54dp toolbar with a glass close button and a centred title.
 // One damped spring (stiffness 520, damping 46) opens, closes and follows the grabber.
 export function SheetFrame({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
+  const styles = useStyles();
   const { t } = useTranslation();
   const { height: screenH } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -110,6 +111,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
 
 // Choices and less-used actions (filter, add a document, more actions) as grouped rows in a sheet.
 export function Sheet({ open, onClose, title, subtitle, sections }: { open: boolean; onClose: () => void; title: string; subtitle?: string; sections: SheetSection[] }) {
+  const styles = useStyles();
   return (
     <SheetFrame open={open} onClose={onClose} title={title}>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
@@ -152,12 +154,12 @@ export function Sheet({ open, onClose, title, subtitle, sections }: { open: bool
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: colors.dim },
   panel: { position: 'absolute', left: 6, right: 6, bottom: 6, backgroundColor: colors.sheetBg, borderTopLeftRadius: 38, borderTopRightRadius: 38, borderBottomLeftRadius: 58, borderBottomRightRadius: 58, boxShadow: colors.shadow, overflow: 'hidden' },
   grab: { height: 10, paddingTop: 6, alignItems: 'center' },
   grabber: { width: 60, height: 4, borderRadius: 2, backgroundColor: colors.grabber },
-  toolbar: { minHeight: 54, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
+  toolbar: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   title: { ...TYPE.bar, flex: 1, color: colors.ink, textAlign: 'center', paddingHorizontal: 4 },
   toolbarEnd: { width: 44 },
   scroll: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
@@ -169,4 +171,4 @@ const styles = StyleSheet.create({
   label: { ...TYPE.body, flex: 1, color: colors.ink },
   labelSelected: { color: colors.tintInk, fontWeight: '600' },
   count: { ...TYPE.body, color: colors.ink2 },
-});
+}));

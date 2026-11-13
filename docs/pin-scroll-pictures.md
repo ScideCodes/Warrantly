@@ -57,6 +57,10 @@ Added diagnostic (narrow, no user data): when the system theme changes while the
 old palette, one line is written to the on-phone error log ("system theme now dark, app shows light until restart").
 Verified on the emulator. If the report recurs, a feedback mail with the log shows whether this happened.
 
+Update (November 2026, docs/compact-theme.md): the palette is now live. Auto follows a system change at once (also
+one made while Warrantly was in the background), so the mismatch above no longer happens, and the diagnostic was
+removed. The black screen itself was not reproduced again; it is not known to be fixed.
+
 Not tested: the PDF viewer at high zoom, a release build, a real device, low memory.
 
 ## 3. Product pictures as warranty icons

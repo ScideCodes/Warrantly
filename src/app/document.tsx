@@ -8,7 +8,7 @@ import PdfPages, { type PdfPage } from '../../modules/pdf-pages';
 import { documentUri, openDocument, saveDocument } from '@/documents';
 import { NavBar } from '@/components/Page';
 import { Button, type IconName } from '@/components/ui';
-import { BAR_H, colors, gutter, isDark, TYPE } from '@/theme';
+import { BAR_H, colors, gutter, isDarkNow, pairWidth, TYPE, themed, useRoom } from '@/theme';
 
 const ZOOMS = [1, 2, 3];
 type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'sharing' } | { kind: 'saved' } | { kind: 'error'; action: 'save' | 'share'; detail: string };
@@ -17,11 +17,12 @@ type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'sharing' } | { ki
 // instead of pinch (RN's Android ScrollView has no pinch zoom); wider pages scroll sideways.
 // Save puts a copy in a folder the person picks; Share hands the file to another app.
 export default function DocumentViewer() {
+  const styles = useStyles();
   const { t } = useTranslation();
   const { path, title, name } = useLocalSearchParams<{ path: string; title?: string; name?: string }>();
-  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, 720);
-  const stackActions = width / fontScale < 360;
+  const stackActions = !useRoom()(pairWidth(t('detail.save'), t('viewer.shareShort'))); // side by side while their words fit
   const insets = useSafeAreaInsets();
   const [pages, setPages] = useState<PdfPage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -124,6 +125,7 @@ export default function DocumentViewer() {
 
 // A round 44dp tool in the capsule: label colour, presses to .94 on --press.
 function ToolButton({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled: boolean }) {
+  const styles = useStyles();
   return (
     <Pressable
       style={({ pressed }) => [styles.round, pressed && styles.roundPressed, disabled && styles.roundDisabled]}
@@ -138,7 +140,7 @@ function ToolButton({ icon, label, onPress, disabled }: { icon: IconName; label:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   tools: { alignItems: 'center', paddingBottom: 14, paddingHorizontal: 16 },
   capsule: {
@@ -146,8 +148,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 3,
     borderRadius: 28,
-    backgroundColor: isDark ? colors.card2 : colors.card,
-    boxShadow: isDark ? undefined : 'inset 0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06)',
+    backgroundColor: isDarkNow() ? colors.card2 : colors.card,
+    boxShadow: isDarkNow() ? undefined : 'inset 0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06)',
   },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   roundPressed: { backgroundColor: colors.press, transform: [{ scale: 0.94 }] },
@@ -163,4 +165,4 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 8 },
   action: { flex: 1, minWidth: 0 },
   stacked: { flexDirection: 'column' },
-});
+}));

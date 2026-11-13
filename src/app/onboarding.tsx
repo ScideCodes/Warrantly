@@ -6,12 +6,13 @@ import { useTranslation } from 'react-i18next';
 import { setUsername } from '@/settings';
 import { markWhatsNewSeen } from '@/whatsNew';
 import { Button, Group, Input } from '@/components/ui';
-import { colors, TYPE } from '@/theme';
+import { colors, TYPE, themed } from '@/theme';
 
 const MAX_NAME = 30;
 
 // Onboarding (brainstorm section 13): username, then the app-lock offer (section 19). Gmail is connected from home.
 export default function Onboarding() {
+  const styles = useStyles();
   const { t } = useTranslation();
   const [name, setName] = useState('');
   const [askLock, setAskLock] = useState(false);
@@ -83,7 +84,7 @@ export default function Onboarding() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   body: { flex: 1, paddingHorizontal: 20, paddingVertical: 24, justifyContent: 'center', gap: 28 },
   intro: { gap: 2, paddingHorizontal: 4 },
@@ -93,4 +94,4 @@ const styles = StyleSheet.create({
   label: { ...TYPE.foot, color: colors.ink2 },
   helper: { ...TYPE.foot, color: colors.ink2 },
   choices: { gap: 12 },
-});
+}));

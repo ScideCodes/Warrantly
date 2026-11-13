@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
 import { Sheet, type SheetSection } from '@/components/Sheet';
@@ -13,16 +13,17 @@ import {
   type Attachment, type HistoryEntry, type Warranty,
 } from '@/db/repo.ts';
 import { shareWarranties } from '@/dataTools';
-import { deleteDocuments, documentExists, documentUriOrNull, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
-import { creditOf, lookUpPicture, removeFoundPicture, shownPhoto } from '@/productImageLookup';
+import { creditOf, lookUpPicture, removeFoundPicture } from '@/productImageLookup';
+import { useProductPhoto } from '@/components/useProductPhoto';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
 import { NavBar, Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, GlassButton, IconTile, Input, Row, TILE } from '@/components/ui';
-import { colors, ROW_X, TONE, TYPE } from '@/theme';
+import { colors, pairWidth, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
 import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
 type SheetKind = null | 'more' | 'add' | { doc: Attachment };
@@ -30,7 +31,10 @@ type SheetKind = null | 'more' | 'add' | { doc: Attachment };
 // Warranty detail (section 13). Order: what it is and how long it is covered, then its documents (the
 // main reason to open it), then the purchase details, support and claims, and the history. Actions used
 // rarely (share the record, another cover, test reminder, delete) live in the More sheet.
+const NO_PHOTO = { photo_path: null, product_name: null, found_photo_key: null, found_photo_path: null };
+
 export default function WarrantyDetail() {
+  const styles = useStyles();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
@@ -40,8 +44,8 @@ export default function WarrantyDetail() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [note, setNote] = useState('');
   const [sheet, setSheet] = useState<SheetKind>(null);
-  const { width, fontScale } = useWindowDimensions();
-  const stackActions = Math.min(width, 720) / fontScale < 360;
+  // View and Save side by side while their words fit (the document card's padding is 2 × 10)
+  const stackActions = !useRoom()(pairWidth(t('detail.view'), t('detail.save'), 20));
   const operation = useRef(false);
   const mounted = useRef(false);
   const draft = useRef(new DocumentDraft(deleteDocuments));
@@ -65,6 +69,9 @@ export default function WarrantyDetail() {
     }, [id]),
   );
 
+  // Hooks run before the loading return: the picture falls back (user photo, found picture, camera tile).
+  const photo = useProductPhoto(w ?? NO_PHOTO);
+
   if (!w)
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -78,9 +85,7 @@ export default function WarrantyDetail() {
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
   const product = displayName(t, w);
-  const shown = shownPhoto(w);
-  const photo = shown ? documentUriOrNull(shown.path) : null;
-  const credit = shown?.found && photo ? creditOf(w) : null;
+  const credit = photo?.found ? creditOf(w) : null;
 
   function confirmRemoveDocument(d: Attachment) {
     showAlert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
@@ -202,8 +207,8 @@ export default function WarrantyDetail() {
     showAlert(t('detail.photo'), undefined, [
       { text: t('detail.cancel'), style: 'cancel' },
       ...(w!.photo_path ? [{ text: t('detail.photoRemove'), style: 'destructive' as const, onPress: () => void take(null) }] : []),
-      ...(shown?.found ? [{ text: t('detail.pictureRemove'), style: 'destructive' as const, onPress: () => void dropFound() }] : []),
-      ...(!w!.photo_path && !shown?.found && w!.product_name ? [{ text: t('detail.pictureFind'), onPress: () => void findOnline() }] : []),
+      ...(photo?.found ? [{ text: t('detail.pictureRemove'), style: 'destructive' as const, onPress: () => void dropFound() }] : []),
+      ...(!w!.photo_path && !photo?.found && w!.product_name ? [{ text: t('detail.pictureFind'), onPress: () => void findOnline() }] : []),
       { text: t('detail.photoLibrary'), onPress: () => void take('library') },
       { text: t('detail.photoCamera'), onPress: () => void take('camera') },
     ]);
@@ -355,7 +360,7 @@ export default function WarrantyDetail() {
                     <ActivityIndicator color={colors.tint} />
                   </View>
                 ) : photo ? (
-                  <Image source={{ uri: photo }} style={styles.photo} accessibilityIgnoresInvertColors />
+                  <Image source={{ uri: photo.uri }} onError={photo.onError} style={styles.photo} accessibilityIgnoresInvertColors />
                 ) : (
                   <View style={[styles.photo, styles.photoEmpty]}>
                     <AppIcon name="camera-outline" size={28} color={colors.tint} />
@@ -492,11 +497,11 @@ export default function WarrantyDetail() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   flex: { flex: 1 },
-  hero: { gap: 12, paddingTop: 8, paddingHorizontal: 4 },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  photo: { width: 56, height: 56, borderRadius: 14 },
+  hero: { gap: 10, paddingTop: 4, paddingHorizontal: 4 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  photo: { width: 52, height: 52, borderRadius: 13 },
   photoEmpty: { backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPE.title2, color: colors.ink },
   store: { ...TYPE.sub, color: colors.ink2 },
@@ -505,10 +510,10 @@ const styles = StyleSheet.create({
   badgeText: { ...TYPE.foot, fontWeight: '600' },
   note: { ...TYPE.sub, color: colors.warn },
   credit: { ...TYPE.foot, color: colors.ink2 },
-  empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 15, paddingHorizontal: ROW_X },
-  doc: { paddingVertical: 12, paddingHorizontal: ROW_X, gap: 12 },
+  empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 12, paddingHorizontal: ROW_X },
+  doc: { paddingVertical: 10, paddingHorizontal: ROW_X, gap: 10 },
   line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: 1, backgroundColor: colors.line },
-  docTop: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  docTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   docName: { ...TYPE.body, color: colors.ink },
   docType: { ...TYPE.foot, color: colors.ink2 },
   docMissing: { color: colors.bad },
@@ -525,4 +530,4 @@ const styles = StyleSheet.create({
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: ROW_X },
   noteRowLine: { borderTopWidth: 1, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
   noteInput: { flex: 1, minWidth: 0 },
-});
+}));

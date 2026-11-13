@@ -7,10 +7,11 @@ import { PinLayout, PinPad } from '@/components/PinPad';
 import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { logError } from '@/errorLog';
 import { showAlert } from '@/components/Dialog';
-import { colors, CONTROL_H, TYPE } from '@/theme';
+import { colors, CONTROL_H, TYPE, themed } from '@/theme';
 
 // Full-screen lock over the app (section 19). The app stays mounted underneath, so unlocking keeps your place.
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const styles = useStyles();
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [wrong, setWrong] = useState(false);
@@ -112,9 +113,9 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.bg, zIndex: 10 },
   // Text button in the reference's link colour, 44dp tall.
   link: { minHeight: CONTROL_H, justifyContent: 'center', paddingHorizontal: 16 },
   linkText: { ...TYPE.body, color: colors.link },
-});
+}));
