@@ -33,8 +33,8 @@ $msg
 - Commit: ${sha:0:7}
 - Over-the-air update group: \`$group\`
 
-Installed beta builds fetch this update on the next launch. Install the APK from the first
-\`v${version}-beta.*\` release only if you do not have the beta yet.
+Beta builds with runtime $version fetch this update on the next launch. If your installed app
+uses an older runtime, install the APK from the first \`v${version}-beta.*\` release first.
 NOTES
 
 args=(--target "$sha" --title "Warrantly $version beta $n" --notes-file "$notes" --prerelease)

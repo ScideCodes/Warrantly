@@ -1,5 +1,9 @@
 # Shortlist implementation checklist
 
+> Independent review: see [shortlist-review.md](shortlist-review.md). The table below records
+> Claude's implementation claims; it is not certification that all 30 brief requirements or emulator flows
+> passed. Items 8, 14, 18, 20, 25, 26, 27 and 30 have remaining gaps recorded in that review.
+
 Brief: `docs/CLAUDE_SHORTLIST_IMPLEMENTATION_PROMPT.md`. Status: `todo`, `wip`, `done` (implemented and tested as
 stated), `blocked` (with the verified reason). Emulator checks are not physical-device measurements.
 

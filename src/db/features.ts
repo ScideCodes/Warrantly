@@ -285,7 +285,7 @@ export async function mergeWarranties(db: Db, keepId: number, dropId: number, no
       [...fill.map((c) => drop[c]), notes, photo, Math.max(Number(keep.favorite), Number(drop.favorite)), keep.bundle_id ?? drop.bundle_id, now, keepId],
     );
     // Same file on both (a receipt shared earlier): one row is enough.
-    await db.runAsync('DELETE FROM attachments WHERE warranty_id = ? AND local_path IN (SELECT local_path FROM attachments WHERE warranty_id = ?)', [dropId, keepId]);
+    await db.runAsync('DELETE FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL AND claim_id IS NULL AND local_path IN (SELECT local_path FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL AND claim_id IS NULL)', [dropId, keepId]);
     for (const t of ['attachments', 'history', 'claims', 'returns']) await db.runAsync(`UPDATE ${t} SET warranty_id = ? WHERE warranty_id = ?`, [keepId, dropId]);
     await db.runAsync('UPDATE OR IGNORE custom_reminders SET warranty_id = ? WHERE warranty_id = ?', [keepId, dropId]);
     await db.runAsync('UPDATE OR IGNORE collection_items SET warranty_id = ? WHERE warranty_id = ?', [keepId, dropId]);
