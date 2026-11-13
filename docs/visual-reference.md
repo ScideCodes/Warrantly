@@ -5,9 +5,7 @@ later change can be checked against the source instead of memory.
 
 ## Source and deployed version
 
-- Repository: `ScideCodes/BencePC`, local checkout `C:\Users\Bence\Documents\own projects\bencepc-site`, branch `main`
-  at `551a366` (matches `origin/main`, fetched 13 Nov 2026). The folder `C:\Users\Bence\Documents\ChatGPT\bencepc-site`
-  is an empty repository and was not used.
+- Repository: `ScideCodes/BencePC`, branch `main` at `551a366` (matches `origin/main`, fetched 13 Nov 2026).
 - Live pages (`/`, `public.html`, `arak.html`, `admin.html`) load exactly two style sheets: `/assets/site.css?v=4`
   and `/assets/ios.css?v=66`. `ios.css` is the design system; `site.css` is the base reset under it.
 - Deployed = source: the live `ios.css`, `site.css` and `icons.svg?v=8` are byte-identical to the checkout after
