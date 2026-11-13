@@ -148,9 +148,11 @@ and a look that no longer read as iOS 27.
 - **iOS 27 hierarchy restored where it costs no density.** Large title 34/41, Title 2 22/28, Title 3 and section
   headers 20/25, grouped card radius 26, text field radius 14, bar 60, section spacing 24/8. Rows, body text and
   fields stay compact.
-- **Pictures.** Product pictures is a Settings switch that is off by default (only the product name is sent to
+- **Pictures.** Product pictures is a Settings switch (only the product name is sent to
   Wikimedia when it is on). With it on, the emulator fetched and showed a picture for "Logitech MX Master 3S" in
   the list and on the detail screen within about 90 s, with its credit. Names with extra suffixes or no exact
-  Wikidata model get the category icon, as designed. The default was not changed.
+  Wikidata model get the category icon, as designed. The switch was off by default, which is the likely
+  reason none showed up; the owner chose to make it on by default (a phone that never set it counts as on, one
+  that switched it off stays off). Privacy text in the app and in docs/privacy.md says so.
 
 Emulator only; not measured on a phone.

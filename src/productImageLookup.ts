@@ -17,7 +17,8 @@ let lastRequest = 0;
 let pausedUntil = 0;
 class Paused extends Error {}
 
-export const autoPictures = (): boolean => Storage.getItemSync('product_pictures') === '1';
+// On unless the person switched it off in Settings ('0'); a phone that never set it counts as on.
+export const autoPictures = (): boolean => Storage.getItemSync('product_pictures') !== '0';
 export const setAutoPictures = (on: boolean): void => Storage.setItemSync('product_pictures', on ? '1' : '0');
 
 async function request(url: string): Promise<Response> {

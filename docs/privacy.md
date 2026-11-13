@@ -20,7 +20,7 @@ Scanning and reading text from receipts happens on the phone (Google ML Kit, on-
 
 ## Product pictures
 
-Product pictures are off until you turn them on in Settings, or tap "Find a picture online" on a warranty. Then the product name, and nothing else, is sent to Wikidata and Wikimedia Commons (run by the Wikimedia Foundation) to find a picture of that exact model. The picture is saved on the phone and shown with its author and licence. Wikimedia sees your IP address like any website.
+Product pictures are on by default and can be turned off in Settings (you can also tap "Find a picture online" on a warranty). While they are on, the product name, and nothing else, is sent to Wikidata and Wikimedia Commons (run by the Wikimedia Foundation) to find a picture of that exact model. The picture is saved on the phone and shown with its author and licence. Wikimedia sees your IP address like any website.
 
 ## Other services
 

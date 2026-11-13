@@ -68,7 +68,7 @@ Not tested: the PDF viewer at high zoom, a release build, a real device, low mem
 Source: Wikidata (which item is it, its P18 image) and Wikimedia Commons (thumbnail, author, licence). Free, no key,
 openly licensed; the credit (author, licence, link to the file page) is shown under the detail hero. Requests carry an
 identifying User-Agent, as Wikimedia's policy asks, are spaced 1.1 s apart and stop for an hour on HTTP 429/503.
-Only the product name is sent. Off by default (Settings > Product pictures); "Find a picture online" on a warranty
+Only the product name is sent. On by default (switch in Settings > Product pictures); "Find a picture online" on a warranty
 looks up one. No paid service, no credentials.
 
 Rules: the user's photo always wins; a picture only for a high-confidence model match (name contained in the product
