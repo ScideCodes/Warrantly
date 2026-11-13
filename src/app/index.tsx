@@ -16,7 +16,7 @@ import { getDb } from '@/db/client';
 import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
-import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, isDark, RADIUS, SPRING, SPRING_BOUNCE, TYPE } from '@/theme';
+import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, isDarkNow, RADIUS, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
@@ -34,6 +34,7 @@ const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Warrant
 // A labelled bottom bar (Warranties, Add, Settings); Filter opens a sheet with the account, category and
 // store filters. Above the list only short status rows, and only when there is something to act on.
 export default function Home() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const name = getUsername();
   const [accounts, setAccounts] = useState<Account[] | null>(null);
@@ -284,6 +285,7 @@ export default function Home() {
 
 // A short row in the status card: glyph, plain words, and what a tap does (in link colour).
 function StatusRow({ icon, color, label, action, onPress, separator }: { icon: IconName; color: string; label: string; action: string; onPress: () => void; separator?: boolean }) {
+  const styles = useStyles();
   return (
     <Row onPress={onPress} separator={separator} iconInset>
       <View style={styles.glyph}>
@@ -304,6 +306,7 @@ type Tab = { key: string; icon: IconName; iconOn?: IconName; label: string; acce
 // The reference scales with transforms and elliptical radii; React Native has no elliptical radius, so the
 // childless surface and lens animate their width instead, on the same spring.
 function TabBar({ tabs, current, compact, onExpand }: { tabs: Tab[]; current: string; compact: boolean; onExpand: () => void }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [tabH, setTabH] = useState(54);
@@ -353,6 +356,7 @@ function TabBar({ tabs, current, compact, onExpand }: { tabs: Tab[]; current: st
 
 // Tab glyphs shrink to .86 while held and settle back on the bouncier spring.
 function TabButton({ tab, on, labelOpacity }: { tab: Tab; on: boolean; labelOpacity: Animated.AnimatedInterpolation<number> }) {
+  const styles = useStyles();
   const scale = useState(() => new Animated.Value(1))[0];
   const [labelHeight, setLabelHeight] = useState(12);
   const press = (v: number) => {
@@ -381,8 +385,9 @@ function TabButton({ tab, on, labelOpacity }: { tab: Tab; on: boolean; labelOpac
   );
 }
 
-const rgb = isDark ? '0,0,0' : '242,242,247';
-const styles = StyleSheet.create({
+// The page colour as an rgb triple, for the scroll-edge gradients.
+const rgb = () => (isDarkNow() ? '0,0,0' : '242,242,247');
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { flexGrow: 1 },
   header: { gap: 12 },
@@ -403,7 +408,7 @@ const styles = StyleSheet.create({
   card: { backgroundColor: colors.card },
   cardFirst: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   cardLast: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },
-  expiredToggle: { marginTop: 28 },
+  expiredToggle: { marginTop: 20 },
   expiredToggleText: { flex: 1, ...TYPE.body, color: colors.ink },
   empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 48 },
   connect: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 48 },
@@ -415,8 +420,8 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    opacity: isDark ? 0.35 : 1,
-    backgroundImage: `linear-gradient(rgba(${rgb},0) 0%, rgba(${rgb},0.82) 55%, rgba(${rgb},1) 100%)`,
+    opacity: isDarkNow() ? 0.35 : 1,
+    backgroundImage: `linear-gradient(rgba(${rgb()},0) 0%, rgba(${rgb()},0.82) 55%, rgba(${rgb()},1) 100%)`,
   },
   tabbar: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', padding: 4 },
   tabSurface: { position: 'absolute', top: 0, bottom: 0, borderRadius: 31 },
@@ -424,4 +429,4 @@ const styles = StyleSheet.create({
   tabSlot: { flex: 1, minWidth: 0 },
   tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 28, paddingHorizontal: 2 },
   tabLabel: { ...TYPE.tab, color: colors.ink, maxWidth: '100%' },
-});
+}));

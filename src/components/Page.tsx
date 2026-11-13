@@ -3,15 +3,16 @@ import { Animated, ScrollView, StyleSheet, Text, useWindowDimensions, View, type
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { goBack } from '@/nav';
-import { BAR_H, colors, gutter, isDark, TYPE } from '@/theme';
+import { BAR_H, colors, gutter, isDarkNow, TYPE, themed } from '@/theme';
 import { GlassButton } from '@/components/ui';
 
 // The page shell of every screen: floating glass buttons over a soft scroll edge, a compact title that
 // fades in once the large title has passed under the bar (chrome.js `--t`), and the large title itself.
-const rgb = isDark ? '0,0,0' : '242,242,247';
+// The page colour as an rgb triple, for the scroll-edge gradients.
+const rgb = () => (isDarkNow() ? '0,0,0' : '242,242,247');
 // The bar's ::before: --bg fading out downwards, 24dp past the bar, under the reference's mask
 // (ios.css line 165), folded into one gradient. The reference also blurs it by 8px; React Native cannot.
-const EDGE = `linear-gradient(rgba(${rgb},1) 0%, rgba(${rgb},0.743) 55%, rgba(${rgb},0.64) 60%, rgba(${rgb},0) 100%)`;
+const edgeGradient = () => `linear-gradient(rgba(${rgb()},1) 0%, rgba(${rgb()},0.743) 55%, rgba(${rgb()},0.64) 60%, rgba(${rgb()},0) 100%)`;
 
 export function useScrollEdge(listener?: (y: number) => void) {
   const y = useState(() => new Animated.Value(0))[0];
@@ -29,6 +30,7 @@ export function useScrollEdge(listener?: (y: number) => void) {
 const ALWAYS = new Animated.Value(1).interpolate({ inputRange: [0, 1], outputRange: [1, 1] });
 
 export function NavBar({ title, t, back = true, leading, trailing }: { title?: string; t?: Animated.AnimatedInterpolation<number>; back?: boolean; leading?: ReactNode; trailing?: ReactNode }) {
+  const styles = useStyles();
   const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -60,6 +62,7 @@ export function NavBar({ title, t, back = true, leading, trailing }: { title?: s
 }
 
 export function LargeTitle({ title, lead, onLayout }: { title: string; lead?: string; onLayout?: (h: number) => void }) {
+  const styles = useStyles();
   return (
     <View style={styles.head}>
       <Text style={styles.large} accessibilityRole="header" onLayout={(e) => onLayout?.(e.nativeEvent.layout.height)}>
@@ -75,6 +78,7 @@ type PageProps = ScrollViewProps & { title: string; lead?: string; head?: ReactN
 
 // A scrolling page. `footer` stays fixed under the scroll area (save buttons, the viewer's actions).
 export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(function Page({ title, lead, head, back, trailing, children, footer, contentContainerStyle, ...scroll }, ref) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const edge = useScrollEdge();
@@ -97,10 +101,10 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
   );
 });
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   bar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
-  edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -24, backgroundImage: EDGE },
+  edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -24, backgroundImage: edgeGradient() },
   barIn: { height: BAR_H, flexDirection: 'row', alignItems: 'center', gap: 8 },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   trail: { justifyContent: 'flex-end', gap: 8 },
@@ -110,10 +114,11 @@ const styles = StyleSheet.create({
   large: { ...TYPE.large, color: colors.ink },
   lead: { ...TYPE.sub, color: colors.ink2, marginTop: 2 },
   footer: { paddingTop: 12, backgroundColor: colors.bg },
-});
+}));
 
 // A page whose body is a long list: the same bar and large title over a FlatList.
 export function ListPage<T>({ title, lead, header, contentContainerStyle, ...list }: FlatListProps<T> & { title: string; lead?: string; header?: ReactNode }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const edge = useScrollEdge();

@@ -5,9 +5,8 @@ import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ProductIcon } from '@/components/Icon';
 import type { Warranty } from '@/db/repo.ts';
-import { documentUriOrNull } from '@/documents';
-import { shownPhoto } from '@/productImageLookup';
-import { colors, TONE, TYPE } from '@/theme';
+import { useProductPhoto } from '@/components/useProductPhoto';
+import { colors, TONE, TYPE, themed } from '@/theme';
 import { Row, TILE } from '@/components/ui';
 import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
 
@@ -47,11 +46,12 @@ export function formatDate(ymd: string, language: string): string {
 }
 
 // One row for a warranty everywhere (home, attention list, other covers on the detail screen), laid out like
-// the reference's hardware cell (`.cell`, ios.css line 276): a 29dp tile, the name (up to two lines), the
-// store, then a small badge that says how long is left with the end date beside it, and a chevron. Colour
-// only backs up what the badge text says. `to` overrides where a tap goes (the attention list opens the
+// the reference's hardware cell (`.cell`, ios.css line 276): a 29dp tile, the name (up to two lines) with a
+// small badge beside it that says how long is left, then the store and end date on one line, and a chevron.
+// Colour only backs up what the badge text says. `to` overrides where a tap goes (the attention list opens the
 // resolve form directly).
 export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle>; separator?: boolean }) {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
@@ -59,11 +59,11 @@ export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: W
   const tone = TONE[level];
   const product = displayName(t, w);
   const left = daysLabel(t, days);
-  const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) });
+  // No-break spaces: the end date wraps as a whole, never as "Ends Dec" / "17, 2027".
+  const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) }).replace(/ /g, ' ');
   const store = w.coverage ? `${w.store_name} · ${t(`coverage.${w.coverage}`)}` : w.store_name;
-  // The user's photo, else a picture found for the current name; the category icon when neither exists.
-  const shown = shownPhoto(w);
-  const photo = shown ? documentUriOrNull(shown.path) : null;
+  // The user's photo, else a picture found for the current name; the category icon when neither can be shown.
+  const photo = useProductPhoto(w);
 
   return (
     <Row
@@ -74,23 +74,31 @@ export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: W
       style={[styles.row, style]} // TalkBack reads the texts inside in order: name, store, time left, end date
     >
       {photo ? (
-        <Image source={{ uri: photo }} style={styles.tile} accessibilityIgnoresInvertColors />
+        <Image source={{ uri: photo.uri }} onError={photo.onError} style={styles.tile} accessibilityIgnoresInvertColors />
       ) : (
         <View style={[styles.tile, { backgroundColor: CATEGORY_TILE[w.category ?? ''] ?? TILE.blue }]} importantForAccessibility="no-hide-descendants">
           <ProductIcon name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color="#fff" />
         </View>
       )}
       <View style={styles.text}>
-        <Text style={styles.title} numberOfLines={2}>
-          {product}
-        </Text>
-        <Text style={styles.meta} numberOfLines={2}>
-          {store}
-        </Text>
-        <View style={styles.status}>
+        {/* The name and the days-left badge share a line; the badge drops below only when the name would get
+            narrower than 55 % (large text, small phones). */}
+        <View style={styles.top}>
+          <Text style={styles.title} numberOfLines={2}>
+            {product}
+          </Text>
           <View style={[styles.badge, { backgroundColor: tone.bg }]}>
             <Text style={[styles.badgeText, { color: tone.fg }, (level === 'ok' || level === 'expired') && styles.quietBadge]}>{left}</Text>
           </View>
+        </View>
+        {/* Store and end date share a line; a long store is cut to one line and the date moves below it, so
+            the date is never the part that gets cut. */}
+        <View style={styles.metaRow}>
+          {!!store && (
+            <Text style={[styles.meta, styles.store]} numberOfLines={1}>
+              {`${store} ·`}
+            </Text>
+          )}
           <Text style={styles.meta}>{ends}</Text>
         </View>
       </View>
@@ -109,14 +117,16 @@ const CATEGORY_TILE: Record<string, string> = {
   other: TILE.cyan,
 };
 
-const styles = StyleSheet.create({
-  row: { minHeight: 60, gap: 15, paddingVertical: 8 },
+const useStyles = themed(() => StyleSheet.create({
+  row: { gap: 12, paddingVertical: 9 },
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
-  text: { flex: 1, paddingVertical: 4 },
-  title: { ...TYPE.body, color: colors.ink },
+  text: { flex: 1, gap: 2 },
+  top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 8, rowGap: 3 },
+  title: { ...TYPE.body, color: colors.ink, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: '55%' },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4 },
   meta: { ...TYPE.foot, color: colors.ink2 },
-  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4, marginTop: 4 },
-  badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
+  store: { flexShrink: 1 },
+  badge: { borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
   badgeText: { ...TYPE.foot, fontWeight: '600' },
   quietBadge: { fontWeight: '400' },
-});
+}));

@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { glass, reduceMotion, TILE } from '@/components/ui';
-import { colors, CONTROL_H, SPRING_BOUNCE, TYPE } from '@/theme';
+import { colors, CONTROL_H, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -18,6 +18,7 @@ export function usePinKeySize() {
 }
 
 function PinKey({ size, label, onPress, disabled, children, plain, testID }: { size: number; label: string; onPress: () => void; disabled?: boolean; children: ReactNode; plain?: boolean; testID?: string }) {
+  const styles = useStyles();
   const scale = useState(() => new Animated.Value(1))[0];
   const to = (v: number, fast: boolean) => {
     if (reduceMotion()) return;
@@ -61,6 +62,7 @@ export function PinPad({
   disabled?: boolean;
   shake?: number;
 }) {
+  const styles = useStyles();
   const { t } = useTranslation();
   const size = usePinKeySize();
   const x = useState(() => new Animated.Value(0))[0];
@@ -110,6 +112,7 @@ export function PinPad({
 // Title 2 heading, a Subheadline message that keeps two lines of room so the pad never jumps, the pad, and a
 // footer that also keeps its height when it is empty. Scrolls only when very large text leaves no other way.
 export function PinLayout({ icon, title, message, error, pad, footer, top = 0 }: { icon: IconName; title: string; message: string; error?: boolean; pad: ReactNode; footer?: ReactNode; top?: number }) {
+  const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { fontScale, height } = useWindowDimensions();
   return (
@@ -135,7 +138,7 @@ export function PinLayout({ icon, title, message, error, pad, footer, top = 0 }:
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   content: { flexGrow: 1, alignItems: 'center', paddingHorizontal: 24, gap: 24 },
   pad: { marginTop: 'auto' },
@@ -153,4 +156,4 @@ const styles = StyleSheet.create({
   key: { alignItems: 'center', justifyContent: 'center' },
   disabled: { opacity: 0.35 },
   keyText: { fontSize: TYPE.large.fontSize, lineHeight: TYPE.large.lineHeight, fontWeight: '400', color: colors.ink, includeFontPadding: false },
-});
+}));

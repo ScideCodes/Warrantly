@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { Appearance, AppState } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
@@ -14,16 +14,8 @@ import { isLockEnabled, takeRelaunchPass } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
-import { colors, isDark } from '@/theme';
-import { getThemeSetting } from '@/settings';
-import { logError } from '@/errorLog';
+import { colors, useTheme } from '@/theme';
 
-// Headers and screen backgrounds follow the app palette (dark mode).
-const navTheme = {
-  ...(isDark ? DarkTheme : DefaultTheme),
-  colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: colors.bg, card: colors.bg, text: colors.ink, primary: colors.tint, border: colors.line },
-};
-void SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
@@ -45,6 +37,15 @@ function SharedFiles() {
 }
 
 export default function RootLayout() {
+  // Headers, screen backgrounds, the root view behind them and the status bar follow the live palette.
+  const { dark, version } = useTheme();
+  const navTheme = useMemo(() => {
+    const base = dark ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: colors.bg, card: colors.bg, text: colors.ink, primary: colors.tint, border: colors.line } };
+  }, [dark, version]); // eslint-disable-line react-hooks/exhaustive-deps -- colors is updated in place
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
+  }, [version]);
   // Android can change the language while the app runs; follow it.
   useReminderTaps();
 
@@ -65,15 +66,6 @@ export default function RootLayout() {
     });
     return () => sub.remove();
   }, []);
-  // Diagnostic for a one-off "black screen" report: the palette is chosen at start, so a system theme
-  // change while the app runs leaves it in the old one until the next start. Logged (no user data) so a
-  // feedback mail shows whether that happened.
-  useEffect(() => {
-    const sub = Appearance.addChangeListener(({ colorScheme }) => {
-      if (getThemeSetting() === 'system' && (colorScheme === 'dark') !== isDark) logError(`system theme now ${colorScheme}, app shows ${isDark ? 'dark' : 'light'} until restart`, 'theme');
-    });
-    return () => sub.remove();
-  }, []);
   const locales = useLocales();
   useEffect(() => {
     i18n.changeLanguage(appLanguage()); // the phone's language changed; a language chosen in Settings stays
@@ -83,7 +75,7 @@ export default function RootLayout() {
     <ShareIntentProvider>
       <ThemeProvider value={navTheme}>
         <SharedFiles />
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <StatusBar style={dark ? 'light' : 'dark'} />
         {/* Tablets and wide screens: screens keep a readable width, centred. */}
         <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.bg } }}>
           <Stack.Screen name="index" options={{ title: 'Warrantly' }} />

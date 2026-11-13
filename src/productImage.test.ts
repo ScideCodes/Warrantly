@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { candidatesFrom, chooseCandidate, lookupKey, pictureFrom, searchQueries, type Candidate } from './productImage.ts';
+import { candidatesFrom, chooseCandidate, firstWorking, lookupKey, photoChoices, pictureFrom, searchQueries, type Candidate } from './productImage.ts';
 
 const c = (id: string, names: string[], description = 'smartphone model', image: string | null = `${id}.jpg`): Candidate => ({ id, names, description, image });
 
@@ -82,4 +82,20 @@ test('Commons image info gives a thumbnail and credit only with a licence', () =
   const thumbHost = 'https://thumb.wikimedia.org/wikipedia/commons/thumb/7/7d/X.jpg/330px-X.jpg?utm_source=commons.wikimedia.org';
   assert.equal(pictureFrom(json('CC BY 4.0', thumbHost), 'X.jpg')?.thumb, thumbHost);
   assert.equal(pictureFrom(json('CC0', 'https://thumb.wikimedia.org.evil.com/a.jpg'), 'X.jpg'), null);
+});
+
+test('picture fallback: usable user photo, then matching found picture, then the category icon', () => {
+  const w = { photo_path: 'photo-1.jpg', product_name: 'Logitech MX Master 3S', found_photo_key: 'logitech mx master 3s', found_photo_path: 'found-1.jpg' };
+  const all = () => true;
+  assert.deepEqual(photoChoices(w, all), [{ path: 'photo-1.jpg', found: false }, { path: 'found-1.jpg', found: true }]);
+  // the user's photo file is gone: the found picture is still shown
+  assert.deepEqual(photoChoices(w, (p) => p !== 'photo-1.jpg'), [{ path: 'found-1.jpg', found: true }]);
+  // renamed product: the found picture belongs to the old name
+  assert.deepEqual(photoChoices({ ...w, product_name: 'Logitech MX Anywhere 3' }, all), [{ path: 'photo-1.jpg', found: false }]);
+  assert.deepEqual(photoChoices({ ...w, photo_path: null, found_photo_path: null }, all), []);
+  // an image that fails to load (corrupt, unsupported) is skipped in order; all failed: icon
+  const choices = photoChoices(w, all);
+  assert.equal(firstWorking(choices, [])?.path, 'photo-1.jpg');
+  assert.equal(firstWorking(choices, ['photo-1.jpg'])?.path, 'found-1.jpg');
+  assert.equal(firstWorking(choices, ['photo-1.jpg', 'found-1.jpg']), null);
 });

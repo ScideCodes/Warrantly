@@ -11,10 +11,11 @@ import { setWidgetNames } from '@/settings';
 import { updateWidget } from '@/widget';
 import { NavBar } from '@/components/Page';
 import { Button } from '@/components/ui';
-import { BAR_H } from '@/theme';
+import { BAR_H, themed } from '@/theme';
 
 // Choose a PIN (turn the lock on, change it, or after "Forgot PIN"): enter, then confirm.
 export default function PinSetup() {
+  const styles = useStyles();
   const { t } = useTranslation();
   const [first, setFirst] = useState<string | null>(null);
   const [value, setValue] = useState('');
@@ -69,7 +70,7 @@ export default function PinSetup() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   button: { minWidth: 220 },
   hidden: { opacity: 0 },
-});
+}));
