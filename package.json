@@ -47,6 +47,7 @@
     "react-native": "0.88.1",
     "react-native-android-widget": "^0.26.0",
     "react-native-document-scanner-plugin": "^2.0.4",
+    "react-native-gesture-handler": "3.5.0",
     "react-native-nitro-google-signin": "^2.3.1",
     "react-native-nitro-modules": "^0.37.2",
     "react-native-reanimated": "4.7.1",

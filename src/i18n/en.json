@@ -378,6 +378,8 @@
     "empty": "No active warranties"
   },
   "viewer": {
+    "scrollDown": "Scroll down",
+    "scrollUp": "Scroll up",
     "title": "Document",
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out",
