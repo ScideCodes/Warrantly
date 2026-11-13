@@ -12,7 +12,9 @@ const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 // Keep circular glass keys comfortably inside narrow phones and short screens.
 export function usePinKeySize() {
   const { height, width } = useWindowDimensions();
-  return Math.floor(Math.max(48, Math.min(height < 700 ? 56 : height < 820 ? 64 : 72, (width - 88) / 3)));
+  const insets = useSafeAreaInsets();
+  const usableHeight = height - insets.top - insets.bottom;
+  return Math.floor(Math.max(48, Math.min(usableHeight < 700 ? 56 : usableHeight < 820 ? 64 : 72, (width - 88) / 3)));
 }
 
 function PinKey({ size, label, onPress, disabled, children, plain, testID }: { size: number; label: string; onPress: () => void; disabled?: boolean; children: ReactNode; plain?: boolean; testID?: string }) {
@@ -115,16 +117,18 @@ export function PinLayout({ icon, title, message, error, pad, footer, top = 0, s
   const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { fontScale, height } = useWindowDimensions();
+  const usableHeight = height - top - insets.bottom - 36;
+  const compact = usableHeight / Math.max(1, fontScale) < 650;
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { paddingTop: top + 20, paddingBottom: insets.bottom + 16 }]} bounces={false} overScrollMode="never">
+    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { justifyContent: compact ? 'flex-start' : 'center', gap: compact ? 16 : 24, paddingTop: top + 16, paddingBottom: insets.bottom + 24 }]} bounces={false} overScrollMode="never">
       <View style={styles.head}>
         {/* Decorative: short phones drop it so the keys and the button fit without scrolling. */}
-        {height >= 730 && (
+        {!compact && (
           <View style={[styles.tile, glass()]} importantForAccessibility="no-hide-descendants">
             <AppIcon name={icon} size={28} color={colors.tint} />
           </View>
         )}
-        {height >= 700 && <Text style={styles.brand}>Warrantly</Text>}
+        {!compact && <Text style={styles.brand}>Warrantly</Text>}
         <Text style={[styles.title, { minHeight: 30 * fontScale * (fontScale > 1.2 ? 2 : 1) }]} accessibilityRole="header">
           {title}
         </Text>
@@ -153,7 +157,7 @@ const useStyles = themed(() => StyleSheet.create({
   brand: { ...TYPE.cap, fontWeight: '600', letterSpacing: 1, color: colors.ink2 },
   title: { fontSize: 24, lineHeight: 30, fontWeight: '600', letterSpacing: -0.4, color: colors.ink, textAlign: 'center', textAlignVertical: 'center' },
   message: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', maxWidth: 288 },
-  steps: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  steps: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 6, marginTop: 4 },
   step: { width: 20, height: 3, borderRadius: 2, backgroundColor: colors.fill2 },
   stepActive: { backgroundColor: colors.tint },
   stepLabel: { ...TYPE.cap, color: colors.ink2, marginLeft: 4 },

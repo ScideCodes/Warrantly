@@ -87,7 +87,7 @@ export default function Home() {
   const syncing = useRef(false);
   const listRef = useRef<SectionList<Warranty, WarrantySection>>(null);
   const searchRef = useRef<React.ComponentRef<typeof TextInput>>(null);
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   // Keep Add and Settings visible, and keep scroll events entirely on the native driver.
   const edge = useScrollEdge();
@@ -364,7 +364,7 @@ export default function Home() {
       )}
       {counts.covered > 0 && filter.kind !== 'archived' && !selecting && (
         // Shortlist 1: one slim line of counts; each count is a button for its results.
-        <View style={styles.summary} accessibilityRole="toolbar">
+        <View style={[styles.summary, (width - 2 * gutter(width)) / fontScale < 280 && { flexDirection: 'column' }]} accessibilityRole="toolbar">
           <SummaryItem value={counts.covered} label={t('summary.covered')} on={!quick} onPress={() => { setQuick(null); setFilter(all); scrollTop(); }} />
           <SummaryItem value={counts.expiring} label={t('summary.expiring')} on={quick === 'expiring'} tone={counts.expiring ? colors.warn : undefined} onPress={() => chooseQuick('expiring')} />
           <SummaryItem value={counts.noDocs} label={t('summary.noDocs')} on={quick === 'nodocs'} tone={counts.noDocs ? colors.bad : undefined} onPress={() => chooseQuick('nodocs')} />
@@ -580,8 +580,10 @@ export default function Home() {
 // One count in the summary line: the number large enough to scan, its words below; 44dp tall.
 function SummaryItem({ value, label, on, tone, onPress }: { value: number; label: string; on: boolean; tone?: string; onPress: () => void }) {
   const styles = useStyles();
+  const { width, fontScale } = useWindowDimensions();
+  const stacked = (width - 2 * gutter(width)) / fontScale < 280;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.sumItem, on && styles.sumOn, pressed && styles.sumPressed]} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} accessibilityState={{ selected: on }}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.sumItem, stacked && { flex: 0, width: '100%' }, on && styles.sumOn, pressed && styles.sumPressed]} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} accessibilityState={{ selected: on }}>
       <Text style={[styles.sumValue, tone ? { color: tone } : null]}>{value}</Text>
       <Text style={styles.sumLabel}>{label}</Text>
     </Pressable>
@@ -591,13 +593,20 @@ function SummaryItem({ value, label, on, tone, onPress }: { value: number; label
 // A short row in the status card: glyph, plain words, and what a tap does (in link colour).
 function StatusRow({ icon, color, label, action, onPress, separator }: { icon: IconName; color: string; label: string; action: string; onPress: () => void; separator?: boolean }) {
   const styles = useStyles();
+  const { width, fontScale } = useWindowDimensions();
+  const stacked = (width - 32) / fontScale < 300;
   return (
     <Row onPress={onPress} separator={separator} iconInset>
       <View style={styles.glyph}>
         <AppIcon name={icon} size={22} color={color} />
       </View>
-      <Text style={styles.statusText}>{label}</Text>
-      <Text style={styles.statusAction}>{action}</Text>
+      {stacked ? <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+        <Text style={[styles.statusText, { flex: 0 }]}>{label}</Text>
+        <Text style={styles.statusAction}>{action}</Text>
+      </View> : <>
+        <Text style={styles.statusText}>{label}</Text>
+        <Text style={styles.statusAction}>{action}</Text>
+      </>}
     </Row>
   );
 }
@@ -615,7 +624,7 @@ function TabBar({ tabs, current }: { tabs: Tab[]; current: string }) {
   return (
     <>
       <View style={[styles.scrollEdge, { height: 80 + insets.bottom }]} pointerEvents="none" />
-      <View style={[styles.tabbar, { width: barW, bottom: Math.max(10, insets.bottom - 13) }]} accessibilityRole="tablist">
+      <View style={[styles.tabbar, { width: barW, bottom: insets.bottom + 8 }]} accessibilityRole="tablist">
         <View style={[styles.tabSurface, glass(), { boxShadow: colors.tabbarEdge, width: barW, left: 0 }]} pointerEvents="none" />
         <View style={[styles.lens, { top: 4, height: tabH, width: tabW, left: 4 + at * tabW }]} pointerEvents="none" />
         {tabs.map((tab, i) => (

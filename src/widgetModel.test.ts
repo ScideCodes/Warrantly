@@ -1,9 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DEFAULT_WIDGET, namesShown, parseWidgetConfig, widgetRows, widgetSize } from './widgetModel.ts';
+import { DEFAULT_WIDGET, namesShown, parseWidgetConfig, widgetLayout, widgetRows, widgetSize } from './widgetModel.ts';
 
 const item = (id: number, end: string, extra: Partial<{ origin: string; warranty_start_date: string; photo_path: string | null; product_name: string | null }> = {}) => ({
   id, product_name: `P${id}`, store_name: 'S', end_date: end, origin: 'manual', warranty_start_date: '2026-01-01', photo_path: 'p.jpg', ...extra,
+});
+
+test('short widgets reserve room for content instead of clipping action buttons', () => {
+  const layout = widgetLayout(250, 80, 1, true, ['Scan', 'Add', 'Search']);
+  assert.equal(layout.rows, 1);
+  assert.equal(layout.header, false);
+  assert.equal(layout.actions, 0);
+  assert.equal(layout.showTitle, true);
+  const largeText = widgetLayout(180, 80, 2, true, ['Beolvasás', 'Hozzáadás', 'Keresés']);
+  assert.equal(largeText.showTitle, false);
+  assert.equal(largeText.rows, 1);
+  assert.equal(largeText.actions, 0);
+});
+
+test('widget content reduces with larger fonts and translated action labels', () => {
+  const normal = widgetLayout(320, 300, 1, true, ['Scan', 'Add', 'Search']);
+  const scaled = widgetLayout(320, 300, 1.6, true, ['Beolvasás', 'Hozzáadás', 'Keresés']);
+  assert.equal(normal.actions, 3);
+  assert.equal(normal.rows, 4);
+  assert.equal(scaled.actions, 2);
+  assert.ok(scaled.rows < normal.rows);
+  assert.equal(widgetLayout(180, 300, 1.6, true, ['Beolvasás', 'Hozzáadás', 'Keresés']).actions, 0);
 });
 
 test('widget config parsing falls back safely', () => {

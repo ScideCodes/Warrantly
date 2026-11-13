@@ -256,6 +256,7 @@
   "settings": {
     "title": "Settings",
     "profileHint": "Your data stays on this phone",
+    "editName": "Edit your name",
     "lock": "App lock",
     "lockHint": "Ask for a PIN when the app opens, and after 3 minutes away.",
     "changePin": "Change PIN",
