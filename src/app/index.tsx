@@ -9,12 +9,12 @@ import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
-import { runPictureLookups } from '@/productImageLookup';
+import { runPictureLookups, subscribePictureUpdates } from '@/productImageLookup';
 import { runDueBackup } from '@/backup';
 import { Sheet, type IconName, type SheetSection } from '@/components/Sheet';
 import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
+import { getWarranty, listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
@@ -98,7 +98,14 @@ export default function Home() {
   // Reload when coming back from another screen; sync once on app open (section 7).
   useFocusEffect(
     useCallback(() => {
+      let active = true;
+      const unsubscribe = subscribePictureUpdates((id) => {
+        void getDb().then((db) => getWarranty(db, id)).then((updated) => {
+          if (active && updated) setWarranties((list) => list.map((w) => w.id === id ? updated : w));
+        }).catch((e) => console.warn('pictures', e));
+      });
       void load().catch((e) => setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] }));
+      return () => { active = false; unsubscribe(); };
     }, [load]),
   );
   useEffect(() => {

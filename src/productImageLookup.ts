@@ -3,6 +3,7 @@ import { deleteDocuments, documentExists, saveFoundPicture } from '@/documents';
 import { setFoundPhoto, type Db, type Warranty } from '@/db/repo.ts';
 import { candidatesFrom, chooseCandidate, lookupKey, pictureFrom, searchQueries, WIKIMEDIA_HEADERS, type PictureCredit } from '@/productImage';
 import { logError } from '@/errorLog';
+import { processPictureQueue } from './pictureQueue';
 
 // Product pictures from Wikidata (which item is it, and its P18 image) and Wikimedia Commons (thumbnail, author
 // and licence). Free, no key, openly licensed images; the credit is shown with the picture. Only the product
@@ -83,18 +84,27 @@ const needsLookup = (w: Row): boolean => {
 };
 
 let running: Promise<number> | null = null;
+const pictureListeners = new Set<(id: number) => void>();
+export function subscribePictureUpdates(listener: (id: number) => void): () => void {
+  pictureListeners.add(listener);
+  return () => { pictureListeners.delete(listener); };
+}
 
-// Background pass when automatic pictures are on: a few warranties per call, never from a list row, so
-// scrolling never starts a lookup. Stops quietly when offline or asked to slow down. Returns how many changed.
-export function runPictureLookups(db: Db, limit = 6): Promise<number> {
+// Backfill the entire existing library, serially, without blocking navigation. One
+// shared pass serves Settings and Home; each saved image refreshes its visible row.
+// Offline/rate-limited passes resume on the next load, leaving successful work saved.
+export function runPictureLookups(db: Db): Promise<number> {
   if (!autoPictures()) return Promise.resolve(0);
   running ??= (async () => {
     let changed = 0;
     try {
       const rows = await db.getAllAsync<Row>(`SELECT id, product_name, photo_path, found_photo_key, found_photo_path FROM warranties WHERE status = 'complete'`, []);
-      for (const w of rows.filter(needsLookup).slice(0, limit)) {
-        if (await lookUpPicture(db, w)) changed++;
-      }
+      const result = await processPictureQueue(rows.filter(needsLookup), autoPictures,
+        (w) => lookUpPicture(db, w),
+        (w) => pictureListeners.forEach((notify) => notify(w.id)),
+      );
+      changed = result.changed;
+      if (result.error) throw result.error;
     } catch (e) {
       if (!(e instanceof Paused)) logError(`picture lookup stopped: ${e instanceof Error ? e.message : String(e)}`, 'pictures');
     } finally {

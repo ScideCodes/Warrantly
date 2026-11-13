@@ -267,7 +267,7 @@
     "about": "Help and about",
     "remindersSection": "Reminders",
     "pictures": "Product pictures",
-    "picturesHint": "Shows a picture of the product when its exact model is found on Wikimedia Commons. Only the product name is sent."
+    "picturesHint": "Checks existing and new warranties in the background. Shows a product picture when its exact model is found on Wikimedia Commons. Only the product name is sent."
   },
   "backup": {
     "section": "Backup",

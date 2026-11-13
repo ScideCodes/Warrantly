@@ -25,7 +25,7 @@ import { showAlert } from '@/components/Dialog';
 import { Button, Group, IconTile, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
-import { autoPictures, setAutoPictures } from '@/productImageLookup';
+import { autoPictures, runPictureLookups, setAutoPictures } from '@/productImageLookup';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 type Icon = IconName;
@@ -413,6 +413,7 @@ export default function Settings() {
           {row('image-outline', TILE.teal, t('settings.pictures'), t('settings.picturesHint'), pictures, (on) => {
             setAutoPictures(on);
             setPictures(on);
+            if (on) void getDb().then(runPictureLookups).catch((e) => console.warn('pictures', e));
           })}
         </>,
       )}
