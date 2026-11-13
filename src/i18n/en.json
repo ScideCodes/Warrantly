@@ -508,5 +508,11 @@
   },
   "sheet": {
     "close": "Close"
+  },
+  "nav": {
+    "back": "Back"
+  },
+  "dialog": {
+    "ok": "OK"
   }
 }

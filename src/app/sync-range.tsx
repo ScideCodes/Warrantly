@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { syncAllAccounts } from '@/accounts';
 import { getDb } from '@/db/client';
 import { listAccounts, setSyncRange } from '@/db/repo.ts';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { Page } from '@/components/Page';
+import { Button, Group, Row } from '@/components/ui';
+import { colors, TYPE } from '@/theme';
 
 // Section 7: how far back to look, asked after connecting an account (and from "Scan older emails").
 const OPTIONS = [
@@ -52,50 +54,46 @@ export default function SyncRange() {
   }
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t('range.title') }} />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <Text style={styles.body}>{t('range.body', { email })}</Text>
-        <View style={styles.options} accessibilityRole="radiogroup">
-          {OPTIONS.map((o) => (
-            <Pressable
-              key={o.key}
-              style={[styles.option, days === o.days && styles.selected]}
-              onPress={() => setDays(o.days)}
-              disabled={busy}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: days === o.days }}
-            >
-              <Text style={[styles.optionText, days === o.days && styles.selectedText]}>
-                {t(`range.${o.key}`)}
-                {o.days === 730 ? ` ${t('range.recommended')}` : ''}
-              </Text>
-            </Pressable>
-          ))}
-        </View>
-        <Pressable style={styles.button} onPress={start} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('range.start')}</Text>}
-        </Pressable>
-        {status && (
-          <Text style={styles.status} accessibilityLiveRegion="polite">
-            {status}
-          </Text>
-        )}
-      </ScrollView>
-    </>
+    <Page
+      title={t('range.title')}
+      lead={t('range.body', { email })}
+      footer={
+        <>
+          {status && (
+            <Text style={styles.status} accessibilityLiveRegion="polite">
+              {status}
+            </Text>
+          )}
+          <Button title={t('range.start')} onPress={start} busy={busy} />
+        </>
+      }
+    >
+      {/* Selected like the reference's pressed cell: --tint-soft with a tint-ink semibold label. */}
+      <Group style={styles.group} accessibilityRole="radiogroup">
+        {OPTIONS.map((o, i) => (
+          <Row
+            key={o.key}
+            separator={i > 0}
+            selected={days === o.days}
+            onPress={() => setDays(o.days)}
+            disabled={busy}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: days === o.days }}
+          >
+            <Text style={[styles.option, days === o.days && styles.selected]}>
+              {t(`range.${o.key}`)}
+              {o.days === 730 ? ` ${t('range.recommended')}` : ''}
+            </Text>
+          </Row>
+        ))}
+      </Group>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 16 },
-  body: { fontSize: 15, lineHeight: 22, color: colors.muted },
-  options: { gap: 8 },
-  option: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 16, justifyContent: 'center' },
-  selected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  optionText: { fontSize: 16, color: colors.text },
-  selectedText: { color: colors.onPrimary, fontWeight: '600' },
-  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
-  status: { fontSize: 14, color: colors.muted },
+  group: { marginTop: 16 },
+  option: { ...TYPE.body, flex: 1, color: colors.ink },
+  selected: { color: colors.tintInk, fontWeight: '600' },
+  status: { ...TYPE.foot, color: colors.ink2, marginBottom: 8, paddingHorizontal: 4 },
 });

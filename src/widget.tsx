@@ -6,12 +6,22 @@ import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
 import i18n from '@/i18n';
 import { isLockEnabled } from '@/lock/store';
 import { getWidgetNames } from '@/settings';
-import { lightColors as colors } from '@/theme';
 import { daysUntil, todayYmd, urgency } from '@/warranty';
 
 // Home-screen widget (brainstorm section 13): the next warranty to expire and its days left. A tap opens
 // that warranty (behind the app lock, if on). Name must match the widget in app.json.
 const NAME = 'NextExpiry';
+// The widget keeps its own light colours: it sits on the launcher, outside the app's design system.
+type Hex = `#${string}`;
+const colors: Record<'card' | 'ink' | 'ink2', Hex> & Record<'ok' | 'warning' | 'soon' | 'expired', { fg: Hex; bg: Hex }> = {
+  card: '#FFFFFF',
+  ink: '#0E1116',
+  ink2: '#5B6270',
+  ok: { fg: '#166534', bg: '#DCFCE7' },
+  warning: { fg: '#92400E', bg: '#FEF3C7' },
+  soon: { fg: '#C2410C', bg: '#FFEDD5' },
+  expired: { fg: '#374151', bg: '#F3F4F6' },
+};
 
 // Product names on the home screen skip the app lock, so they are hidden by default while it is on.
 export const widgetShowsNames = (): boolean => getWidgetNames() ?? !isLockEnabled();
@@ -22,27 +32,27 @@ function NextExpiry({ next, active }: { next: Warranty | null; active: number })
   const pill = colors[urgency(days)];
   return (
     <FlexWidget
-      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: colors.surface, borderRadius: 16, padding: 12, justifyContent: 'center' }}
+      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: colors.card, borderRadius: 16, padding: 12, justifyContent: 'center' }}
       clickAction={next ? 'OPEN_URI' : 'OPEN_APP'}
       clickActionData={next ? { uri: `warrantly://warranty/${next.id}` } : undefined}
     >
-      <TextWidget text={t('widget.title')} style={{ fontSize: 12, color: colors.muted }} />
+      <TextWidget text={t('widget.title')} style={{ fontSize: 12, color: colors.ink2 }} />
       {next ? (
         // No <></> here: the library walks this tree itself and cannot handle fragments.
         <FlexWidget style={{ flexDirection: 'column' }}>
           <TextWidget
             text={widgetShowsNames() ? displayName(t, next) : t('widget.hidden')}
-            style={{ fontSize: 16, fontWeight: '600', color: colors.text }}
+            style={{ fontSize: 16, fontWeight: '600', color: colors.ink }}
             maxLines={1}
             truncate="END"
           />
           <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4 }}>
             <TextWidget text={daysLabel(t, days)} style={{ fontSize: 13, fontWeight: '600', color: pill.fg, backgroundColor: pill.bg, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }} />
-            {active > 1 ? <TextWidget text={`  ${t('widget.more', { count: active - 1 })}`} style={{ fontSize: 12, color: colors.muted }} /> : null}
+            {active > 1 ? <TextWidget text={`  ${t('widget.more', { count: active - 1 })}`} style={{ fontSize: 12, color: colors.ink2 }} /> : null}
           </FlexWidget>
         </FlexWidget>
       ) : (
-        <TextWidget text={t('widget.empty')} style={{ fontSize: 14, color: colors.text }} />
+        <TextWidget text={t('widget.empty')} style={{ fontSize: 14, color: colors.ink }} />
       )}
     </FlexWidget>
   );

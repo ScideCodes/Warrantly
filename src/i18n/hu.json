@@ -508,5 +508,11 @@
   },
   "sheet": {
     "close": "Bezárás"
+  },
+  "nav": {
+    "back": "Vissza"
+  },
+  "dialog": {
+    "ok": "OK"
   }
 }
