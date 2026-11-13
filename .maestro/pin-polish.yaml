@@ -1,0 +1,62 @@
+# Run against synthetic emulator data with app lock initially disabled, language English.
+appId: dev.warrantly.prototype
+---
+- launchApp: { stopApp: true }
+- extendedWaitUntil: { visible: { id: "tab-settings" }, timeout: 60000 }
+- openLink: warrantly://pin
+- extendedWaitUntil: { visible: "Choose a PIN", timeout: 15000 }
+- takeScreenshot: pin-01-choose
+- tapOn: { id: "pin-key-1" }
+- tapOn: { id: "pin-key-2" }
+- tapOn: { id: "pin-key-3" }
+- tapOn: { id: "pin-key-4" }
+- tapOn: "Continue"
+- assertVisible: "Enter the PIN again"
+- takeScreenshot: pin-02-confirm
+- tapOn: { id: "pin-key-1" }
+- tapOn: { id: "pin-key-2" }
+- tapOn: { id: "pin-key-3" }
+- tapOn: { id: "pin-key-5" }
+- assertVisible: "The PINs don't match. Choose a PIN again."
+- takeScreenshot: pin-03-mismatch
+- tapOn: { id: "pin-key-1" }
+- assertNotVisible: "The PINs don.t match.*"
+- tapOn: { id: "pin-key-2" }
+- tapOn: { id: "pin-key-3" }
+- tapOn: { id: "pin-key-4" }
+- tapOn: { id: "pin-key-5" }
+- tapOn: { id: "pin-key-6" }
+- tapOn: "Continue"
+- tapOn: { id: "pin-key-1" }
+- tapOn: { id: "pin-key-2" }
+- tapOn: { id: "pin-key-3" }
+- tapOn: { id: "pin-key-4" }
+- tapOn: { id: "pin-key-5" }
+- tapOn: { id: "pin-key-6" }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 15000 }
+- launchApp: { stopApp: true }
+- extendedWaitUntil: { visible: "Enter your PIN", timeout: 30000 }
+- takeScreenshot: pin-04-lock
+- tapOn: { id: "pin-key-9" }
+- tapOn: { id: "pin-key-9" }
+- tapOn: { id: "pin-key-9" }
+- tapOn: { id: "pin-key-9" }
+- tapOn: { id: "pin-key-9" }
+- tapOn: { id: "pin-key-9" }
+- assertVisible: "Wrong PIN. Try again."
+- takeScreenshot: pin-05-wrong
+- tapOn: { id: "pin-key-1" }
+- assertNotVisible: "Wrong PIN. Try again."
+- tapOn: { id: "pin-key-2" }
+- tapOn: { id: "pin-key-3" }
+- tapOn: { id: "pin-key-4" }
+- tapOn: { id: "pin-key-5" }
+- tapOn: { id: "pin-key-6" }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 15000 }
+- tapOn: { id: "tab-settings" }
+- scrollUntilVisible: { element: "App lock", timeout: 20000 }
+- tapOn: "App lock"
+- back
+- launchApp: { stopApp: true }
+- extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
+- assertNotVisible: "Enter your PIN"

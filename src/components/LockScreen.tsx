@@ -68,6 +68,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   function onDigit(d: string) {
     if (wait) return;
+    if (wrong) setWrong(false);
     const next = pin + d;
     if (next.length < length) return setPin(next);
     if (checkPin(next)) return onUnlock();
@@ -90,7 +91,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
       <PinLayout
         icon="shield-checkmark"
         title={t('lock.title')}
-        message={wait > 0 ? t('lock.wait', { count: wait }) : wrong ? t('lock.wrong') : ' '}
+        message={wait > 0 ? t('lock.wait', { count: wait }) : wrong ? t('lock.wrong') : t('lock.hint')}
         error={wrong || wait > 0}
         top={insets.top}
         pad={

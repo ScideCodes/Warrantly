@@ -208,6 +208,7 @@
     "returnSoon_other": "The return window closes in {{count}} days. Return it now if you want to."
   },
   "lock": {
+    "hint": "Unlock your warranties and documents.",
     "title": "Enter your PIN",
     "wrong": "Wrong PIN. Try again.",
     "wait_one": "Too many tries. Try again in {{count}} second.",
@@ -221,6 +222,9 @@
     "noDeviceLock": "This phone has no screen lock, so the PIN can't be reset. Clear Warrantly's data in Android settings, then restore from a backup."
   },
   "pin": {
+    "chooseHint": "Use 4–6 digits to protect your warranties.",
+    "confirmHint": "Enter the same PIN once more.",
+    "step": "Step {{current}} of 2",
     "titleNew": "Choose a PIN",
     "confirm": "Enter the PIN again",
     "continue": "Continue",

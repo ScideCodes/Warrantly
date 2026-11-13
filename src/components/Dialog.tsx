@@ -111,5 +111,5 @@ const useStyles = themed(() => StyleSheet.create({
   message: { ...TYPE.foot, color: colors.ink, textAlign: 'center', marginTop: 6 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: { flexGrow: 1, flexShrink: 1, flexBasis: 96, minWidth: 0, minHeight: 48, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  actionText: { fontSize: 17, lineHeight: 22, fontWeight: '600', textAlign: 'center' },
+  actionText: { ...TYPE.button, textAlign: 'center' },
 }));

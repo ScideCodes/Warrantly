@@ -513,7 +513,7 @@ const useStyles = themed(() => StyleSheet.create({
   credit: { ...TYPE.foot, color: colors.ink2 },
   empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 12, paddingHorizontal: ROW_X },
   doc: { paddingVertical: 10, paddingHorizontal: ROW_X, gap: 10 },
-  line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: 1, backgroundColor: colors.line },
+  line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
   docTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   docName: { ...TYPE.body, color: colors.ink },
   docType: { ...TYPE.foot, color: colors.ink2 },
@@ -529,6 +529,6 @@ const useStyles = themed(() => StyleSheet.create({
   noteItem: { paddingVertical: 4 },
   noteText: { ...TYPE.body, color: colors.ink },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: ROW_X },
-  noteRowLine: { borderTopWidth: 1, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
+  noteRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
   noteInput: { flex: 1, minWidth: 0 },
 }));
