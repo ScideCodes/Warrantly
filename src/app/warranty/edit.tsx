@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, TextInput, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
-import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/db/client';
 import {
@@ -13,10 +12,14 @@ import {
 } from '@/db/repo.ts';
 import { gmailTokenFor } from '@/google';
 import { gmailProvider } from '@/mail/gmail.ts';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS, FONT, SPACE } from '@/theme';
+import { NavBar, Page } from '@/components/Page';
+import { showAlert } from '@/components/Dialog';
+import { Button, Group, Input, inputStyle, SectionHeader, Switch } from '@/components/ui';
+import { colors, FIELD_RADIUS, ROW_X, TYPE } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
+import { SourceLoader, sourceKey, type SourceState } from '@/formSource';
 import { takeSharedFile } from '@/shareInbox';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
@@ -66,8 +69,12 @@ export default function EditWarranty() {
   const saving = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [loadedSource, setLoadedSource] = useState<string | null>(null);
-  const sourceReady = !(id || copyFrom) || loadedSource === (id || copyFrom);
+  // Edit and copy start from a stored warranty: the form stays hidden (and Save blocked) until that exact
+  // record has loaded, so a missing or failed source can never turn into an accidental new warranty.
+  const key = sourceKey(id, copyFrom);
+  const [source, setSource] = useState<SourceState>({ key, status: key ? 'loading' : 'ready' });
+  const [attempt, setAttempt] = useState(0); // Retry after a failed load
+  const sourceReady = source.key === key && source.status === 'ready';
   const busy = isSaving || scan.state === 'busy' || !sourceReady;
   useEffect(() => {
     mounted.current = true;
@@ -89,40 +96,38 @@ export default function EditWarranty() {
 
   useEffect(() => {
     let cancelled = false;
+    void getDb().then(listAccounts).then(
+      (found) => { if (!cancelled) setAccounts(found); },
+      (e) => { if (!cancelled) setSaveError(i18n.t('form.saveFailed', { detail: e instanceof Error ? e.message : String(e) })); },
+    );
+    return () => { cancelled = true; };
+  }, [i18n]);
+
+  useEffect(() => {
     savedId.current = null;
-    void getDb().then(async (db) => {
-      const foundAccounts = await listAccounts(db);
-      if (cancelled) return;
-      setAccounts(foundAccounts);
-      if (copyFrom) {
-        const from = await getWarranty(db, Number(copyFrom));
-        if (cancelled) return;
-        if (!from) return;
-        setForm({ ...fromWarranty(null), product_name: from.product_name ?? '', store_name: from.store_name, purchase_date: from.purchase_date,
-          warranty_start_date: from.warranty_start_date, category: from.category ?? '', order_number: from.order_number ?? '', serial_number: from.serial_number ?? '' });
-        setAccountId(from.account_id);
+    const loader = new SourceLoader<Warranty>((state, w) => {
+      setSource(state);
+      if (!w) return setExisting(null);
+      if (state.key?.startsWith('copy:')) {
+        setForm({ ...fromWarranty(null), product_name: w.product_name ?? '', store_name: w.store_name, purchase_date: w.purchase_date,
+          warranty_start_date: w.warranty_start_date, category: w.category ?? '', order_number: w.order_number ?? '', serial_number: w.serial_number ?? '' });
+        setAccountId(w.account_id);
         setCoverage('extended');
-        setLoadedSource(copyFrom);
         return;
       }
-      if (!id) return;
-      const w = await getWarranty(db, Number(id));
-      if (cancelled || !w) return;
       savedId.current = w.id;
       setExisting(w);
       setForm(fromWarranty(w));
-      setAccountId(w?.account_id ?? null);
-      setCoverage(w?.coverage ?? null);
+      setAccountId(w.account_id ?? null);
+      setCoverage(w.coverage ?? null);
       // "Next" reuses this screen with a new id: start the item fresh.
       setErrors([]);
       setRemember(false);
       setMail({ state: 'hidden' });
-      setLoadedSource(id);
-    }).catch((e) => {
-      if (!cancelled) setSaveError(i18n.t('form.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
     });
-    return () => { cancelled = true; };
-  }, [id, copyFrom, i18n]);
+    void loader.load(key, async () => getWarranty(await getDb(), Number(id ?? copyFrom)));
+    return () => loader.cancel();
+  }, [key, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const file = shared ? takeSharedFile() : null;
@@ -176,6 +181,7 @@ export default function EditWarranty() {
     };
     const db = await getDb();
     const saved = await draft.current.save(async (localPath) => {
+      if (id && !savedId.current) throw new Error(t('form.missingTitle')); // never turn a lost edit into a new warranty
       if (savedId.current) await updateWarranty(db, savedId.current, input);
       else savedId.current = await addManualWithDocument(db, input, localPath);
     });
@@ -192,7 +198,7 @@ export default function EditWarranty() {
 
   const askApply = (months: number, count: number, store: string) =>
     new Promise<boolean>((resolve) =>
-      Alert.alert(t('attention.applyTitle', { months, count, store }), undefined, [
+      showAlert(t('attention.applyTitle', { months, count, store }), undefined, [
         { text: t('attention.applyNo'), style: 'cancel', onPress: () => resolve(false) },
         { text: t('attention.applyYes'), onPress: () => resolve(true) },
       ]),
@@ -262,6 +268,7 @@ export default function EditWarranty() {
     });
   };
 
+  // Fields as in the reference's form panels: a Footnote label above a filled 44dp field.
   const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
     if (opts.date && Platform.OS === 'android' && !pickerError) {
@@ -271,7 +278,7 @@ export default function EditWarranty() {
           <Text style={styles.label}>{label}</Text>
           <Pressable
             testID={key}
-            style={[styles.input, styles.dateInput, invalid && styles.inputError]}
+            style={[inputStyle, styles.dateInput, invalid && styles.inputError]}
             onPress={() => pickDate(key as 'purchase_date' | 'warranty_start_date')}
             accessibilityRole="button"
             accessibilityLabel={`${label}: ${value ? formatDate(value, i18n.language) : ''}`}
@@ -289,9 +296,9 @@ export default function EditWarranty() {
         <Text style={styles.label} nativeID={`${key}-label`}>
           {label}
         </Text>
-        <TextInput
+        <Input
           testID={key} // a stable handle for UI tests (Maestro)
-          style={[styles.input, opts.multiline && styles.multiline, invalid && styles.inputError]}
+          style={[opts.multiline && styles.multiline, invalid && styles.inputError]}
           value={form[key]}
           onChangeText={set(key)}
           keyboardType={opts.keyboard}
@@ -311,45 +318,94 @@ export default function EditWarranty() {
       </View>
     );
   };
+  // A choice chip: --fill at rest, --tint-soft with tint-ink text when chosen (the reference's selected cell).
+  const chip = (k: string, text: string, selected: boolean, onPress: () => void, wide = false) => (
+    <Pressable
+      key={k}
+      style={({ pressed }) => [styles.chip, wide && styles.chipWide, selected && styles.chipSelected, pressed && styles.chipPressed]}
+      onPress={onPress}
+      accessibilityRole="radio"
+      accessibilityState={{ selected }}
+    >
+      <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={wide ? 1 : undefined}>
+        {text}
+      </Text>
+    </Pressable>
+  );
+
+  const title = t(id ? 'form.titleEdit' : 'form.titleAdd');
+  if (!sourceReady) {
+    const status = source.key === key ? source.status : 'loading'; // the route just changed: its load starts now
+    const failed = status === 'failed';
+    return (
+      <View style={[styles.screen, styles.sourceState]}>
+        {status === 'loading' ? (
+          <>
+            <ActivityIndicator size="large" color={colors.tint} />
+            <Text style={styles.sourceText} accessibilityLiveRegion="polite">
+              {t('form.loading')}
+            </Text>
+          </>
+        ) : (
+          <>
+            <Ionicons name={failed ? 'alert-circle-outline' : 'document-outline'} size={40} color={colors.ink2} />
+            <Text style={styles.sourceTitle} accessibilityRole="header">
+              {t(failed ? 'form.loadFailedTitle' : 'form.missingTitle')}
+            </Text>
+            <Text style={styles.sourceText} accessibilityLiveRegion="polite">
+              {failed ? t('form.loadFailedBody', { detail: source.error }) : t('form.missingBody')}
+            </Text>
+            {failed && <Button title={t('home.retry')} onPress={() => setAttempt((n) => n + 1)} style={styles.sourceButton} />}
+            <Button kind={failed ? 'glass' : 'prominent'} title={t('form.backToList')} onPress={() => goBack()} style={styles.sourceButton} />
+          </>
+        )}
+        <NavBar title={title} />
+      </View>
+    );
+  }
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t(id ? 'form.titleEdit' : 'form.titleAdd') }} />
-      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-          {resolving && existing?.origin === 'gmail' && (
-            <View style={styles.field}>
-              <Pressable style={styles.secondary} onPress={toggleMail} accessibilityRole="button">
-                {mail.state === 'loading' ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t(mail.state === 'shown' ? 'form.hideEmail' : 'form.showEmail')}</Text>}
-              </Pressable>
-              {mail.state === 'shown' && (
-                <ScrollView style={styles.mailBox} nestedScrollEnabled>
-                  <Text style={styles.mailText} selectable>
-                    {mail.text}
-                  </Text>
-                </ScrollView>
-              )}
-            </View>
-          )}
-          {!existing && (
-            <View style={styles.group}>
-              <Text style={styles.groupTitle} accessibilityRole="header">
-                {t('form.fromDocument')}
+    // Edge-to-edge Android does not resize the window for the keyboard, so pad on both platforms.
+    <KeyboardAvoidingView style={styles.screen} behavior="padding">
+      <Page
+        ref={scroll}
+        title={title}
+        // Save stays in reach at the bottom, above the keyboard when it is open.
+        footer={
+          <>
+            {saveError && (
+              <Text style={styles.saveError} accessibilityLiveRegion="polite">
+                {saveError}
               </Text>
+            )}
+            <Button title={t(isSaving ? 'viewer.saving' : 'form.save')} onPress={save} disabled={busy && !isSaving} busy={isSaving} />
+          </>
+        }
+      >
+        {resolving && existing?.origin === 'gmail' && (
+          <View style={styles.mail}>
+            <Button kind="glass" title={t(mail.state === 'shown' ? 'form.hideEmail' : 'form.showEmail')} onPress={toggleMail} busy={mail.state === 'loading'} />
+            {mail.state === 'shown' && (
+              <ScrollView style={styles.mailBox} nestedScrollEnabled>
+                <Text style={styles.mailText} selectable>
+                  {mail.text}
+                </Text>
+              </ScrollView>
+            )}
+          </View>
+        )}
+        {!existing && (
+          <>
+            <SectionHeader title={t('form.fromDocument')} first />
+            <Group style={styles.panel}>
               <View style={styles.methods}>
-                <Pressable style={[styles.method, styles.methodPrimary, busy && styles.disabled]} onPress={() => runScan(scanDocument)} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy }} accessibilityLabel={t('form.scan')}>
-                  {scan.state === 'busy' ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="camera-outline" size={22} color={colors.onPrimary} />}
-                  <Text style={styles.methodPrimaryText}>{t('form.scanShort')}</Text>
-                </Pressable>
-                <Pressable style={[styles.method, busy && styles.disabled]} onPress={() => runScan(importDocument)} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy }} accessibilityLabel={t('form.import')}>
-                  <Ionicons name="folder-open-outline" size={22} color={colors.primary} />
-                  <Text style={styles.methodText}>{t('form.importShort')}</Text>
-                </Pressable>
+                <Button title={t('form.scanShort')} icon="camera-outline" onPress={() => runScan(scanDocument)} disabled={busy && scan.state !== 'busy'} busy={scan.state === 'busy'} accessibilityLabel={t('form.scan')} style={styles.flex} />
+                <Button kind="glass" title={t('form.importShort')} icon="folder-open-outline" onPress={() => runScan(importDocument)} disabled={busy} accessibilityLabel={t('form.import')} style={styles.flex} />
               </View>
               {scan.state === 'done' || scan.state === 'attached' ? (
                 // Review before save: say plainly that the form was filled from the document.
                 <View style={styles.review} accessibilityLiveRegion="polite">
-                  <Ionicons name="checkmark-circle" size={22} color={colors.ok.fg} />
+                  <Ionicons name="checkmark-circle" size={20} color={colors.ok} />
                   <Text style={styles.reviewText}>{t(scan.state === 'done' ? 'form.scanned' : 'form.imported')}</Text>
                 </View>
               ) : (
@@ -357,37 +413,24 @@ export default function EditWarranty() {
                   {scan.state === 'busy' ? t('form.scanning') : scan.state === 'failed' ? t('form.scanFailed', { detail: scan.detail }) : t('form.scanHint')}
                 </Text>
               )}
-            </View>
-          )}
-          <Text style={styles.groupTitle} accessibilityRole="header">
-            {t('form.groupProduct')}
-          </Text>
+            </Group>
+          </>
+        )}
+        <SectionHeader title={t('form.groupProduct')} first={!!existing} />
+        <Group style={styles.panel}>
           {field('product_name', t('form.product'), { error: t('form.errProduct') })}
           {field('store_name', t('form.store'), { error: t('form.errStore') })}
-          <Text style={[styles.groupTitle, styles.groupGap]} accessibilityRole="header">
-            {t('form.groupWarranty')}
-          </Text>
+        </Group>
+        <SectionHeader title={t('form.groupWarranty')} />
+        <Group style={styles.panel}>
           {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
 
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.length')}</Text>
-            <View style={styles.chips}>
-              {LENGTH_CHOICES.map((m) => {
-                const selected = form.warranty_months === String(m);
-                return (
-                  <Pressable
-                    key={m}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => set('warranty_months')(String(m))}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                  >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{m}</Text>
-                  </Pressable>
-                );
-              })}
-              <TextInput
-                style={[styles.input, styles.monthsInput, errors.includes('warranty_months') && styles.inputError]}
+            <View style={styles.chips} accessibilityRole="radiogroup">
+              {LENGTH_CHOICES.map((m) => chip(String(m), String(m), form.warranty_months === String(m), () => set('warranty_months')(String(m))))}
+              <Input
+                style={[styles.monthsInput, errors.includes('warranty_months') && styles.inputError]}
                 value={form.warranty_months}
                 onChangeText={set('warranty_months')}
                 keyboardType="number-pad"
@@ -401,23 +444,10 @@ export default function EditWarranty() {
           {accounts.length > 0 && (!existing || existing.origin === 'manual') && (
             <View style={styles.field}>
               <Text style={styles.label}>{t('form.saveTo')}</Text>
-              <View style={styles.wrapChips}>
-                {[null, ...accounts.map((a) => a.id)].map((aid) => {
-                  const selected = accountId === aid;
-                  return (
-                    <Pressable
-                      key={String(aid)}
-                      style={[styles.chip, styles.chipWide, selected && styles.chipSelected]}
-                      onPress={() => setAccountId(aid)}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected }}
-                    >
-                      <Text style={[styles.chipText, selected && styles.chipTextSelected]} numberOfLines={1}>
-                        {aid === null ? t('home.tabManual') : accounts.find((a) => a.id === aid)!.email}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
+              <View style={styles.wrapChips} accessibilityRole="radiogroup">
+                {[null, ...accounts.map((a) => a.id)].map((aid) =>
+                  chip(String(aid), aid === null ? t('home.tabManual') : accounts.find((a) => a.id === aid)!.email, accountId === aid, () => setAccountId(aid), true),
+                )}
               </View>
             </View>
           )}
@@ -430,128 +460,84 @@ export default function EditWarranty() {
           )}
 
           {!showMore ? (
-            <Pressable style={styles.secondary} onPress={() => setMore(true)} accessibilityRole="button">
-              <Text style={styles.secondaryText}>{t('form.more')}</Text>
-            </Pressable>
+            <Button kind="glass" title={t('form.more')} onPress={() => setMore(true)} style={styles.more} />
           ) : (
             <>
-          {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('form.coverage')}</Text>
-            <View style={styles.wrapChips}>
-              {([null, 'store', 'extended'] as const).map((c) => (
-                <Pressable
-                  key={String(c)}
-                  style={[styles.chip, coverage === c && styles.chipSelected]}
-                  onPress={() => setCoverage(c)}
-                  accessibilityRole="radio"
-                  accessibilityState={{ selected: coverage === c }}
-                >
-                  <Text style={[styles.chipText, coverage === c && styles.chipTextSelected]}>{t(`coverage.${c ?? 'standard'}`)}</Text>
-                </Pressable>
-              ))}
-            </View>
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.label}>{t('form.category')}</Text>
-            <View style={styles.wrapChips}>
-              {CATEGORIES.map((c) => {
-                const selected = form.category === c;
-                return (
-                  <Pressable
-                    key={c}
-                    style={[styles.chip, selected && styles.chipSelected]}
-                    onPress={() => set('category')(selected ? '' : c)}
-                    accessibilityRole="radio"
-                    accessibilityState={{ selected }}
-                  >
-                    <Text style={[styles.chipText, selected && styles.chipTextSelected]}>{t(`category.${c}`)}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </View>
-          <View style={styles.priceRow}>
-            <View style={styles.flex}>{field('price', t('form.price'), { keyboard: 'decimal-pad' })}</View>
-            <View style={styles.currency}>{field('currency', t('form.currency'), { keyboard: 'default' })}</View>
-          </View>
-          {field('order_number', t('form.orderNumber'))}
-          {field('serial_number', t('form.serial'))}
-          {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
-          {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
-          {field('website_url', t('form.website'), { keyboard: 'url' })}
-          {field('notes', t('form.notes'), { multiline: true })}
+              {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
+              <View style={styles.field}>
+                <Text style={styles.label}>{t('form.coverage')}</Text>
+                <View style={styles.wrapChips} accessibilityRole="radiogroup">
+                  {([null, 'store', 'extended'] as const).map((c) => chip(String(c), t(`coverage.${c ?? 'standard'}`), coverage === c, () => setCoverage(c)))}
+                </View>
+              </View>
+              <View style={styles.field}>
+                <Text style={styles.label}>{t('form.category')}</Text>
+                <View style={styles.wrapChips} accessibilityRole="radiogroup">
+                  {CATEGORIES.map((c) => chip(c, t(`category.${c}`), form.category === c, () => set('category')(form.category === c ? '' : c)))}
+                </View>
+              </View>
+              <View style={styles.priceRow}>
+                <View style={styles.flex}>{field('price', t('form.price'), { keyboard: 'decimal-pad' })}</View>
+                <View style={styles.currency}>{field('currency', t('form.currency'), { keyboard: 'default' })}</View>
+              </View>
+              {field('order_number', t('form.orderNumber'))}
+              {field('serial_number', t('form.serial'))}
+              {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
+              {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
+              {field('website_url', t('form.website'), { keyboard: 'url' })}
+              {field('notes', t('form.notes'), { multiline: true })}
             </>
           )}
+        </Group>
 
-          {resolving && (
-            <View style={styles.resolveRow}>
-              <Pressable style={[styles.secondary, styles.flex]} onPress={goNext} accessibilityRole="button">
-                <Text style={styles.secondaryText}>{t('form.later')}</Text>
-              </Pressable>
-              <Pressable style={[styles.secondary, styles.flex]} onPress={notWarranty} accessibilityRole="button">
-                <Text style={styles.secondaryText}>{t('detail.notWarranty')}</Text>
-              </Pressable>
-            </View>
-          )}
-        </ScrollView>
-        {/* Save stays in reach at the bottom, above the keyboard when it is open. */}
-        <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.saveBar}>
-          {saveError && <Text style={styles.saveError} accessibilityLiveRegion="polite">{saveError}</Text>}
-          <Pressable style={[styles.button, busy && styles.disabled]} onPress={save} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy: isSaving }}>
-            {isSaving && <ActivityIndicator color={colors.onPrimary} />}
-            <Text style={styles.buttonText}>{t(isSaving ? 'viewer.saving' : 'form.save')}</Text>
-          </Pressable>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </>
+        {resolving && (
+          <View style={styles.resolveRow}>
+            <Button kind="glass" title={t('form.later')} onPress={goNext} style={styles.flex} />
+            <Button kind="glass" title={t('detail.notWarranty')} onPress={notWarranty} style={styles.flex} />
+          </View>
+        )}
+      </Page>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  priceRow: { flexDirection: 'row', gap: 12 },
-  currency: { width: 96 },
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: SPACE.screen, gap: 16, paddingBottom: 32 },
-  field: { gap: 6 },
-  label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 16, fontSize: 17, color: colors.text, backgroundColor: colors.surface },
-  multiline: { minHeight: 96, paddingTop: 12, textAlignVertical: 'top' },
-  inputError: { borderColor: colors.soon.fg, borderWidth: 2 },
-  hint: { fontSize: 14, color: colors.muted },
-  error: { fontSize: 14, color: colors.soon.fg },
-  chips: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  chip: { minHeight: BUTTON_HEIGHT, minWidth: 56, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
-  chipSelected: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  chipTextSelected: { color: colors.onPrimary },
-  secondary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12 },
-  secondaryText: { fontSize: 16, fontWeight: '600', color: colors.text },
-  mailBox: { maxHeight: 280, borderWidth: 1, borderColor: colors.border, borderRadius: 14, padding: 12, backgroundColor: colors.surface },
-  mailText: { fontSize: 13, lineHeight: 19, color: colors.text },
-  resolveRow: { flexDirection: 'row', gap: 12 },
+  screen: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
-  group: { gap: 10, marginBottom: 8 },
-  groupTitle: { fontSize: FONT.heading, fontWeight: '700', color: colors.text },
-  groupGap: { marginTop: 8 },
-  methods: { flexDirection: 'row', gap: 10 },
-  method: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 10, paddingVertical: 8, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
-  methodPrimary: { backgroundColor: colors.primary },
-  methodText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.primary, textAlign: 'center' },
-  methodPrimaryText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.onPrimary, textAlign: 'center' },
-  review: { flexDirection: 'row', alignItems: 'flex-start', gap: 10, padding: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.ok.bg },
-  reviewText: { flex: 1, fontSize: 15, color: colors.ok.fg },
-  saveBar: { paddingHorizontal: SPACE.screen, paddingTop: 10, paddingBottom: 10, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
+  sourceState: { alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 },
+  sourceTitle: { ...TYPE.title3, color: colors.ink, textAlign: 'center' },
+  sourceText: { ...TYPE.body, color: colors.ink2, textAlign: 'center' },
+  sourceButton: { alignSelf: 'stretch' },
+  panel: { paddingTop: 4, paddingBottom: 16, paddingHorizontal: ROW_X, gap: 4 },
+  field: { gap: 8, paddingTop: 10 },
+  label: { ...TYPE.foot, color: colors.ink2 },
+  multiline: { minHeight: 96, textAlignVertical: 'top' },
+  inputError: { outlineWidth: 2, outlineColor: colors.bad, outlineStyle: 'solid' },
+  hint: { ...TYPE.foot, color: colors.ink2 },
+  error: { ...TYPE.foot, color: colors.bad },
+  chips: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chipWide: { paddingHorizontal: 14, maxWidth: '100%' },
+  chip: { minHeight: 44, minWidth: 52, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
+  chipWide: { maxWidth: '100%' },
+  chipSelected: { backgroundColor: colors.tintSoft },
+  chipPressed: { backgroundColor: colors.press },
+  chipText: { ...TYPE.sub, fontWeight: '500', color: colors.ink },
+  chipTextSelected: { color: colors.tintInk, fontWeight: '600' },
   monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },
   dateInput: { justifyContent: 'center' },
-  dateText: { fontSize: 17, color: colors.text },
-  datePlaceholder: { color: colors.muted },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
-  switchLabel: { flex: 1, fontSize: 15, color: colors.text },
-  disabled: { opacity: 0.5 },
-  saveError: { fontSize: 15, color: colors.soon.fg, paddingBottom: 8 },
-  button: { flexDirection: 'row', gap: 8, minHeight: BUTTON_HEIGHT, padding: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { flexShrink: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.onPrimary },
+  dateText: { ...TYPE.body, color: colors.ink },
+  datePlaceholder: { color: colors.ink2 },
+  priceRow: { flexDirection: 'row', gap: 12 },
+  currency: { width: 96 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingTop: 10 },
+  switchLabel: { ...TYPE.body, flex: 1, color: colors.ink },
+  more: { marginTop: 16 },
+  mail: { gap: 12, marginTop: 8 },
+  mailBox: { maxHeight: 280, borderRadius: FIELD_RADIUS, padding: 12, backgroundColor: colors.card },
+  mailText: { ...TYPE.foot, color: colors.ink },
+  methods: { flexDirection: 'row', gap: 8, paddingTop: 12, paddingBottom: 8 },
+  review: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: FIELD_RADIUS, backgroundColor: colors.okSoft },
+  reviewText: { ...TYPE.sub, flex: 1, color: colors.ok },
+  resolveRow: { flexDirection: 'row', gap: 8, marginTop: 20 },
+  saveError: { ...TYPE.foot, color: colors.bad, paddingBottom: 8 },
 });

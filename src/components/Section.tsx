@@ -1,44 +1,42 @@
 import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { CARD_RADIUS, colors, FONT, SPACE } from '@/theme';
+import { colors, ROW_TALL, ROW_X, TYPE } from '@/theme';
+import { Group, SectionHeader } from '@/components/ui';
 
-// A titled group: a plain heading, then one white surface. Used on detail, add/edit and the viewer, so
-// every screen groups things the same way.
+// A titled group: the reference's section header, then one grouped card. Used on detail, add/edit and
+// the viewer, so every screen groups things the same way.
 export function Section({ title, children, first }: { title: string; children: ReactNode; first?: boolean }) {
   return (
-    <View style={!first && styles.gap}>
-      <Text style={styles.title} accessibilityRole="header">
-        {title}
-      </Text>
-      <View style={styles.card}>{children}</View>
+    <View>
+      <SectionHeader title={title} first={first} />
+      <Group>{children}</Group>
     </View>
   );
 }
 
-// Label above value, with a thin line under it; the value wraps.
+// The reference's Tall row (`.ts .row`, 68dp): Footnote label above a Body value that wraps. The line
+// between rows is inset 16 at both ends.
 export function Field({ label, value, onPress, last }: { label: string; value: string; onPress?: () => void; last?: boolean }) {
   const body = (
     <>
       <Text style={styles.label}>{label}</Text>
       <Text style={[styles.value, onPress && styles.link]}>{value}</Text>
+      {!last && <View style={styles.line} />}
     </>
   );
   return onPress ? (
-    <Pressable style={[styles.field, last && styles.last]} onPress={onPress} accessibilityRole="link">
+    <Pressable style={({ pressed }) => [styles.field, pressed && { backgroundColor: colors.press }]} onPress={onPress} accessibilityRole="link">
       {body}
     </Pressable>
   ) : (
-    <View style={[styles.field, last && styles.last]}>{body}</View>
+    <View style={styles.field}>{body}</View>
   );
 }
 
 const styles = StyleSheet.create({
-  gap: { marginTop: SPACE.section },
-  title: { fontSize: FONT.heading, fontWeight: '700', color: colors.text, marginBottom: 8, marginLeft: 4 },
-  card: { backgroundColor: colors.surface, borderRadius: CARD_RADIUS, paddingHorizontal: SPACE.group },
-  field: { paddingVertical: 12, gap: 2, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  label: { fontSize: 14, color: colors.muted },
-  value: { fontSize: FONT.body, color: colors.text },
-  link: { color: colors.primary, fontWeight: '600' },
-  last: { borderBottomWidth: 0 },
+  field: { minHeight: ROW_TALL, justifyContent: 'center', paddingVertical: 14, paddingHorizontal: ROW_X },
+  label: { ...TYPE.foot, color: colors.ink2 },
+  value: { ...TYPE.body, color: colors.ink },
+  link: { color: colors.link },
+  line: { position: 'absolute', left: ROW_X, right: ROW_X, bottom: 0, height: 1, backgroundColor: colors.line },
 });

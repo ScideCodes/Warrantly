@@ -1,6 +1,6 @@
-import { useCallback, useState, type ReactNode } from 'react';
-import { router, Stack, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { useTranslation } from 'react-i18next';
@@ -19,9 +19,11 @@ import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { Page } from '@/components/Page';
+import { showAlert } from '@/components/Dialog';
+import { Button, Group, IconTile, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
+import { colors, RADIUS, ROW_X, TYPE } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
-
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 type Icon = keyof typeof Ionicons.glyphMap;
@@ -102,7 +104,7 @@ export default function Settings() {
   function chooseTheme(next: string) {
     setThemeSetting(next);
     setTheme(next);
-    restartIntoUpdate().catch(() => Alert.alert(t('settings.themeRestart')));
+    restartIntoUpdate().catch(() => showAlert(t('settings.themeRestart')));
   }
 
   // Reminder time: Android's own clock picker; elsewhere (web preview) 9:00 and 18:00 alternate.
@@ -152,12 +154,12 @@ export default function Settings() {
   // Section 15: an encrypted backup of the account is made first; it needs the backup password.
   function disconnect(account: Account) {
     if (!hasBackupPassword()) {
-      return Alert.alert(t('accounts.needPassword'), undefined, [
+      return showAlert(t('accounts.needPassword'), undefined, [
         { text: t('restore.cancel'), style: 'cancel' },
         { text: t('accounts.setPassword'), onPress: () => router.push({ pathname: '/backup-password', params: { purpose: 'disconnect' } }) },
       ]);
     }
-    Alert.alert(t('accounts.confirmTitle', { email: account.email }), t('accounts.confirmBody'), [
+    showAlert(t('accounts.confirmTitle', { email: account.email }), t('accounts.confirmBody'), [
       { text: t('restore.cancel'), style: 'cancel' },
       {
         text: t('accounts.disconnect'),
@@ -166,9 +168,9 @@ export default function Settings() {
           const db = await getDb();
           try {
             await disconnectAccount(db, account);
-            Alert.alert(t('accounts.done', { email: account.email }));
+            showAlert(t('accounts.done', { email: account.email }));
           } catch (e) {
-            Alert.alert(e instanceof Error ? e.message : String(e));
+            showAlert(e instanceof Error ? e.message : String(e));
           }
           setAccounts(await listAccounts(db));
         },
@@ -193,7 +195,7 @@ export default function Settings() {
       if (format === 'csv') await shareText(`warrantly-${day}.csv`, '\ufeff' + toCsv(list, t), 'text/csv'); // BOM: Excel reads UTF-8 (á, ő)
       else await sharePdf(`warrantly-${day}.pdf`, toHtml(list, t, t('export.title', { date: day })));
     } catch (e) {
-      Alert.alert(e instanceof Error ? e.message : String(e));
+      showAlert(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -202,7 +204,7 @@ export default function Settings() {
       const data = await dumpDb(await getDb(), settingsSnapshot());
       await shareText(`warrantly-all-data-${data.createdAt.slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json');
     } catch (e) {
-      Alert.alert(e instanceof Error ? e.message : String(e));
+      showAlert(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -212,7 +214,7 @@ export default function Settings() {
       const ids = (await listWarranties(db, 'complete')).map((w) => w.id);
       await shareWarranties(db, ids, `warrantly-shared-${new Date().toISOString().slice(0, 10)}.json`);
     } catch (e) {
-      Alert.alert(e instanceof Error ? e.message : String(e));
+      showAlert(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -220,10 +222,10 @@ export default function Settings() {
     try {
       const db = await getDb();
       const added = await importSharedFile(db);
-      if (added !== null) Alert.alert(t('data.imported', { count: added }));
+      if (added !== null) showAlert(t('data.imported', { count: added }));
       await rescheduleReminders(db);
     } catch (e) {
-      Alert.alert(e instanceof Error ? e.message : String(e));
+      showAlert(e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -233,10 +235,10 @@ export default function Settings() {
         await deleteAllData(await getDb(), drive);
         await restartIntoUpdate().catch(() => router.replace('/onboarding')); // starts fresh, like a new install
       } catch (e) {
-        Alert.alert(e instanceof Error ? e.message : String(e));
+        showAlert(e instanceof Error ? e.message : String(e));
       }
     };
-    Alert.alert(t('data.deleteTitle'), t('data.deleteBody'), [
+    showAlert(t('data.deleteTitle'), t('data.deleteBody'), [
       { text: t('restore.cancel'), style: 'cancel' },
       { text: t('data.deletePhone'), style: 'destructive', onPress: () => void run(false) },
       { text: t('data.deleteAll'), style: 'destructive', onPress: () => void run(true) },
@@ -266,282 +268,235 @@ export default function Settings() {
     await backupNow();
   }
 
-  // A small tinted square with an icon at the start of each row, so rows are easy to tell apart.
-  const tile = (icon: Icon, danger = false) => (
-    <View style={[styles.tile, danger && styles.tileDanger]}>
-      <Ionicons name={icon} size={22} color={danger ? colors.soon.fg : colors.muted} />
-    </View>
-  );
-  const row = (icon: Icon, label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void) => (
-    <View style={styles.row}>
-      {tile(icon)}
+  // The reference's settings rows (`.settings-group`): a 29dp colour tile with a white glyph, the label, then a
+  // switch, a value or a chevron. Separators start at 59, after the tile.
+  const row = (icon: Icon, tint: string, label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void) => (
+    <Row key={label} iconInset style={styles.row}>
+      <IconTile name={icon} color={tint} />
       <View style={styles.rowText}>
         <Text style={styles.label}>{label}</Text>
         {hint && <Text style={styles.hint}>{hint}</Text>}
       </View>
-      <Switch
-        value={value}
-        onValueChange={onChange}
-        accessibilityLabel={label}
-        trackColor={{ true: colors.primary, false: colors.border }}
-        thumbColor={value ? colors.onPrimary : colors.surface}
-      />
-    </View>
+      <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
+    </Row>
   );
-  const link = (icon: Icon, label: string, onPress: () => void, opts: { hint?: string; danger?: boolean; value?: string } = {}) => (
-    <Pressable style={styles.row} onPress={onPress} accessibilityRole="button">
-      {tile(icon, opts.danger)}
+  const link = (icon: Icon, tint: string, label: string, onPress: () => void, opts: { hint?: string; danger?: boolean; value?: string } = {}) => (
+    <Row key={label} iconInset style={styles.row} onPress={onPress} chevron={!opts.danger}>
+      <IconTile name={icon} color={tint} />
       <View style={styles.rowText}>
-        <Text style={[styles.label, opts.danger && styles.dangerLabel]}>{label}</Text>
+        <Text style={[styles.label, opts.danger && { color: colors.bad }]}>{label}</Text>
         {opts.hint && <Text style={styles.hint}>{opts.hint}</Text>}
       </View>
       {opts.value && <Text style={styles.value}>{opts.value}</Text>}
-      {!opts.danger && <Ionicons name="chevron-forward" size={20} color={colors.muted} />}
-    </Pressable>
+    </Row>
   );
-  // Segmented control: every choice visible at once, the chosen one filled.
-  const segmented = (label: string, items: { key: string; text: string }[], selected: string, onPick: (key: string) => void) => (
-    <View style={styles.segment} accessibilityRole="radiogroup" accessibilityLabel={label}>
-      {items.map((it) => (
-        <Pressable
-          key={it.key}
-          style={[styles.segItem, selected === it.key && styles.segItemOn]}
-          onPress={() => onPick(it.key)}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: selected === it.key }}
-        >
-          <Text style={[styles.segText, selected === it.key && styles.segTextOn]}>
-            {it.text}
-          </Text>
-        </Pressable>
-      ))}
-    </View>
-  );
-  const choices = (icon: Icon, label: string, items: { key: string; text: string }[], selected: string, onPick: (key: string) => void) => (
-    <View style={styles.block}>
+  // Choices in a row block: the label, then the Large segmented control (the reference's appearance picker).
+  const choices = (icon: Icon, tint: string, label: string, items: { key: string; label: string; icon?: Icon }[], selected: string, onPick: (key: string) => void) => (
+    <Row key={label} iconInset style={styles.block}>
       <View style={styles.blockHead}>
-        {tile(icon)}
+        <IconTile name={icon} color={tint} />
         <Text style={styles.label}>{label}</Text>
       </View>
-      {segmented(label, items, selected, onPick)}
-    </View>
+      <Segmented large options={items} value={selected} onChange={onPick} />
+    </Row>
   );
   const name = getUsername();
-  // One card per topic, with a heading above it, so sections are easy to tell apart.
+  // One group per topic, with the reference's section header above it.
   const section = (title: string, body: ReactNode) => (
-    <View style={styles.sectionWrap}>
-      <Text style={styles.section} accessibilityRole="header">
-        {title}
-      </Text>
-      <View style={styles.card}>{body}</View>
+    <View>
+      <SectionHeader title={title} />
+      <Group>{Children.toArray(isValidElement<{ children?: ReactNode }>(body) && body.type === Fragment ? body.props.children : body).filter(isValidElement).map((child, i) => cloneElement(child as ReactElement<{ separator?: boolean }>, { separator: i > 0 }))}</Group>
     </View>
   );
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t('settings.title') }} />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content}>
-        <View style={styles.profile}>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
-          </View>
-          <View style={styles.rowText}>
-            <Text style={styles.profileName} numberOfLines={1}>
-              {name?.trim() || t('settings.title')}
-            </Text>
-            <Text style={styles.hint}>{t('settings.profileHint')}</Text>
-          </View>
+    <Page title={t('settings.title')}>
+      {/* The reference's profile row: a 60dp grey avatar, the name in Title 3 and a Subheadline hint. */}
+      <View style={styles.profile}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
         </View>
+        <View style={styles.rowText}>
+          <Text style={styles.profileName} numberOfLines={1}>
+            {name?.trim() || t('settings.title')}
+          </Text>
+          <Text style={styles.profileHint}>{t('settings.profileHint')}</Text>
+        </View>
+      </View>
 
-        {section(
-          t('accounts.section'),
-          <>
-            {accounts.map((a) => (
-              <View key={a.id} style={styles.row}>
-                {tile('mail-outline')}
-                <View style={styles.rowText}>
-                  <Text style={styles.label}>
-                    {a.email}
-                  </Text>
-                  <View style={styles.inlineLinks}>
-                    <Pressable
-                      onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
-                      hitSlop={8}
-                    >
-                      <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
-                    </Pressable>
-                    <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
-                      <Text style={styles.danger}>{t('accounts.disconnect')}</Text>
-                    </Pressable>
-                  </View>
+      {section(
+        t('accounts.section'),
+        <>
+          {accounts.map((a) => (
+            <Row key={a.id} iconInset style={styles.row}>
+              <IconTile name="mail-outline" color={TILE.blue} />
+              <View style={styles.rowText}>
+                <Text style={styles.label}>{a.email}</Text>
+                <View style={styles.inlineLinks}>
+                  <Pressable
+                    onPress={() => router.push({ pathname: '/sync-range', params: { email: a.email } })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${t('accounts.scanOlder')}: ${a.email}`}
+                    hitSlop={8}
+                  >
+                    <Text style={styles.linkSmall}>{t('accounts.scanOlder')}</Text>
+                  </Pressable>
+                  <Pressable onPress={() => disconnect(a)} accessibilityRole="button" accessibilityLabel={`${t('accounts.disconnect')}: ${a.email}`} hitSlop={8}>
+                    <Text style={[styles.linkSmall, { color: colors.bad }]}>{t('accounts.disconnect')}</Text>
+                  </Pressable>
                 </View>
               </View>
+            </Row>
+          ))}
+          <Row key="add" iconInset style={styles.row} onPress={addAccount}>
+            <IconTile name="add" color={TILE.green} />
+            <Text style={[styles.label, styles.rowText, { color: colors.link }]}>{t('accounts.add')}</Text>
+          </Row>
+          {accountBusy && (
+            <Row key="busy" iconInset>
+              <Text style={styles.hint}>{accountBusy}</Text>
+            </Row>
+          )}
+          {link('eye-off-outline', TILE.grey, t('ignored.title'), () => router.push('/ignored'))}
+        </>,
+      )}
+
+      {section(
+        t('settings.remindersSection'),
+        <>
+          {row('notifications-outline', TILE.red, t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+          {reminders &&
+            ALL_GROUPS.map((g) => (
+              // The reference's to-do circles: 22dp, --ink-3 ring, filled with the tint when on.
+              <Row key={g} iconInset style={styles.row} onPress={() => toggleGroup(g)} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>
+                <View style={styles.tileSpace}>
+                  <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <Ionicons name="checkmark" size={15} color="#fff" />}</View>
+                </View>
+                <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
+              </Row>
             ))}
-            <Pressable style={styles.row} onPress={addAccount} accessibilityRole="button">
-              {tile('add')}
-              <Text style={[styles.label, styles.link, styles.rowText]}>{t('accounts.add')}</Text>
-            </Pressable>
-            {accountBusy && <Text style={[styles.hint, styles.pad]}>{accountBusy}</Text>}
-            {link('eye-off-outline', t('ignored.title'), () => router.push('/ignored'))}
-          </>,
-        )}
+          {reminders && link('time-outline', TILE.orange, t('settings.reminderTime'), pickTime, { value: timeLabel })}
+          {reminders && row('return-down-back-outline', TILE.purple, t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
+        </>,
+      )}
 
-        {section(
-          t('settings.remindersSection'),
-          <>
-            {row('notifications-outline', t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
-            {reminders && (
-              <>
-                {ALL_GROUPS.map((g) => (
-                  <Pressable
-                    key={g}
-                    style={[styles.row, styles.subRow]}
-                    onPress={() => toggleGroup(g)}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: groups.includes(g) }}
-                  >
-                    <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
-                    <View style={[styles.check, groups.includes(g) && styles.checkOn]}>
-                      {groups.includes(g) && <Ionicons name="checkmark" size={18} color={colors.onPrimary} />}
-                    </View>
-                  </Pressable>
-                ))}
-                {link('time-outline', t('settings.reminderTime'), pickTime, { value: timeLabel })}
-                {row('return-down-back-outline', t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
-              </>
-            )}
-          </>,
-        )}
+      {section(
+        t('settings.general'),
+        <>
+          {choices(
+            'contrast-outline',
+            TILE.indigo,
+            t('settings.theme'),
+            [
+              { key: 'light', label: t('settings.theme_light'), icon: 'sunny-outline' },
+              { key: 'dark', label: t('settings.theme_dark'), icon: 'moon-outline' },
+              { key: 'system', label: t('settings.theme_system'), icon: 'phone-portrait-outline' },
+            ],
+            theme,
+            chooseTheme,
+          )}
+          {choices('globe-outline', TILE.blue, t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, label: t(`settings.lang_${key}`) })), language, chooseLanguage)}
+        </>,
+      )}
 
-        {section(
-          t('settings.general'),
-          <>
-            {choices('contrast-outline', t('settings.theme'), ['light', 'dark', 'system'].map((key) => ({ key, text: t(`settings.theme_${key}`) })), theme, chooseTheme)}
-            {choices('globe-outline', t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, text: t(`settings.lang_${key}`) })), language, chooseLanguage)}
-          </>,
-        )}
+      {section(
+        t('settings.security'),
+        <>
+          {row('lock-closed-outline', TILE.grey, t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
+          {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), () => router.push('/pin'))}
+          {lock && canBiometric && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
+          {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
+        </>,
+      )}
 
-        {section(
-          t('settings.security'),
-          <>
-            {row('lock-closed-outline', t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
-            {lock && link('keypad-outline', t('settings.changePin'), () => router.push('/pin'))}
-            {lock && canBiometric && row('finger-print-outline', t('settings.biometric'), null, biometric, toggleBiometric)}
-            {Platform.OS === 'android' && row('apps-outline', t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
-          </>,
-        )}
-
-        {section(
-          t('backup.section'),
-          <>
-            {row('cloud-upload-outline', t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
-            {backup && (
-              <View style={styles.block}>
-                <Text style={styles.label}>{t('backup.interval')}</Text>
-                {segmented(
-                  t('backup.interval'),
-                  INTERVALS.map((i) => ({ key: i, text: t(`backup.${i}`) })),
-                  interval,
-                  (i) => {
-                    setSetting('backup_interval', i);
-                    setIntervalChoice(i as BackupInterval);
-                  },
-                )}
-                <Text style={backupError ? styles.error : styles.hint}>
-                  {backupBusy
-                    ? t('backup.working')
-                    : backupError
-                      ? t('backup.failed', { detail: backupError })
-                      : lastBackup
-                        ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
-                        : t('backup.never')}
-                </Text>
-                <Pressable style={styles.secondary} onPress={backupNow} disabled={backupBusy} accessibilityRole="button">
-                  {backupBusy ? <ActivityIndicator color={colors.primary} /> : <Text style={styles.secondaryText}>{t('backup.now')}</Text>}
-                </Pressable>
-              </View>
-            )}
-            <View style={styles.row}>
-              {tile('person-circle-outline')}
-              <View style={styles.rowText}>
-                <Text style={styles.label}>{t('backup.account')}</Text>
-                <Text style={styles.hint} numberOfLines={1}>
-                  {backupAccount ?? t('backup.accountNone')}
-                </Text>
-              </View>
-              <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>
-                <Text style={styles.linkSmall}>{t('backup.change')}</Text>
-              </Pressable>
+      {section(
+        t('backup.section'),
+        <>
+          {row('cloud-upload-outline', TILE.cyan, t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
+          {backup && (
+            <Row key="interval" iconInset style={styles.block}>
+              <Text style={styles.label}>{t('backup.interval')}</Text>
+              <Segmented
+                options={INTERVALS.map((i) => ({ key: i, label: t(`backup.${i}`) }))}
+                value={interval}
+                onChange={(i) => {
+                  setSetting('backup_interval', i);
+                  setIntervalChoice(i);
+                }}
+              />
+              <Text style={backupError ? styles.error : styles.hint}>
+                {backupBusy
+                  ? t('backup.working')
+                  : backupError
+                    ? t('backup.failed', { detail: backupError })
+                    : lastBackup
+                      ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
+                      : t('backup.never')}
+              </Text>
+              <Button kind="glass" title={t('backup.now')} onPress={backupNow} busy={backupBusy} />
+            </Row>
+          )}
+          <Row key="account" iconInset style={styles.row}>
+            <IconTile name="person-circle-outline" color={TILE.grey} />
+            <View style={styles.rowText}>
+              <Text style={styles.label}>{t('backup.account')}</Text>
+              <Text style={styles.hint} numberOfLines={1}>
+                {backupAccount ?? t('backup.accountNone')}
+              </Text>
             </View>
-            {link('cloud-download-outline', t('backup.restore'), () => router.push('/restore'))}
-          </>,
-        )}
+            <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>
+              <Text style={styles.linkSmall}>{t('backup.change')}</Text>
+            </Pressable>
+          </Row>
+          {link('cloud-download-outline', TILE.cyan, t('backup.restore'), () => router.push('/restore'))}
+        </>,
+      )}
 
-        {section(
-          t('data.section'),
-          <>
-            {link('document-text-outline', t('data.exportPdf'), () => exportList('pdf'))}
-            {link('grid-outline', t('data.exportCsv'), () => exportList('csv'))}
-            {link('share-social-outline', t('data.share'), shareAll, { hint: t('data.shareHint') })}
-            {link('download-outline', t('data.import'), importShared)}
-            {link('archive-outline', t('data.exportAll'), exportEverything, { hint: t('data.exportAllHint') })}
-            {link('trash-outline', t('data.delete'), confirmDeleteAll, { danger: true })}
-          </>,
-        )}
+      {section(
+        t('data.section'),
+        <>
+          {link('document-text-outline', TILE.red, t('data.exportPdf'), () => exportList('pdf'))}
+          {link('grid-outline', TILE.green, t('data.exportCsv'), () => exportList('csv'))}
+          {link('share-social-outline', TILE.blue, t('data.share'), shareAll, { hint: t('data.shareHint') })}
+          {link('download-outline', TILE.teal, t('data.import'), importShared)}
+          {link('archive-outline', TILE.orange, t('data.exportAll'), exportEverything, { hint: t('data.exportAllHint') })}
+          {link('trash-outline', TILE.red, t('data.delete'), confirmDeleteAll, { danger: true })}
+        </>,
+      )}
 
-        {section(
-          t('settings.about'),
-          <>
-            {link('help-circle-outline', t('help.title'), () => router.push('/help'))}
-            {link('star-outline', t('settings.rate'), () => void openStorePage().catch(() => {}))}
-            {link('shield-checkmark-outline', t('privacy.title'), () => router.push('/privacy'))}
-          </>,
-        )}
-        <Text style={styles.version} selectable>
-          {t('settings.version', { version: versionLine(i18n.language) })}
-        </Text>
-      </ScrollView>
-    </>
+      {section(
+        t('settings.about'),
+        <>
+          {link('help-circle-outline', TILE.blue, t('help.title'), () => router.push('/help'))}
+          {link('star-outline', TILE.yellow, t('settings.rate'), () => void openStorePage().catch(() => {}))}
+          {link('shield-checkmark-outline', TILE.grey, t('privacy.title'), () => router.push('/privacy'))}
+        </>,
+      )}
+      <Text style={styles.version} selectable>
+        {t('settings.version', { version: versionLine(i18n.language) })}
+      </Text>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 16, paddingBottom: 32 },
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16, borderRadius: 20, backgroundColor: colors.surface },
-  avatar: { width: 52, height: 52, borderRadius: 26, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 22, fontWeight: '700', color: colors.onPrimary },
-  profileName: { fontSize: 18, fontWeight: '700', color: colors.text },
-  sectionWrap: { marginTop: 24 },
-  section: { fontSize: 14, fontWeight: '700', letterSpacing: 0.8, color: colors.muted, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
-  card: { backgroundColor: colors.surface, borderRadius: 20, paddingHorizontal: 16, overflow: 'hidden' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: 60, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  subRow: { paddingLeft: 42, minHeight: 52 },
-  rowText: { flex: 1, gap: 2 },
-  tile: { width: 28, alignItems: 'center' },
-  tileDanger: {},
-  label: { fontSize: 17, fontWeight: '600', color: colors.text },
-  dangerLabel: { color: colors.soon.fg },
-  hint: { fontSize: 14, color: colors.muted },
-  value: { fontSize: 16, color: colors.muted },
-  pad: { paddingVertical: 8 },
-  link: { color: colors.primary },
-  inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', gap: 20, marginTop: 6 },
-  linkSmall: { fontSize: 15, fontWeight: '600', color: colors.primary },
-  danger: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
-  check: { width: 28, height: 28, borderRadius: 14, borderWidth: 2, borderColor: colors.border, alignItems: 'center', justifyContent: 'center' },
-  checkOn: { backgroundColor: colors.primary, borderColor: colors.primary },
-  block: { gap: 12, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  blockHead: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  segment: { flexDirection: 'row', padding: 4, gap: 4, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background },
-  segItem: { flex: 1, minHeight: 44, paddingHorizontal: 6, paddingVertical: 6, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  segItemOn: { backgroundColor: colors.primary },
-  segText: { fontSize: 15, fontWeight: '600', color: colors.text, textAlign: 'center' },
-  segTextOn: { color: colors.onPrimary, fontWeight: '700' },
-  error: { fontSize: 14, color: colors.soon.fg },
-  version: { fontSize: 14, color: colors.muted, textAlign: 'center', marginTop: 24 },
-  secondary: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  secondaryText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
+  avatar: { width: 60, height: 60, borderRadius: 30, backgroundImage: 'linear-gradient(#a5abb8, #858a96)', alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 26, lineHeight: 26, fontWeight: '600', color: '#fff' },
+  profileName: { ...TYPE.title3, color: colors.ink },
+  profileHint: { ...TYPE.sub, color: colors.ink2 },
+  row: { gap: 15 },
+  rowText: { flex: 1 },
+  tileSpace: { width: 29, alignItems: 'center' },
+  label: { ...TYPE.body, color: colors.ink },
+  hint: { ...TYPE.foot, color: colors.ink2 },
+  value: { ...TYPE.body, color: colors.ink2 },
+  inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4, marginTop: 4 },
+  linkSmall: { ...TYPE.sub, color: colors.link },
+  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center' },
+  checkOn: { backgroundColor: colors.tint, borderColor: colors.tint },
+  block: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  blockHead: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  error: { ...TYPE.foot, color: colors.bad },
+  version: { ...TYPE.cap, color: colors.ink2, textAlign: 'center', paddingTop: 24 },
 });

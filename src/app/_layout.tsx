@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Alert, AppState } from 'react-native';
+import { AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
@@ -8,6 +8,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
 import { LockScreen } from '@/components/LockScreen';
+import { DialogHost, showAlert } from '@/components/Dialog';
 import { shouldRelock } from '@/lock/pin.ts';
 import { isLockEnabled, takeRelaunchPass } from '@/lock/store';
 import { getDb } from '@/db/client';
@@ -18,9 +19,9 @@ import { colors, isDark } from '@/theme';
 // Headers and screen backgrounds follow the app palette (dark mode).
 const navTheme = {
   ...(isDark ? DarkTheme : DefaultTheme),
-  colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: colors.background, card: colors.background, text: colors.text, primary: colors.primary, border: colors.border },
+  colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: colors.bg, card: colors.bg, text: colors.ink, primary: colors.tint, border: colors.line },
 };
-void SystemUI.setBackgroundColorAsync(colors.background).catch(() => {});
+void SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
@@ -29,7 +30,7 @@ export const unstable_settings = { anchor: 'index' };
 function SharedFiles() {
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntentContext();
   useEffect(() => {
-    if (error) Alert.alert(i18n.t('share.failed'), error); // e.g. the sending app gave no access to the file
+    if (error) showAlert(i18n.t('share.failed'), error); // e.g. the sending app gave no access to the file
   }, [error]);
   useEffect(() => {
     const file = shareIntent.files?.[0];
@@ -73,10 +74,11 @@ export default function RootLayout() {
         <SharedFiles />
         <StatusBar style={isDark ? 'light' : 'dark'} />
         {/* Tablets and wide screens: screens keep a readable width, centred. */}
-        <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.background } }}>
+        <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.bg } }}>
           <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
         </Stack>
         {locked && <LockScreen onUnlock={unlock} />}
+        <DialogHost />
       </ThemeProvider>
     </ShareIntentProvider>
   );

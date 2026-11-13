@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { colors } from '@/theme';
+import { colors, TYPE } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -26,24 +26,25 @@ export function PinPad({ value, dots, onDigit, onDelete, extra }: { value: strin
         <View style={[styles.key, styles.plain]}>{extra}</View>
         {key('0')}
         <Pressable style={({ pressed }) => [styles.key, styles.plain, pressed && styles.pressed]} onPress={onDelete} accessibilityRole="button" accessibilityLabel={t('lock.delete')}>
-          <Ionicons name="backspace-outline" size={30} color={colors.text} />
+          <Ionicons name="backspace-outline" size={28} color={colors.ink} />
         </Pressable>
       </View>
     </View>
   );
 }
 
-// Keys are 78 wide: big enough for any thumb, three still fit a small phone.
+// Keys are 78 wide: big enough for any thumb, three still fit a small phone. The reference has no keypad:
+// keys use its --fill circles, Title 2 digits and --fill-2 while pressed.
 export const KEY_SIZE = 78;
 
 const styles = StyleSheet.create({
   wrap: { alignItems: 'center', gap: 36 },
-  dots: { flexDirection: 'row', gap: 16, minHeight: 16 },
-  dot: { width: 16, height: 16, borderRadius: 8, borderWidth: 2, borderColor: colors.border },
-  dotFilled: { backgroundColor: colors.primary, borderColor: colors.primary },
+  dots: { flexDirection: 'row', gap: 16, minHeight: 14 },
+  dot: { width: 14, height: 14, borderRadius: 7, borderWidth: 1.5, borderColor: colors.ink2 },
+  dotFilled: { backgroundColor: colors.ink, borderColor: colors.ink },
   grid: { width: KEY_SIZE * 3 + 40, flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 16 },
-  key: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface },
+  key: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.fill },
   plain: { backgroundColor: 'transparent' },
-  pressed: { backgroundColor: colors.primarySoft },
-  keyText: { fontSize: 30, fontWeight: '500', color: colors.text },
+  pressed: { backgroundColor: colors.fill2 },
+  keyText: { ...TYPE.title2, fontWeight: '500', color: colors.ink },
 });

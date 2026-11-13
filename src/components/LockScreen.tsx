@@ -1,13 +1,14 @@
 import { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { Alert, AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { KEY_SIZE, PinPad } from '@/components/PinPad';
 import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { logError } from '@/errorLog';
-import { colors, BUTTON_HEIGHT } from '@/theme';
+import { showAlert } from '@/components/Dialog';
+import { colors, CONTROL_H, TYPE } from '@/theme';
 
 // Full-screen lock over the app (section 19). The app stays mounted underneath, so unlocking keeps your place.
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
@@ -73,7 +74,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   }
 
   async function forgot() {
-    if (!(await hasDeviceLock())) return Alert.alert(t('lock.noDeviceLock'));
+    if (!(await hasDeviceLock())) return showAlert(t('lock.noDeviceLock'));
     if (await verifyDeviceOwner(t('lock.forgotPrompt'))) {
       onUnlock();
       router.push('/pin');
@@ -84,7 +85,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.top}>
         <View style={styles.logo}>
-          <Ionicons name="shield-checkmark" size={36} color={colors.onPrimary} />
+          <Ionicons name="shield-checkmark" size={32} color="#fff" />
         </View>
         <Text style={styles.title} accessibilityRole="header">
           {t('lock.title')}
@@ -106,7 +107,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
               accessibilityRole="button"
               accessibilityLabel={t('lock.biometric')}
             >
-              <Ionicons name="finger-print" size={34} color={colors.primary} />
+              <Ionicons name="finger-print" size={34} color={colors.tint} />
             </Pressable>
           )
         }
@@ -119,14 +120,15 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'space-evenly', zIndex: 10 },
-  top: { alignItems: 'center', gap: 12, paddingHorizontal: 24 },
-  logo: { width: 72, height: 72, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  title: { fontSize: 26, fontWeight: '700', color: colors.text },
-  message: { fontSize: 15, color: colors.muted, textAlign: 'center', minHeight: 20 },
-  error: { color: colors.soon.fg },
-  finger: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  fingerPressed: { opacity: 0.7 },
-  link: { minHeight: BUTTON_HEIGHT, justifyContent: 'center', paddingHorizontal: 16 },
-  linkText: { fontSize: 17, fontWeight: '600', color: colors.primary },
+  screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'space-evenly', zIndex: 10 },
+  top: { alignItems: 'center', gap: 8, paddingHorizontal: 24 },
+  // The reference's large tile (`.detail-hero .hardware-icon`): 56dp, 14 radius, 32dp white glyph.
+  logo: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#007aff', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  title: { ...TYPE.title2, color: colors.ink },
+  message: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', minHeight: 20 },
+  error: { color: colors.bad },
+  finger: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
+  fingerPressed: { backgroundColor: colors.fill2 },
+  link: { minHeight: CONTROL_H, justifyContent: 'center', paddingHorizontal: 16 },
+  linkText: { ...TYPE.body, color: colors.link },
 });
