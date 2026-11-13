@@ -6,6 +6,7 @@ import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ProductIcon } from '@/components/Icon';
 import type { Warranty } from '@/db/repo.ts';
 import { documentUriOrNull } from '@/documents';
+import { shownPhoto } from '@/productImageLookup';
 import { colors, TONE, TYPE } from '@/theme';
 import { Row, TILE } from '@/components/ui';
 import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
@@ -60,7 +61,9 @@ export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: W
   const left = daysLabel(t, days);
   const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) });
   const store = w.coverage ? `${w.store_name} · ${t(`coverage.${w.coverage}`)}` : w.store_name;
-  const photo = w.photo_path ? documentUriOrNull(w.photo_path) : null;
+  // The user's photo, else a picture found for the current name; the category icon when neither exists.
+  const shown = shownPhoto(w);
+  const photo = shown ? documentUriOrNull(shown.path) : null;
 
   return (
     <Row

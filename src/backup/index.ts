@@ -113,10 +113,10 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
   }
 }
 
-// Every file a backup refers to: documents and product photos.
+// Every file a backup refers to: documents, product photos and found product pictures.
 const filesOf = (data: { tables: Record<string, Record<string, unknown>[] | undefined> }): string[] => [
   ...(data.tables.attachments ?? []).map((a) => String(a.local_path)),
-  ...(data.tables.warranties ?? []).flatMap((w) => (typeof w.photo_path === 'string' ? [w.photo_path] : [])),
+  ...(data.tables.warranties ?? []).flatMap((w) => [w.photo_path, w.found_photo_path].filter((p): p is string => typeof p === 'string')),
 ];
 
 // --- Disconnect / reconnect an account (section 15) ---

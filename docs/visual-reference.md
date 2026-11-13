@@ -146,9 +146,26 @@ above. They are not presented as measured matches.
   `--warn`, `--bad-soft`/`--bad`, `--fill`/`--ink-2`) on a radius-7 tag sized to Footnote text.
 - A PDF page viewer and its zoom controls. The zoom pair uses the reference's `.pc-tools` capsule with `.round` 44 px
   buttons (lines 371–376), which is the closest existing control group.
-- A PIN keypad. Keys use the reference's `--fill` circles, Title 2 digits and the button press scale.
+- A PIN keypad (create, confirm, unlock, wrong PIN, lockout, fingerprint). Modelled on the iOS passcode screen, built
+  from the reference's tokens; these are Warrantly's choices, not measured matches:
+  - keys are the round glass control (`.glass-btn`: `--material`, glass edge and sheen) at keypad size, pressed scale
+    1.1 on a fast spring and released on `--spring-bounce`, like the reference's glass buttons;
+  - digits use the Large Title size at regular weight (the passcode keypad's thin numerals), capped at 120 % text so
+    four rows always fit;
+  - key size 78 dp, 70 dp below 760 dp of height and 60 dp below 680 dp (all above the 48 dp target); horizontal gap
+    28 % of the key, rows 75 % of that;
+  - Delete takes the empty bottom-right slot and is hidden until a digit is entered; fingerprint takes the bottom-left
+    slot when it is on;
+  - a wrong PIN or mismatch shakes the dots on a stiff spring (stiffness 900, damping 18; skipped with reduced motion)
+    and shows the message in `--bad`;
+  - the message keeps two lines of room, the footer keeps a control's height, the Continue button stays laid out
+    (hidden) while confirming, and the keypad is anchored to the bottom, so no state moves the keys;
+  - phones under 700 dp of height drop the decorative 56 dp icon tile so the keys and Continue fit without scrolling
+    (checked at 360 × 640 dp).
 - Product photos and product glyphs in list rows. Warrantly keeps its MaterialCommunityIcons product glyphs on a
-  29 px icon tile, as the reference's hardware icons sit on coloured tiles.
+  29 px icon tile, as the reference's hardware icons sit on coloured tiles. A user photo, or an opt-in Wikimedia
+  Commons picture of the exact model, replaces the glyph in the same tile; the Commons credit sits under the detail
+  hero in Footnote `--ink-2`.
 - Large-text behaviour of the bottom bar. The reference caps tab labels at 13 px (130 %) instead of reflowing; Warrantly
   does the same with `maxFontSizeMultiplier`.
 
@@ -178,7 +195,7 @@ above. They are not presented as measured matches.
 | Add / edit form | Grouped panels holding the standard text field; category chips as capsules (`--fill`, selected `--select`/`--tint-ink`); Save as Glass Prominent capsule in a footer that rises above the keyboard |
 | Settings | Grouped rows with icon tiles, switches, large segmented pickers (theme, language), small segmented (backup interval) |
 | Dialogs | `.link-alert` geometry for every `Alert.alert` call (`showAlert`): Cancel `--fill`, primary `--accent`, destructive actions `--fill` with a `--bad` label |
-| Onboarding, PIN, lock | Large title, standard field, capsule buttons; keypad as in "does not define" |
+| Onboarding, PIN, lock | Large title, standard field, capsule buttons; PIN and lock use the keypad in "does not define" with a 56 dp tile, Title 2 heading and Subheadline message |
 
 Warrantly-only token choices (not reference values): the badge tones (ok and expired `--fill`/`--ink-2`, warning `--warn-soft`/`--warn`, under 30 days `--bad-soft`/`--bad`), the product-category tile colours (system blue, indigo, green, orange, teal, grey, cyan), and the destructive dialog action (`--fill` with a `--bad` label; the reference alert has no destructive action).
 

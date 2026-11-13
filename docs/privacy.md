@@ -18,6 +18,10 @@ If you turn backups on, your data is encrypted on this phone with your backup pa
 
 Scanning and reading text from receipts happens on the phone (Google ML Kit, on-device). Documents are stored in the app on this phone and, if backups are on, encrypted in your Drive.
 
+## Product pictures
+
+Product pictures are off until you turn them on in Settings, or tap "Find a picture online" on a warranty. Then the product name, and nothing else, is sent to Wikidata and Wikimedia Commons (run by the Wikimedia Foundation) to find a picture of that exact model. The picture is saved on the phone and shown with its author and licence. Wikimedia sees your IP address like any website.
+
 ## Other services
 
 App updates are downloaded from Expo (expo.dev), which sees your IP address like any website. Reminders are scheduled on the phone. Errors are logged on the phone and only leave it if you attach them to a feedback mail.

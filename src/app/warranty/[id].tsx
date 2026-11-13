@@ -15,6 +15,7 @@ import {
 import { shareWarranties } from '@/dataTools';
 import { deleteDocuments, documentExists, documentUriOrNull, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
+import { creditOf, lookUpPicture, removeFoundPicture, shownPhoto } from '@/productImageLookup';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
@@ -33,6 +34,7 @@ export default function WarrantyDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
+  const [pictureBusy, setPictureBusy] = useState(false);
   const [docs, setDocs] = useState<Attachment[]>([]);
   const [others, setOthers] = useState<Warranty[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
@@ -76,7 +78,9 @@ export default function WarrantyDetail() {
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
   const product = displayName(t, w);
-  const photo = documentUriOrNull(w.photo_path);
+  const shown = shownPhoto(w);
+  const photo = shown ? documentUriOrNull(shown.path) : null;
+  const credit = shown?.found && photo ? creditOf(w) : null;
 
   function confirmRemoveDocument(d: Attachment) {
     showAlert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
@@ -198,9 +202,32 @@ export default function WarrantyDetail() {
     showAlert(t('detail.photo'), undefined, [
       { text: t('detail.cancel'), style: 'cancel' },
       ...(w!.photo_path ? [{ text: t('detail.photoRemove'), style: 'destructive' as const, onPress: () => void take(null) }] : []),
+      ...(shown?.found ? [{ text: t('detail.pictureRemove'), style: 'destructive' as const, onPress: () => void dropFound() }] : []),
+      ...(!w!.photo_path && !shown?.found && w!.product_name ? [{ text: t('detail.pictureFind'), onPress: () => void findOnline() }] : []),
       { text: t('detail.photoLibrary'), onPress: () => void take('library') },
       { text: t('detail.photoCamera'), onPress: () => void take('camera') },
     ]);
+  }
+
+  // Explicit, one-off lookup of a picture for this product name (also when automatic pictures are off).
+  async function findOnline() {
+    setPictureBusy(true);
+    try {
+      const db = await getDb();
+      const found = await lookUpPicture(db, w!);
+      setW(await getWarranty(db, w!.id));
+      if (!found) showAlert(t('detail.pictureNone'));
+    } catch {
+      showAlert(t('detail.pictureFailed'));
+    } finally {
+      setPictureBusy(false);
+    }
+  }
+
+  async function dropFound() {
+    const db = await getDb();
+    await removeFoundPicture(db, w!);
+    setW(await getWarranty(db, w!.id));
   }
 
   async function notWarranty() {
@@ -323,8 +350,12 @@ export default function WarrantyDetail() {
           <View style={styles.hero}>
             <View style={styles.heroTop}>
               <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')}>
-                {photo ? (
-                  <Image source={{ uri: photo }} style={styles.photo} />
+                {pictureBusy ? (
+                  <View style={[styles.photo, styles.photoEmpty]}>
+                    <ActivityIndicator color={colors.tint} />
+                  </View>
+                ) : photo ? (
+                  <Image source={{ uri: photo }} style={styles.photo} accessibilityIgnoresInvertColors />
                 ) : (
                   <View style={[styles.photo, styles.photoEmpty]}>
                     <AppIcon name="camera-outline" size={28} color={colors.tint} />
@@ -345,6 +376,14 @@ export default function WarrantyDetail() {
               <Text style={styles.store}>{t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: date(w.end_date) })}</Text>
             </View>
             {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
+            {credit && (
+              // The licence asks for the author and licence with the picture; the file page has the details.
+              <Pressable onPress={() => void Linking.openURL(credit.page)} accessibilityRole="link" hitSlop={8}>
+                <Text style={styles.credit} numberOfLines={2}>
+                  {t('detail.pictureCredit', { artist: credit.artist, license: credit.license })}
+                </Text>
+              </Pressable>
+            )}
           </View>
         }
       >
@@ -465,6 +504,7 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
   badgeText: { ...TYPE.foot, fontWeight: '600' },
   note: { ...TYPE.sub, color: colors.warn },
+  credit: { ...TYPE.foot, color: colors.ink2 },
   empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 15, paddingHorizontal: ROW_X },
   doc: { paddingVertical: 12, paddingHorizontal: ROW_X, gap: 12 },
   line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: 1, backgroundColor: colors.line },
