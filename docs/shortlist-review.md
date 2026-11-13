@@ -10,6 +10,7 @@ The code contains the compact density setting, translated System theme label, su
 
 - Document OCR formerly stopped after page four but marked the entire file indexed. It now reads every page in two-page native batches, consuming each batch before the shared temporary directory is reused. Cancellation stops between pages without recording a failed document. The running guard is acquired before database awaits so two screens cannot index concurrently.
 - Duplicate merge could discard a live shared receipt when the retained item's copy was pending deletion. Deduplication now requires live, unassigned copies on both items; claim-linked attachments retain their associations. Regression coverage verifies the live receipt survives deletion cleanup.
+- Aligned Expo, SQLite, Gesture Handler and Worklets with Expo SDK 58's recommended versions. `expo install --check` now passes; tests, typecheck and lint were repeated afterward.
 
 Files already marked indexed by the old code need an explicit index retry/rebuild to include later pages; this change does not silently invalidate every existing scan.
 
