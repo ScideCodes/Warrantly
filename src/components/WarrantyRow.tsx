@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { Text, View } from '@/components/themeMotion';
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
@@ -51,7 +52,7 @@ export function formatDate(ymd: string, language: string): string {
 // small badge beside it that says how long is left, then the store and end date on one line, and a chevron.
 // Colour only backs up what the badge text says. `to` overrides where a tap goes (the attention list opens the
 // resolve form directly).
-export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle>; separator?: boolean }) {
+export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, separator }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle>; separator?: boolean }) {
   const styles = useStyles();
   const { t, i18n } = useTranslation();
   const today = todayYmd();
@@ -105,7 +106,7 @@ export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: W
       </View>
     </Row>
   );
-}
+});
 
 // Tile colours per category, from the reference's tile palette (which colour goes with which category is Warrantly's).
 const CATEGORY_TILE: Record<string, string> = {

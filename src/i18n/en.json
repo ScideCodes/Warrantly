@@ -12,6 +12,8 @@
     "later": "Later"
   },
   "home": {
+    "syncStarting": "Checking for new warranties…",
+    "resetFilters": "Clear search and filters",
     "emptyTitle": "No warranties yet",
     "emptyBody": "Connect Gmail, and Warrantly will find your receipts and warranties for you.",
     "connectGmail": "Connect Gmail",

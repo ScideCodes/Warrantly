@@ -1,6 +1,30 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, productIcon, reminderDays, reminderPlan, returnDeadline, shortName, totalValue, urgency, type ListFilter } from './warranty.ts';
+import { ago, daysUntil, endDate, filterWarranties, formErrors, isValidYmd, productIcon, reminderDays, reminderPlan, returnDeadline, shortName, totalValue, urgency, warrantyFacets, type ListFilter } from './warranty.ts';
+
+test('filter facets count each warranty once, including manual and expired entries', () => {
+  const facets = warrantyFacets([
+    { account_id: 0, category: 'phones', store_name: 'Store A' },
+    { account_id: 0, category: 'phones', store_name: 'Store B' },
+    { account_id: 4, category: null, store_name: 'Store A' },
+    { account_id: null, category: 'tools', store_name: 'Store A' },
+  ]);
+  assert.equal(facets.total, 4);
+  assert.deepEqual([...facets.accounts], [[0, 2], [4, 1], ['manual', 1]]);
+  assert.deepEqual([...facets.categories], [['phones', 2], ['tools', 1]]);
+  assert.deepEqual([...facets.stores], [['Store A', 3], ['Store B', 1]]);
+  assert.equal(warrantyFacets([]).total, 0);
+});
+
+test('ISO filtering keeps expiry today and the 30-day boundary, including across months', () => {
+  const list = ['2026-12-14', '2026-12-15', '2027-01-14', '2027-01-15'].map((end_date) => ({
+    product_name: 'Vízforraló', store_name: 'Shop', end_date, account_id: null,
+  }));
+  const base: ListFilter = { query: 'vizforralo', store: null, soon: true, account: 'all', tab: 'active' };
+  assert.deepEqual(filterWarranties(list, base, '2026-12-15').map((w) => w.end_date), ['2026-12-15', '2027-01-14']);
+  assert.equal(filterWarranties(list, { ...base, soon: false, query: '  ' }, '2026-12-15').length, 3);
+  assert.equal(filterWarranties(list, { ...base, soon: false, tab: 'expired' }, '2026-12-15').length, 1);
+});
 
 test('endDate adds months and clamps to month end', () => {
   assert.equal(endDate('2026-09-12', 24), '2028-09-12');
