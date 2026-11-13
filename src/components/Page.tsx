@@ -11,11 +11,11 @@ import Reanimated from 'react-native-reanimated';
 // The page shell of every screen: floating glass buttons over a soft scroll edge, a compact title that
 // fades in once the large title has passed under the bar (chrome.js `--t`), and the large title itself.
 // The page colour as an rgb triple, for the scroll-edge gradients.
-// The bar's ::before: --bg fading out downwards, 24dp past the bar, under the reference's mask
-// (ios.css line 165), folded into one gradient. The reference also blurs it by 8px; React Native cannot.
-const edgeGradient = (rgb: string) => `linear-gradient(rgba(${rgb},1) 0%, rgba(${rgb},0.743) 55%, rgba(${rgb},0.64) 60%, rgba(${rgb},0) 100%)`;
-const lightEdge = { ...StyleSheet.absoluteFill, backgroundImage: edgeGradient('242,242,247') };
-const darkEdge = { ...StyleSheet.absoluteFill, backgroundImage: edgeGradient('0,0,0') };
+// The bar's ::before: --bg fading out downwards past the bar (ios.css line 165). The reference blurs what scrolls
+// under it by 8px, which React Native cannot, so the page colour stays solid behind the bar's own height (the
+// title and buttons never sit over ghost text) and fades out over the EDGE dp below it.
+const EDGE = 28;
+const edgeGradient = (rgb: string, solid: number) => `linear-gradient(rgba(${rgb},1) ${solid}px, rgba(${rgb},0) ${solid + EDGE}px)`;
 
 export function useScrollEdge(listener?: (y: number) => void) {
   const y = useState(() => new Animated.Value(0))[0];
@@ -43,6 +43,9 @@ export function NavBar({ title, t, back = true, leading, trailing }: { title?: s
   const [trailingWidth, setTrailingWidth] = useState(44);
   const sideWidth = Math.max(44, leadingWidth, trailingWidth);
   const show = t ?? ALWAYS;
+  const solid = BAR_H + insets.top - 4;
+  const lightEdge = { ...StyleSheet.absoluteFill, backgroundImage: edgeGradient('242,242,247', solid) };
+  const darkEdge = { ...StyleSheet.absoluteFill, backgroundImage: edgeGradient('0,0,0', solid) };
   const titleOpacity = show.interpolate({ inputRange: [0.55, 0.95], outputRange: [0, 1], extrapolate: 'clamp' });
   return (
     <View style={[styles.bar, { height: BAR_H + insets.top, paddingTop: insets.top }]} pointerEvents="box-none">
@@ -113,7 +116,7 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
 const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   bar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
-  edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -24 },
+  edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -EDGE },
   barIn: { height: BAR_H, flexDirection: 'row', alignItems: 'center', gap: 8 },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   trail: { justifyContent: 'flex-end', gap: 8 },

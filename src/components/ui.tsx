@@ -17,7 +17,7 @@ import {
   type LayoutRectangle,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
-import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
+import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, PRESS_DELAY, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { segmentedLayout } from '@/segmentedLayout';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
@@ -65,6 +65,7 @@ export function Button({
   return (
     <Pressable
       pressScale={0.97}
+      unstable_pressDelay={PRESS_DELAY}
       testID={testID}
       onPress={onPress}
       disabled={disabled || busy}
@@ -191,6 +192,7 @@ export function Row({
       onPress={onPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
+      unstable_pressDelay={PRESS_DELAY}
       disabled={disabled}
       style={[styles.row, { backgroundColor: press.bg }, selected && styles.rowSelected, disabled && styles.disabled, style]}
       accessibilityRole={accessibilityRole}
@@ -305,6 +307,7 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
           <NativePressable
             key={o.key}
             onPress={() => { if (!on) onChange(o.key); }}
+            unstable_pressDelay={PRESS_DELAY}
             onLayout={(event) => {
               const rect = event.nativeEvent.layout;
               setRects((previous) => {
@@ -334,7 +337,7 @@ const useStyles = themed(() => StyleSheet.create({
   button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 12, borderRadius: CONTROL_H / 2 },
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
   glassButton: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center' },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 20, marginBottom: 6, paddingHorizontal: 4 },
+  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 24, marginBottom: 8, paddingHorizontal: 4 },
   sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1 },
   group: { backgroundColor: colors.card, borderRadius: RADIUS, overflow: 'hidden' },
   row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: ROW_PAD, paddingHorizontal: ROW_X },
