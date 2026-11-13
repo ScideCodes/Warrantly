@@ -156,3 +156,18 @@ and a look that no longer read as iOS 27.
   that switched it off stays off). Privacy text in the app and in docs/privacy.md says so.
 
 Emulator only; not measured on a phone.
+
+## 7. Online pictures removed
+
+The owner decided that Warrantly should not fetch pictures at all, only keep a photo the person uploads. Removed:
+the Settings switch, the background lookups (Wikidata and Wikimedia Commons), "Find a picture online" and
+"Remove found picture" in the photo menu, the author and licence line, the picture code and its tests, the privacy
+paragraph and the `fflate` dependency (used only to inspect PNG pixels). Nothing is sent to Wikimedia any more.
+
+Kept: the person's own photo (camera or gallery) in the list tile and the detail hero, with the same fallback
+(missing or corrupt file: category icon in lists, camera tile on the detail screen; `shownPhoto()` in
+src/photo.ts, tested). The `found_photo_*` database columns stay (a migration cannot drop them cheaply) but
+`clearFoundPictures()` empties them and deletes the stored files once, on the next list load, so a phone that had
+found pictures loses them and an older backup restored later is cleaned the same way.
+
+Sections 3 and 6 above describe the earlier behaviour (found-picture fallback, Product pictures switch).

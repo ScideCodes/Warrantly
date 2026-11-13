@@ -8,7 +8,6 @@ import { extractTextFromImage } from 'expo-text-extractor';
 import { Linking } from 'react-native';
 import DocumentScanner, { ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
 import { mailtoUrl } from '@/claim';
-import { isWikimediaFile, WIKIMEDIA_HEADERS } from '@/productImage';
 import { saveDocumentCopy } from './documentSave';
 
 // Documents kept with warranties (brainstorm section 18): scans become one PDF in the app's own folder.
@@ -74,26 +73,6 @@ export async function pickPhoto(source: 'camera' | 'library'): Promise<string | 
   const photo = new File(folder(), `photo-${Date.now()}.jpg`);
   await new File(res.assets[0].uri).copy(photo);
   return photo.name;
-}
-
-// A product picture found online (src/productImageLookup.ts): a small Commons thumbnail kept with the photos,
-// so it shows offline. `png` is a cut-out already downloaded and checked: it is written as is. Returns the
-// stored file name.
-export async function saveFoundPicture(url: string, png?: Uint8Array): Promise<string> {
-  if (!isWikimediaFile(url)) throw new Error('Unexpected picture address');
-  if (png) {
-    const file = new File(folder(), `found-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.png`);
-    file.create();
-    await file.write(png);
-    return file.name;
-  }
-  const file = new File(folder(), `found-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.jpg`);
-  const saved = await File.downloadFileAsync(url, file, { headers: WIKIMEDIA_HEADERS });
-  if (saved.size > 2_000_000) {
-    saved.delete();
-    throw new Error('Picture too large');
-  }
-  return saved.name;
 }
 
 // Downloaded mail PDFs (build step 4), stored next to scans. Returns the stored file name.

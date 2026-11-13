@@ -6,7 +6,6 @@ export const scanDocument = async (): Promise<{ text: string; localPath: string 
 export const importDocument = async (): Promise<{ text: string; localPath: string } | null> => null;
 export const fileToDocument = async (_uri: string, _name: string, _mimeType: string | null): Promise<{ text: string; localPath: string }> => ({ text: '', localPath: '' });
 export const pickPhoto = async (_source: 'camera' | 'library'): Promise<string | null> => null;
-export const saveFoundPicture = async (_url: string, _png?: Uint8Array): Promise<string> => '';
 export const mailDocuments = { save: async (_bytes: Uint8Array, _filename: string): Promise<string> => '' };
 export const readDocument = async (_localPath: string): Promise<Uint8Array> => new Uint8Array();
 export const writeDocument = async (_localPath: string, _bytes: Uint8Array): Promise<void> => {};

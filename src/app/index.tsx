@@ -9,12 +9,12 @@ import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { restartIntoUpdate, useUpdateReady } from '@/appUpdate';
 import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
-import { runPictureLookups, subscribePictureUpdates } from '@/productImageLookup';
+import { clearFoundPictures } from '@/legacyPictures';
 import { runDueBackup } from '@/backup';
 import { Sheet, type IconName, type SheetSection } from '@/components/Sheet';
 import { formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { getWarranty, listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
+import { listAccounts, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import { rescheduleReminders } from '@/reminders';
 import { getUsername } from '@/settings';
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
@@ -71,12 +71,7 @@ export default function Home() {
     rescheduleReminders(db).catch((e) => console.warn('reminders', e)); // must not break the list
     void runDueBackup(db); // section 17: a due backup runs on app open
     updateWidget(db).catch((e) => console.warn('widget', e)); // section 13
-    // Product pictures (when turned on): a few lookups after the list is shown, never from the rows themselves.
-    void runPictureLookups(db).then(async (changed) => {
-      if (!changed) return;
-      const pictures = await listWarranties(db, 'complete');
-      if (version === loadVersion.current) setWarranties(pictures);
-    }).catch((e) => console.warn('pictures', e));
+    clearFoundPictures(db).catch((e) => console.warn('pictures', e)); // pictures found online were removed from the app
   }, []);
 
   const runSync = useCallback(async () => {
@@ -98,14 +93,7 @@ export default function Home() {
   // Reload when coming back from another screen; sync once on app open (section 7).
   useFocusEffect(
     useCallback(() => {
-      let active = true;
-      const unsubscribe = subscribePictureUpdates((id) => {
-        void getDb().then((db) => getWarranty(db, id)).then((updated) => {
-          if (active && updated) setWarranties((list) => list.map((w) => w.id === id ? updated : w));
-        }).catch((e) => console.warn('pictures', e));
-      });
       void load().catch((e) => setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] }));
-      return () => { active = false; unsubscribe(); };
     }, [load]),
   );
   useEffect(() => {

@@ -122,7 +122,7 @@ const MIGRATIONS = [
    );`,
   // v11: a photo of the product (file name in the attachments folder, like documents).
   `ALTER TABLE warranties ADD COLUMN photo_path TEXT;`,
-  // v12: a product picture found online (src/productImage.ts), kept apart from the user's own photo, which
+  // v12: a product picture found online (removed from the app; src/legacyPictures.ts empties these columns), kept apart from the user's own photo, which
   // always wins. found_photo_key is the product name it was looked up for: a renamed product is looked up
   // again. A key with no path means nothing certain was found, or the user removed the picture.
   `ALTER TABLE warranties ADD COLUMN found_photo_path TEXT;
@@ -471,14 +471,6 @@ export async function setPhoto(db: Db, warrantyId: number, photo: string | null)
   const old = (await db.getFirstAsync<{ photo_path: string | null }>('SELECT photo_path FROM warranties WHERE id = ?', [warrantyId]))?.photo_path ?? null;
   await db.runAsync('UPDATE warranties SET photo_path = ? WHERE id = ?', [photo, warrantyId]);
   return old;
-}
-
-// Records a lookup result for the product name `key`: a picture (path and credit) or none. Returns the previous
-// found picture's file, for the caller to delete.
-export async function setFoundPhoto(db: Db, warrantyId: number, key: string | null, path: string | null, credit: string | null): Promise<string | null> {
-  const old = (await db.getFirstAsync<{ found_photo_path: string | null }>('SELECT found_photo_path FROM warranties WHERE id = ?', [warrantyId]))?.found_photo_path ?? null;
-  await db.runAsync('UPDATE warranties SET found_photo_path = ?, found_photo_key = ?, found_photo_credit = ? WHERE id = ?', [path, key, credit, warrantyId]);
-  return old === path ? null : old;
 }
 
 export async function addAttachment(db: Db, warrantyId: number, filename: string, localPath: string): Promise<void> {

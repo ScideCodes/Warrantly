@@ -200,9 +200,8 @@ above. They are not presented as measured matches.
   - phones under 700 dp of height drop the decorative 56 dp icon tile so the keys and Continue fit without scrolling
     (checked at 360 × 640 dp).
 - Product photos and product glyphs in list rows. Warrantly keeps its MaterialCommunityIcons product glyphs on a
-  29 px icon tile, as the reference's hardware icons sit on coloured tiles. A user photo, or a Wikimedia
-  Commons picture of the exact model, replaces the glyph in the same tile; the Commons credit sits under the detail
-  hero in Footnote `--ink-2`.
+  29 px icon tile, as the reference's hardware icons sit on coloured tiles. The person's own photo replaces the
+  glyph in the same tile. (Pictures found online were removed from the app on 13 Nov 2026.)
 - Large-text behaviour of the bottom bar. The reference caps tab labels at 13 px (130 %) instead of reflowing; Warrantly
   does the same with `maxFontSizeMultiplier`.
 

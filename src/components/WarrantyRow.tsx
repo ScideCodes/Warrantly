@@ -64,7 +64,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
   // No-break spaces: the end date wraps as a whole, never as "Ends Dec" / "17, 2027".
   const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) }).replace(/ /g, ' ');
   const store = w.coverage ? `${w.store_name} · ${t(`coverage.${w.coverage}`)}` : w.store_name;
-  // The user's photo, else a picture found for the current name; the category icon when neither can be shown.
+  // The person's own photo; the category icon when there is none or it cannot be shown.
   const photo = useProductPhoto(w);
 
   return (
@@ -76,7 +76,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
       style={[styles.row, style]} // TalkBack reads the texts inside in order: name, store, time left, end date
     >
       {photo ? (
-        <Image source={{ uri: photo.uri }} onError={photo.onError} resizeMode="contain" style={[styles.tile, { backgroundColor: colors.card2 }]} accessibilityIgnoresInvertColors />
+        <Image source={{ uri: photo.uri }} onError={photo.onError} style={styles.tile} accessibilityIgnoresInvertColors />
       ) : (
         <View style={[styles.tile, { backgroundColor: CATEGORY_TILE[w.category ?? ''] ?? TILE.blue }]} importantForAccessibility="no-hide-descendants">
           <ProductIcon name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color="#fff" />
