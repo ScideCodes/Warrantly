@@ -11,7 +11,7 @@ import i18n from '@/i18n';
 import { isLockEnabled } from '@/lock/store';
 import { getThemeSetting, getWidgetConfigText, getWidgetNames, removeWidgetConfig } from '@/settings';
 import { todayYmd, urgency } from '@/warranty';
-import { namesShown, parseWidgetConfig, ROWS, widgetRows, widgetSize, type WidgetConfig, type WidgetRow } from '@/widgetModel';
+import { namesShown, parseWidgetConfig, widgetLayout, widgetRows, type WidgetConfig, type WidgetRow } from '@/widgetModel';
 
 // Home-screen widget (section 13, shortlist 23–30). Each placed widget has its own settings (what it shows,
 // names, photos, quick actions), chosen when it is added and changeable later. It grows with its size: one
@@ -51,36 +51,36 @@ async function load(db: Db, cfg: WidgetConfig, max: number): Promise<Data> {
   return { rows, photos, attention: needsInput.length + returns.length, active: complete.filter((w: Warranty) => w.end_date >= today).length };
 }
 
-function Action({ label, uri, c }: { label: string; uri: string; c: WidgetPalette }) {
+function Action({ label, uri, c, height }: { label: string; uri: string; c: WidgetPalette; height: number }) {
   return (
-    <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri }} style={{ flex: 1, height: 40, borderRadius: 12, backgroundColor: c.action, alignItems: 'center', justifyContent: 'center', marginHorizontal: 3 }}>
-      <TextWidget text={label} style={{ fontSize: 13, fontWeight: '600', color: c.actionInk }} maxLines={1} truncate="END" />
+    <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri }} style={{ flex: 1, height, borderRadius: 12, backgroundColor: c.action, alignItems: 'center', justifyContent: 'center', marginHorizontal: 3 }}>
+      <TextWidget text={label} accessibilityLabel={label} style={{ fontSize: 13, fontWeight: '600', color: c.actionInk }} maxLines={1} truncate="END" />
     </FlexWidget>
   );
 }
 
-function Body({ data, cfg, size, c }: { data: Data; cfg: WidgetConfig; size: ReturnType<typeof widgetSize>; c: WidgetPalette }) {
+function Body({ data, cfg, layout, c }: { data: Data; cfg: WidgetConfig; layout: ReturnType<typeof widgetLayout>; c: WidgetPalette }) {
   const t = i18n.t.bind(i18n);
   const returns = cfg.content === 'returns';
   const title = t(returns ? 'widget.titleReturns' : 'widget.title');
   const rowLabel = (r: WidgetRow) => r.title ?? t(returns ? 'widget.hiddenReturn' : 'widget.hidden');
   return (
     <FlexWidget
-      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: c.card, borderRadius: 16, padding: 12, flexDirection: 'column', justifyContent: size === 'small' ? 'center' : 'flex-start' }}
+      style={{ height: 'match_parent', width: 'match_parent', backgroundColor: c.card, borderRadius: 16, padding: 12, flexDirection: 'column', justifyContent: layout.size === 'small' ? 'center' : 'flex-start' }}
       clickAction="OPEN_APP"
     >
-      <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent' }}>
+      {layout.header && <FlexWidget style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent' }}>
         <FlexWidget style={{ flex: 1 }}>
           <TextWidget text={title} style={{ fontSize: 12, color: c.ink2 }} maxLines={1} truncate="END" />
         </FlexWidget>
         {data.attention > 0 ? (
           <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: 'warrantly://attention' }} style={{ backgroundColor: c.badge.bg, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 1 }}>
-            <TextWidget text={t('widget.attention', { count: data.attention })} style={{ fontSize: 12, fontWeight: '600', color: c.badge.fg }} maxLines={1} />
+            <TextWidget text={String(data.attention)} accessibilityLabel={t('widget.attention', { count: data.attention })} style={{ fontSize: 12, fontWeight: '600', color: c.badge.fg }} maxLines={1} />
           </FlexWidget>
         ) : null}
-      </FlexWidget>
+      </FlexWidget>}
       {data.rows.length === 0 ? (
-        <TextWidget text={t(returns ? 'widget.emptyReturns' : 'widget.empty')} style={{ fontSize: 14, color: c.ink, marginTop: 6 }} />
+        <TextWidget text={t(returns ? 'widget.emptyReturns' : 'widget.empty')} style={{ fontSize: 13, color: c.ink, marginTop: 6 }} maxLines={1} truncate="END" />
       ) : (
         <FlexWidget style={{ flexDirection: 'column', width: 'match_parent', marginTop: 4 }}>
           {data.rows.map((r, i) => {
@@ -91,24 +91,26 @@ function Body({ data, cfg, size, c }: { data: Data; cfg: WidgetConfig; size: Ret
                 style={{ flexDirection: 'row', alignItems: 'center', width: 'match_parent', paddingVertical: 4, borderTopWidth: i > 0 ? 1 : 0, borderColor: c.line }}>
                 {photo ? <ImageWidget image={photo as `data:image${string}`} imageWidth={32} imageHeight={32} radius={8} style={{ marginRight: 8 }} /> : null}
                 <FlexWidget style={{ flexDirection: 'column', flex: 1 }}>
-                  <TextWidget text={rowLabel(r)} style={{ fontSize: size === 'small' ? 16 : 14, fontWeight: '600', color: c.ink }} maxLines={1} truncate="END" />
+                  {layout.showTitle && <TextWidget text={rowLabel(r)} style={{ fontSize: 14, fontWeight: '600', color: c.ink }} maxLines={1} truncate="END" />}
                   <FlexWidget style={{ flexDirection: 'row', marginTop: 2 }}>
-                    <TextWidget text={returns ? t('widget.returnIn', { count: r.days }) : daysLabel(t, r.days)}
+                    <TextWidget text={t(r.days === 0 ? 'warranty.counterToday' : 'warranty.counterDays', { count: r.days })}
+                      accessibilityLabel={`${rowLabel(r)}, ${returns ? t('widget.returnIn', { count: r.days }) : daysLabel(t, r.days)}`}
+                      maxLines={1} truncate="END"
                       style={{ fontSize: 12, fontWeight: '600', color: pill.fg, backgroundColor: pill.bg, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 1 }} />
                   </FlexWidget>
                 </FlexWidget>
               </FlexWidget>
             );
           })}
-          {data.active > data.rows.length && !returns
+          {layout.more && data.active > data.rows.length && !returns
             ? <TextWidget text={t('widget.more', { count: data.active - data.rows.length })} style={{ fontSize: 12, color: c.ink2, marginTop: 2 }} /> : null}
         </FlexWidget>
       )}
-      {cfg.actions && size !== 'small' ? (
+      {layout.actions > 0 ? (
         <FlexWidget style={{ flexDirection: 'row', width: 'match_parent', marginTop: 8 }}>
-          <Action label={t('widget.scan')} uri="warrantly://warranty/edit?scan=1" c={c} />
-          <Action label={t('widget.add')} uri="warrantly://warranty/edit" c={c} />
-          {size === 'large' ? <Action label={t('widget.search')} uri="warrantly://?search=1" c={c} /> : null}
+          <Action label={t('widget.scan')} uri="warrantly://warranty/edit?scan=1" c={c} height={layout.actionHeight} />
+          <Action label={t('widget.add')} uri="warrantly://warranty/edit" c={c} height={layout.actionHeight} />
+          {layout.actions === 3 ? <Action label={t('widget.search')} uri="warrantly://?search=1" c={c} height={layout.actionHeight} /> : null}
         </FlexWidget>
       ) : null}
     </FlexWidget>
@@ -117,13 +119,12 @@ function Body({ data, cfg, size, c }: { data: Data; cfg: WidgetConfig; size: Ret
 
 // Light, Dark, or both for System (Android then follows the phone).
 export async function renderFor(db: Db, info: Pick<WidgetInfo, 'widgetId' | 'width' | 'height' | 'screenInfo'>, cfg = widgetConfig(info.widgetId)): Promise<WidgetRepresentation> {
-  const size = widgetSize(info.width, info.height, info.screenInfo?.fontScale ?? 1);
-  const rows = cfg.actions && size !== 'small' ? ROWS[size] : ROWS[size] + (size === 'small' ? 0 : 1);
-  const data = await load(db, cfg, rows);
+  const layout = widgetLayout(info.width, info.height, info.screenInfo?.fontScale ?? 1, cfg.actions, [i18n.t('widget.scan'), i18n.t('widget.add'), i18n.t('widget.search')]);
+  const data = await load(db, cfg, layout.rows);
   const theme = getThemeSetting();
-  if (theme === 'light') return <Body data={data} cfg={cfg} size={size} c={LIGHT} />;
-  if (theme === 'dark') return <Body data={data} cfg={cfg} size={size} c={DARK} />;
-  return { light: <Body data={data} cfg={cfg} size={size} c={LIGHT} />, dark: <Body data={data} cfg={cfg} size={size} c={DARK} /> };
+  if (theme === 'light') return <Body data={data} cfg={cfg} layout={layout} c={LIGHT} />;
+  if (theme === 'dark') return <Body data={data} cfg={cfg} layout={layout} c={DARK} />;
+  return { light: <Body data={data} cfg={cfg} layout={layout} c={LIGHT} />, dark: <Body data={data} cfg={cfg} layout={layout} c={DARK} /> };
 }
 
 // Redraw every placed widget after the list changes (home loads, edits, theme change). No-op when none.

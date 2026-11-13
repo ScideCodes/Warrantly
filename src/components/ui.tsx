@@ -344,7 +344,7 @@ const useStyles = themed(() => StyleSheet.create({
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
   glassButton: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center' },
   sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 24, marginBottom: 8, paddingHorizontal: 4 },
-  sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1 },
+  sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1, minWidth: 0 },
   group: { backgroundColor: colors.card, borderRadius: RADIUS, overflow: 'hidden' },
   row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: ROW_PAD, paddingHorizontal: ROW_X },
   rowSelected: { backgroundColor: colors.tintSoft },

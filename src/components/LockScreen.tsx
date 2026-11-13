@@ -119,5 +119,5 @@ const useStyles = themed(() => StyleSheet.create({
   screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.bg, zIndex: 10 },
   // Text button in the reference's link colour, 44dp tall.
   link: { minHeight: CONTROL_H, justifyContent: 'center', paddingHorizontal: 16 },
-  linkText: { ...TYPE.body, color: colors.link },
+  linkText: { ...TYPE.body, color: colors.link, textAlign: 'center' },
 }));

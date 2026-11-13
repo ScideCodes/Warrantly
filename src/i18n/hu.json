@@ -256,6 +256,7 @@
   "settings": {
     "title": "Beállítások",
     "profileHint": "Az adataid a telefonon maradnak",
+    "editName": "Név módosítása",
     "lock": "Alkalmazászár",
     "lockHint": "PIN kérése megnyitáskor és 3 perc távollét után.",
     "changePin": "PIN módosítása",

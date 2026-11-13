@@ -18,13 +18,13 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
-import { getDensity, setDensity, type Density } from '@/settings';
+import { getDensity, setDensity, setUsername, type Density } from '@/settings';
 import { forgetRecent } from '@/recentStore';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
-import { Button, Group, IconTile, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
+import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 
@@ -54,10 +54,14 @@ export default function Settings() {
   const [backupAccount, setBackupAccount] = useState(() => getSetting('backup_account'));
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountBusy, setAccountBusy] = useState<string | null>(null); // status line while adding or syncing
+  const [name, setName] = useState(getUsername);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState('');
 
   // Back from PIN setup: show whether the lock is now on.
   useFocusEffect(
     useCallback(() => {
+      setName(getUsername());
       setLock(isLockEnabled());
       setWidgetNamesState(widgetShowsNames()); // the default follows the lock
       void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
@@ -306,7 +310,13 @@ export default function Settings() {
       <Segmented large options={items} value={selected} onChange={onPick} />
     </Row>
   );
-  const name = getUsername();
+  const saveName = () => {
+    const next = draftName.trim();
+    if (!next) return;
+    setUsername(next);
+    setName(next);
+    setEditingName(false);
+  };
   // One group per topic, with the reference's section header above it.
   const section = (title: string, body: ReactNode) => (
     <View>
@@ -318,17 +328,30 @@ export default function Settings() {
   return (
     <Page title={t('settings.title')}>
       {/* The reference's profile row: a 48dp grey avatar, the name in Title 3 and a Subheadline hint. */}
-      <View style={styles.profile}>
+      <Pressable style={styles.profile} accessibilityRole="button" accessibilityLabel={t('settings.editName')}
+        onPress={() => { setDraftName(name ?? ''); setEditingName(true); }}>
         <View style={styles.avatar}>
           <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
         </View>
         <View style={styles.rowText}>
-          <Text style={styles.profileName} numberOfLines={1}>
+          <Text style={styles.profileName} numberOfLines={2}>
             {name?.trim() || t('settings.title')}
           </Text>
           <Text style={styles.profileHint}>{t('settings.profileHint')}</Text>
         </View>
-      </View>
+        <AppIcon name="pencil-outline" size={20} color={colors.tint} />
+      </Pressable>
+      {editingName && (
+        <Group style={styles.nameEditor}>
+          <Text style={styles.label}>{t('settings.editName')}</Text>
+          <Input testID="settings-name" value={draftName} onChangeText={setDraftName} maxLength={30} autoFocus
+            accessibilityLabel={t('settings.editName')} autoCapitalize="words" returnKeyType="done" onSubmitEditing={saveName} />
+          <View style={styles.nameButtons}>
+            <Button title={t('detail.cancel')} kind="glass" style={styles.nameButton} onPress={() => setEditingName(false)} />
+            <Button title={t('collections.save')} style={styles.nameButton} onPress={saveName} disabled={!draftName.trim()} />
+          </View>
+        </Group>
+      )}
 
       {section(
         t('accounts.section'),
@@ -505,11 +528,14 @@ const useStyles = themed(() => StyleSheet.create({
   profileName: { ...TYPE.title3, color: colors.ink },
   profileHint: { ...TYPE.sub, color: colors.ink2 },
   row: { gap: 15 },
-  rowText: { flex: 1 },
+  rowText: { flex: 1, minWidth: 0 },
   tileSpace: { width: 29, alignItems: 'center' },
-  label: { ...TYPE.body, color: colors.ink },
+  label: { ...TYPE.body, color: colors.ink, flexShrink: 1 },
   hint: { ...TYPE.foot, color: colors.ink2 },
-  value: { ...TYPE.body, color: colors.ink2 },
+  value: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%', textAlign: 'right' },
+  nameEditor: { padding: 16, gap: 12, marginTop: 8 },
+  nameButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  nameButton: { flexGrow: 1, flexBasis: 120 },
   inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4, marginTop: 4 },
   linkSmall: { ...TYPE.sub, color: colors.link },
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center' },
