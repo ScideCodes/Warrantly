@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { getDb } from '@/db/client';
 import {
-  addAttachment, addManual, applyLengthToStore, getWarranty, ignoreWarranty, listAccounts, nextNeedsInput, saveStoreRule, sourceOf,
+  addManualWithDocument, applyLengthToStore, getWarranty, ignoreWarranty, listAccounts, nextNeedsInput, saveStoreRule, sourceOf,
   storeItemsMissingLength, updateWarranty, type Account, type Warranty,
 } from '@/db/repo.ts';
 import { gmailTokenFor } from '@/google';
@@ -16,6 +16,7 @@ import { gmailProvider } from '@/mail/gmail.ts';
 import { colors, BUTTON_HEIGHT, BUTTON_RADIUS, FONT, SPACE } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
+import { DocumentDraft } from '@/documentDraft';
 import { takeSharedFile } from '@/shareInbox';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
@@ -59,13 +60,24 @@ export default function EditWarranty() {
   const [accountId, setAccountId] = useState<number | null>(null); // null = the Manual tab
   const [coverage, setCoverage] = useState<'store' | 'extended' | null>(null);
   const [scan, setScan] = useState<{ state: 'idle' | 'busy' | 'done' | 'attached' | 'failed'; detail?: string }>({ state: 'idle' });
-  const scannedPdf = useRef<string | null>(null); // deleted again if the form is left without saving
-  useEffect(
-    () => () => {
-      if (scannedPdf.current) deleteDocuments([scannedPdf.current]);
-    },
-    [],
-  );
+  const draft = useRef(new DocumentDraft(deleteDocuments));
+  const mounted = useRef(false);
+  const savedId = useRef<number | null>(null);
+  const saving = useRef(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [loadedSource, setLoadedSource] = useState<string | null>(null);
+  const sourceReady = !(id || copyFrom) || loadedSource === (id || copyFrom);
+  const busy = isSaving || scan.state === 'busy' || !sourceReady;
+  useEffect(() => {
+    mounted.current = true;
+    const current = new DocumentDraft(deleteDocuments);
+    draft.current = current;
+    return () => {
+      mounted.current = false;
+      current.dispose();
+    };
+  }, []);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
   const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
   const [mail, setMail] = useState<{ state: 'hidden' | 'loading' | 'shown'; text?: string }>({ state: 'hidden' });
@@ -76,19 +88,27 @@ export default function EditWarranty() {
   const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date');
 
   useEffect(() => {
+    let cancelled = false;
+    savedId.current = null;
     void getDb().then(async (db) => {
-      setAccounts(await listAccounts(db));
+      const foundAccounts = await listAccounts(db);
+      if (cancelled) return;
+      setAccounts(foundAccounts);
       if (copyFrom) {
         const from = await getWarranty(db, Number(copyFrom));
+        if (cancelled) return;
         if (!from) return;
         setForm({ ...fromWarranty(null), product_name: from.product_name ?? '', store_name: from.store_name, purchase_date: from.purchase_date,
           warranty_start_date: from.warranty_start_date, category: from.category ?? '', order_number: from.order_number ?? '', serial_number: from.serial_number ?? '' });
         setAccountId(from.account_id);
         setCoverage('extended');
+        setLoadedSource(copyFrom);
         return;
       }
       if (!id) return;
       const w = await getWarranty(db, Number(id));
+      if (cancelled || !w) return;
+      savedId.current = w.id;
       setExisting(w);
       setForm(fromWarranty(w));
       setAccountId(w?.account_id ?? null);
@@ -97,8 +117,12 @@ export default function EditWarranty() {
       setErrors([]);
       setRemember(false);
       setMail({ state: 'hidden' });
+      setLoadedSource(id);
+    }).catch((e) => {
+      if (!cancelled) setSaveError(i18n.t('form.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
     });
-  }, [id, copyFrom]);
+    return () => { cancelled = true; };
+  }, [id, copyFrom, i18n]);
 
   useEffect(() => {
     const file = shared ? takeSharedFile() : null;
@@ -108,20 +132,24 @@ export default function EditWarranty() {
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
-  const saving = useRef(false);
   async function save() {
+    if (saving.current || draft.current.busy || !sourceReady) return;
     const found = formErrors(form);
     setErrors(found);
     if (found.length) {
       scroll.current?.scrollTo({ y: 0 }); // the required fields are at the top
       return;
     }
-    if (saving.current) return; // a double tap would add the warranty twice
     saving.current = true;
+    setIsSaving(true);
+    setSaveError(null);
     try {
       await persist();
+    } catch (e) {
+      if (mounted.current) setSaveError(t('form.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
     } finally {
       saving.current = false;
+      if (mounted.current) setIsSaving(false);
     }
   }
 
@@ -147,12 +175,11 @@ export default function EditWarranty() {
       coverage,
     };
     const db = await getDb();
-    if (existing) await updateWarranty(db, existing.id, input);
-    else {
-      const id = await addManual(db, input, scannedPdf.current ? 'scan' : 'manual');
-      if (scannedPdf.current) await addAttachment(db, id, `${input.product_name}.pdf`, scannedPdf.current);
-      scannedPdf.current = null; // saved: keep the file
-    }
+    const saved = await draft.current.save(async (localPath) => {
+      if (savedId.current) await updateWarranty(db, savedId.current, input);
+      else savedId.current = await addManualWithDocument(db, input, localPath);
+    });
+    if (!saved || !mounted.current) return;
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
     if (!resolving) return goBack();
     // Section 9 batch help: offer the same length to this store's other items that are missing it.
@@ -200,12 +227,14 @@ export default function EditWarranty() {
   // Section 18: scan a paper receipt or warranty card, or import a photo or PDF; what OCR finds fills the
   // empty fields (an imported PDF is attached as it is, nothing is read from it).
   async function runScan(source: typeof scanDocument) {
+    if (saving.current || draft.current.busy) return;
+    const current = draft.current;
+    const previous = scan;
     setScan({ state: 'busy' });
     try {
-      const result = await source();
-      if (!result) return setScan({ state: 'idle' });
-      if (scannedPdf.current) deleteDocuments([scannedPdf.current]); // a second scan replaces the first
-      scannedPdf.current = result.localPath;
+      const result = await current.capture(source);
+      if (!mounted.current) return;
+      if (!result) return setScan(previous);
       const found = parseScanText(result.text, todayYmd());
       setForm((f) => ({
         ...f,
@@ -217,7 +246,7 @@ export default function EditWarranty() {
       }));
       setScan({ state: result.text ? 'done' : 'attached' });
     } catch (e) {
-      setScan({ state: 'failed', detail: e instanceof Error ? e.message : String(e) });
+      if (mounted.current) setScan({ state: 'failed', detail: e instanceof Error ? e.message : String(e) });
     }
   }
 
@@ -308,11 +337,11 @@ export default function EditWarranty() {
                 {t('form.fromDocument')}
               </Text>
               <View style={styles.methods}>
-                <Pressable style={[styles.method, styles.methodPrimary]} onPress={() => runScan(scanDocument)} disabled={scan.state === 'busy'} accessibilityRole="button" accessibilityLabel={t('form.scan')}>
+                <Pressable style={[styles.method, styles.methodPrimary, busy && styles.disabled]} onPress={() => runScan(scanDocument)} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy }} accessibilityLabel={t('form.scan')}>
                   {scan.state === 'busy' ? <ActivityIndicator color={colors.onPrimary} /> : <Ionicons name="camera-outline" size={22} color={colors.onPrimary} />}
                   <Text style={styles.methodPrimaryText}>{t('form.scanShort')}</Text>
                 </Pressable>
-                <Pressable style={styles.method} onPress={() => runScan(importDocument)} disabled={scan.state === 'busy'} accessibilityRole="button" accessibilityLabel={t('form.import')}>
+                <Pressable style={[styles.method, busy && styles.disabled]} onPress={() => runScan(importDocument)} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy }} accessibilityLabel={t('form.import')}>
                   <Ionicons name="folder-open-outline" size={22} color={colors.primary} />
                   <Text style={styles.methodText}>{t('form.importShort')}</Text>
                 </Pressable>
@@ -468,8 +497,10 @@ export default function EditWarranty() {
         </ScrollView>
         {/* Save stays in reach at the bottom, above the keyboard when it is open. */}
         <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.saveBar}>
-          <Pressable style={styles.button} onPress={save} accessibilityRole="button">
-            <Text style={styles.buttonText}>{t('form.save')}</Text>
+          {saveError && <Text style={styles.saveError} accessibilityLiveRegion="polite">{saveError}</Text>}
+          <Pressable style={[styles.button, busy && styles.disabled]} onPress={save} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy: isSaving }}>
+            {isSaving && <ActivityIndicator color={colors.onPrimary} />}
+            <Text style={styles.buttonText}>{t(isSaving ? 'viewer.saving' : 'form.save')}</Text>
           </Pressable>
         </SafeAreaView>
       </KeyboardAvoidingView>
@@ -519,6 +550,8 @@ const styles = StyleSheet.create({
   datePlaceholder: { color: colors.muted },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
   switchLabel: { flex: 1, fontSize: 15, color: colors.text },
-  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  buttonText: { fontSize: 17, fontWeight: '700', color: colors.onPrimary },
+  disabled: { opacity: 0.5 },
+  saveError: { fontSize: 15, color: colors.soon.fg, paddingBottom: 8 },
+  button: { flexDirection: 'row', gap: 8, minHeight: BUTTON_HEIGHT, padding: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  buttonText: { flexShrink: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.onPrimary },
 });

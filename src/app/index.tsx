@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, RefreshControl, SectionList, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -42,6 +42,11 @@ export default function Home() {
   const updateReady = useUpdateReady();
   const syncing = useRef(false);
   const listRef = useRef<SectionList<Warranty, { key: Group }>>(null);
+  // Three labels side by side need about 300dp of text-scaled width ("Beállítások", "Hozzáadás" at 14–15sp).
+  // With less (large system text on a small phone) the bar becomes three full-width rows instead of
+  // breaking words or shrinking text.
+  const { width, fontScale } = useWindowDimensions();
+  const stacked = width / fontScale < 300;
 
   const load = useCallback(async () => {
     const db = await getDb();
@@ -255,27 +260,29 @@ export default function Home() {
           }} enabled={!!accounts?.length} colors={[colors.primary]} />
         }
       />
-      <View style={styles.bar}>
+      <View style={stacked ? styles.barStacked : styles.bar}>
         <Pressable
-          style={styles.barItem}
+          style={stacked ? styles.barRow : styles.barItem}
           onPress={() => listRef.current?.getScrollResponder()?.scrollTo({ y: 0 })}
           accessibilityRole="button"
           accessibilityState={{ selected: true }}
         >
-          <View style={[styles.barIcon, styles.barIconSelected]}>
+          <View style={[styles.barIcon, styles.barIconSelected, stacked && styles.barIconRow]}>
             <Ionicons name="shield-checkmark" size={24} color={colors.primary} />
           </View>
-          <Text style={styles.barLabel}>{t('home.title')}</Text>
+          <Text style={[styles.barLabel, stacked && styles.barRowLabel]}>{t('home.title')}</Text>
         </Pressable>
-        <Pressable style={styles.barAdd} onPress={() => router.push('/warranty/edit')} accessibilityRole="button" accessibilityLabel={t('home.addLong')}>
-          <Ionicons name="add" size={28} color={colors.onPrimary} />
-          <Text style={styles.barAddText}>{t('home.add')}</Text>
+        <Pressable style={stacked ? [styles.barRow, styles.barRowAdd] : styles.barAdd} onPress={() => router.push('/warranty/edit')} accessibilityRole="button" accessibilityLabel={t('home.addLong')}>
+          <View style={stacked && styles.barIconRow}>
+            <Ionicons name="add" size={28} color={colors.onPrimary} />
+          </View>
+          <Text style={[styles.barAddText, stacked && styles.barRowLabel]}>{t('home.add')}</Text>
         </Pressable>
-        <Pressable style={styles.barItem} onPress={() => router.push('/settings')} accessibilityRole="button">
-          <View style={styles.barIcon}>
+        <Pressable style={stacked ? styles.barRow : styles.barItem} onPress={() => router.push('/settings')} accessibilityRole="button">
+          <View style={[styles.barIcon, stacked && styles.barIconRow]}>
             <Ionicons name="options-outline" size={24} color={colors.muted} />
           </View>
-          <Text style={[styles.barLabel, styles.barLabelIdle]}>{t('settings.title')}</Text>
+          <Text style={[styles.barLabel, styles.barLabelIdle, stacked && styles.barRowLabel]}>{t('settings.title')}</Text>
         </Pressable>
       </View>
       <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t('home.filter')} subtitle={total ? t('home.total', { total }) : undefined} sections={menu} />
@@ -336,6 +343,11 @@ const styles = StyleSheet.create({
   barIconSelected: { backgroundColor: colors.primarySoft },
   barLabel: { fontSize: 14, fontWeight: '700', color: colors.text },
   barLabelIdle: { color: colors.muted },
-  barAdd: { width: 104, minHeight: 64, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  barAdd: { minWidth: 104, paddingHorizontal: 12, minHeight: 64, borderRadius: 20, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   barAddText: { fontSize: 15, fontWeight: '700', color: colors.onPrimary },
+  barStacked: { gap: 4, paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider, backgroundColor: colors.surface },
+  barRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48, paddingHorizontal: 12, paddingVertical: 4, borderRadius: BUTTON_RADIUS },
+  barRowAdd: { backgroundColor: colors.primary },
+  barIconRow: { width: 40, height: 32, alignItems: 'center', justifyContent: 'center' },
+  barRowLabel: { flexShrink: 1 },
 });

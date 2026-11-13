@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { importShared, setPhoto, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addManualWithDocument, importShared, setPhoto, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -27,6 +27,25 @@ test('migrate is idempotent', async () => {
   await migrate(db);
   await migrate(db);
   assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 11);
+});
+
+test('new warranty and PDF roll back together; retry creates exactly one complete warranty', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const input = {
+    account_id: null, product_name: 'Kettle', store_name: 'Shop', purchase_date: '2026-11-01',
+    warranty_start_date: '2026-11-01', warranty_months: 24, order_number: null, serial_number: null,
+    contact_email: null, contact_phone: null, website_url: null, notes: null,
+  };
+  db.raw.exec("CREATE TRIGGER fail_attachment BEFORE INSERT ON attachments BEGIN SELECT RAISE(ABORT, 'disk full'); END");
+  await assert.rejects(addManualWithDocument(db, input, 'receipt.pdf'), /disk full/);
+  assert.deepEqual(await listWarranties(db, 'complete'), []);
+  assert.equal(db.raw.prepare('SELECT COUNT(*) AS n FROM attachments').get()?.n, 0);
+  db.raw.exec('DROP TRIGGER fail_attachment');
+  const id = await addManualWithDocument(db, input, 'receipt.pdf');
+  assert.equal((await listWarranties(db, 'complete')).length, 1);
+  assert.equal((await getWarranty(db, id))?.origin, 'scan');
+  assert.deepEqual((await listAttachments(db, id)).map((a) => [a.filename, a.local_path]), [['Kettle.pdf', 'receipt.pdf']]);
 });
 
 test('sync saves warranties, retries failed mails, never duplicates', async () => {

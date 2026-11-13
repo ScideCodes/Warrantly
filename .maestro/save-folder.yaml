@@ -1,0 +1,17 @@
+appId: dev.warrantly.prototype
+---
+- extendedWaitUntil: { visible: "USE THIS FOLDER|Use this folder", timeout: 20000 }
+- runFlow:
+    when: { visible: "Show roots" }
+    commands:
+      - tapOn: "Show roots"
+      - tapOn: "Downloads"
+      - tapOn: "WarrantlyExports"
+# Newer Android pickers open directly at internal storage, without a roots drawer.
+- runFlow:
+    when: { visible: "Download" }
+    commands:
+      - tapOn: "Download"
+      - tapOn: "WarrantlyExports"
+- tapOn: "USE THIS FOLDER|Use this folder"
+- tapOn: { text: "ALLOW|Allow", optional: true }

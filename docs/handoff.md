@@ -36,7 +36,7 @@ Don't open a pull request unless I ask.
 ```bash
 npm install                   # also applies the patch
 npx tsc --noEmit              # typecheck
-npm test                      # node --test, 73 tests
+npm test                      # node --test, 86 tests
 npx expo lint
 npx expo start                # dev server
 ```
@@ -65,13 +65,13 @@ npx expo start                # dev server
 - It must be easy for both young and old people: big touch targets, plain words.
 - Privacy: no user name or email in fixtures, external requests or commits.
 
-## Next: visual pass
+## UI finishing pass (Nov 13 2026)
 
-The owner wants this now. Known items:
+Follow-up changes are on `codex/finish-warranty-ui`, based on `0cf253c`. The grouped list and document-first detail layout stay in place. Covered rows use quieter status labels; document buttons wrap or stack for enlarged text; long sheets scroll while keeping Close reachable. With large system text on a narrow phone, the bottom navigation turns into three full-width rows (Warranties, Add, Settings) instead of breaking labels.
 
-- The "Expiring soon" tab label is cut off ("Expiring s...") on a normal phone width.
-- The PDF viewer's "Open in another app" button overflows on narrow screens (`src/app/document.tsx`).
-- Overall look: spacing, type sizes, colours and dark mode. Check against the screens in the latest device-test artifact.
+Document operations now prevent overlapping requests. New warranties and their attachment records save in one transaction, failed saves keep the draft for retry, abandoned scans are cleaned up, and repeated exports get distinct filenames. The form shows a recoverable error instead of silently failing.
+
+Both new Maestro flows (`ui-polish`, `ui-polish-large`) passed end to end on a disposable API 37 emulator, and the two exported PDFs matched the source byte for byte. See [UI verification](ui-polish.md) for checks and screenshots. No OTA update was published by this pass; the installed preview still needs a separately requested release.
 
 ## Not tested on a real phone yet
 

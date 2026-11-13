@@ -8,6 +8,7 @@ import { extractTextFromImage } from 'expo-text-extractor';
 import { Linking } from 'react-native';
 import DocumentScanner, { ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
 import { mailtoUrl } from '@/claim';
+import { saveDocumentCopy } from './documentSave';
 
 // Documents kept with warranties (brainstorm section 18): scans become one PDF in the app's own folder.
 const folder = () => {
@@ -109,17 +110,7 @@ export function deleteDocuments(localPaths: string[]): void {
 export async function saveDocument(localPath: string, name: string): Promise<boolean> {
   const source = fileFor(localPath);
   if (!source.exists) throw new Error('missing');
-  let target: Directory;
-  try {
-    target = await Directory.pickDirectoryAsync();
-  } catch (e) {
-    if (/cancel/i.test(e instanceof Error ? e.message : String(e))) return false;
-    throw e;
-  }
-  const base = name.replace(/[\\/:*?"<>|]+/g, ' ').trim() || 'document';
-  const out = target.createFile(/\.pdf$/i.test(base) ? base : `${base}.pdf`, 'application/pdf');
-  await out.write(await source.bytes());
-  return true;
+  return saveDocumentCopy(() => source.bytes(), () => Directory.pickDirectoryAsync(), name);
 }
 
 // Android cannot open a private file:// link; the share sheet hands it to a PDF viewer or another app.
