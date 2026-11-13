@@ -383,7 +383,14 @@ export default function WarrantyDetail() {
                     <ActivityIndicator color={colors.tint} />
                   </View>
                 ) : photo ? (
-                  <Image source={{ uri: photo.uri }} onError={photo.onError} style={styles.photo} accessibilityIgnoresInvertColors />
+                  // A found picture is shown whole, like on the list; the user's own photo fills the tile.
+                  <Image
+                    source={{ uri: photo.uri }}
+                    onError={photo.onError}
+                    resizeMode={photo.found ? 'contain' : 'cover'}
+                    style={[styles.photo, photo.found && { backgroundColor: colors.card2 }]}
+                    accessibilityIgnoresInvertColors
+                  />
                 ) : (
                   <View style={[styles.photo, styles.photoEmpty]}>
                     <AppIcon name="camera-outline" size={28} color={colors.tint} />
