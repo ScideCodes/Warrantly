@@ -1,10 +1,11 @@
-import { Pressable, Text, TextInput, View, reduceMotion } from '@/components/themeMotion';
+import { Pressable, Text, TextInput, View, reduceMotion, useThemeTransition } from '@/components/themeMotion';
 import { useEffect, useState, type ReactNode } from 'react';
 import AppIcon, { type IconName } from '@/components/Icon';
 import {
   ActivityIndicator,
   Animated,
   Easing,
+  Pressable as NativePressable,
   StyleSheet,
   useWindowDimensions,
   type PressableProps,
@@ -13,7 +14,9 @@ import {
   type TextStyle,
   type ViewProps,
   type ViewStyle,
+  type LayoutRectangle,
 } from 'react-native';
+import Reanimated from 'react-native-reanimated';
 import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { segmentedLayout } from '@/segmentedLayout';
 
@@ -271,22 +274,46 @@ export function Switch({ value, onValueChange, accessibilityLabel, disabled }: {
   );
 }
 
-// Segmented control. Small: 32 track, 28 options. Large: 44 track, 40 options, optional glyphs (8dp hit slop).
+// Stable touch targets with a separate selection lens; whole options reflow at large text sizes.
 export function Segmented<K extends string>({ options, value, onChange, large }: { options: { key: K; label: string; icon?: IconName }[]; value: K; onChange: (k: K) => void; large?: boolean }) {
   const styles = useStyles();
+  const transition = useThemeTransition();
   const { fontScale } = useWindowDimensions();
   const [width, setWidth] = useState(0);
+  const [rects, setRects] = useState<Record<string, LayoutRectangle>>({});
   const { columns, optionWidth, icons } = segmentedLayout(width, fontScale, options.map((o) => o.label), large);
+  const selected = rects[value];
+  // Only the decorative lens moves; touch targets, text and the grid stay still.
+  // Recreate the lens when text/width reflows so resizing never sweeps over the UI.
+  const layoutKey = `${width}:${fontScale}:${columns}:${large}`;
   return (
     <View style={[styles.seg, large && styles.segLarge]} accessibilityRole="radiogroup" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {selected && (
+        <Reanimated.View key={layoutKey} pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
+          testID="segmented-selection"
+          style={[styles.segLens, large && styles.segLensLarge, {
+            width: selected.width, height: selected.height,
+            transform: [{ translateX: selected.x }, { translateY: selected.y }],
+            transitionProperty: ['transform', 'backgroundColor'],
+            transitionDuration: transition.transitionDuration === '0ms' ? '0ms' : '180ms',
+            transitionTimingFunction: 'ease-out',
+          }]} />
+      )}
       {options.map((o) => {
         const on = o.key === value;
         return (
-          <Pressable
+          <NativePressable
             key={o.key}
-            onPress={() => onChange(o.key)}
-            hitSlop={{ top: 8, bottom: 8 }}
-            style={[styles.segOption, large && styles.segOptionLarge, optionWidth !== undefined && { flex: 0, width: optionWidth }, columns < options.length && { minHeight: 44 }, on && styles.segOn]}
+            onPress={() => { if (!on) onChange(o.key); }}
+            onLayout={(event) => {
+              const rect = event.nativeEvent.layout;
+              setRects((previous) => {
+                const old = previous[o.key];
+                return old && old.x === rect.x && old.y === rect.y && old.width === rect.width && old.height === rect.height
+                  ? previous : { ...previous, [o.key]: rect };
+              });
+            }}
+            style={({ pressed }) => [styles.segOption, large && styles.segOptionLarge, optionWidth !== undefined && { flex: 0, width: optionWidth }, columns < options.length && { minHeight: 44 }, pressed && { opacity: 0.72 }, !selected && on && styles.segOn]}
             accessibilityRole="radio"
             accessibilityLabel={o.label}
             accessibilityState={{ checked: on }}
@@ -295,7 +322,7 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
             <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={1}>
               {o.label}
             </Text>
-          </Pressable>
+          </NativePressable>
         );
       })}
     </View>
@@ -322,8 +349,10 @@ const useStyles = themed(() => StyleSheet.create({
   switchKnob: { position: 'absolute', top: 2, left: 2, width: 38, height: 24, borderRadius: 12, backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04)' },
   seg: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, padding: 2, borderRadius: 16, backgroundColor: colors.fill },
   segLarge: { borderRadius: 22 },
-  segOption: { flex: 1, minHeight: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14 },
+  segOption: { flex: 1, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14 },
   segOptionLarge: { minHeight: 40, paddingHorizontal: 8, borderRadius: 20 },
   segOn: { backgroundColor: colors.segOn, boxShadow: colors.segShadow },
+  segLens: { position: 'absolute', top: 0, left: 0, borderRadius: 14, backgroundColor: colors.segOn, boxShadow: colors.segShadow },
+  segLensLarge: { borderRadius: 20 },
   segText: { ...TYPE.seg, color: colors.ink, textAlign: 'center', flexShrink: 1 },
 }));

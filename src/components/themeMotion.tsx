@@ -60,13 +60,17 @@ export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, Pressa
   const transition = useThemeTransition();
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  // Static controls have no pressed style to evaluate. Updating their React state
+  // and CSS duration on touch needlessly rewrites the animated native surface.
+  const tracksPress = typeof style === 'function' || pressScale !== undefined;
+  const tracksHover = typeof style === 'function';
   // Reanimated needs a concrete style array; passing Pressable's style callback
   // through it discards the button's layout and fill on native.
   return <AnimatedPressable {...props} ref={ref}
-    onPressIn={(event) => { setPressed(true); props.onPressIn?.(event); }}
-    onPressOut={(event) => { setPressed(false); props.onPressOut?.(event); }}
-    onHoverIn={(event) => { setHovered(true); props.onHoverIn?.(event); }}
-    onHoverOut={(event) => { setHovered(false); props.onHoverOut?.(event); }}
+    onPressIn={(event) => { if (tracksPress) setPressed(true); props.onPressIn?.(event); }}
+    onPressOut={(event) => { if (tracksPress) setPressed(false); props.onPressOut?.(event); }}
+    onHoverIn={(event) => { if (tracksHover) setHovered(true); props.onHoverIn?.(event); }}
+    onHoverOut={(event) => { if (tracksHover) setHovered(false); props.onHoverOut?.(event); }}
     style={[typeof style === 'function' ? style({ pressed, hovered }) : style, transition,
       pressed && { transitionDuration: '0ms' },
       pressScale !== undefined && {
