@@ -1,6 +1,7 @@
+import { View } from '@/components/themeMotion';
 import { useState } from 'react';
 import { goBack } from '@/nav';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { PinLayout, PinPad } from '@/components/PinPad';

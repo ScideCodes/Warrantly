@@ -1,7 +1,8 @@
+import { Text, View } from '@/components/themeMotion';
 import { useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { router } from 'expo-router';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { versionLine } from '@/appUpdate';
 import { sendClaim } from '@/documents';

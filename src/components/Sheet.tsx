@@ -1,6 +1,7 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import AppIcon from '@/components/Icon';
-import { Animated, Modal, PanResponder, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, Modal, PanResponder, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { colors, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';

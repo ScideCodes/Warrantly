@@ -1,18 +1,21 @@
+import { Text, View, useThemeTransition } from '@/components/themeMotion';
 import { forwardRef, useState, type ComponentRef, type ReactNode } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, useWindowDimensions, View, type FlatListProps, type ScrollViewProps } from 'react-native';
+import { Animated, ScrollView, StyleSheet, useWindowDimensions, type FlatListProps, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { goBack } from '@/nav';
 import { BAR_H, colors, gutter, isDarkNow, TYPE, themed } from '@/theme';
 import { GlassButton } from '@/components/ui';
+import Reanimated from 'react-native-reanimated';
 
 // The page shell of every screen: floating glass buttons over a soft scroll edge, a compact title that
 // fades in once the large title has passed under the bar (chrome.js `--t`), and the large title itself.
 // The page colour as an rgb triple, for the scroll-edge gradients.
-const rgb = () => (isDarkNow() ? '0,0,0' : '242,242,247');
 // The bar's ::before: --bg fading out downwards, 24dp past the bar, under the reference's mask
 // (ios.css line 165), folded into one gradient. The reference also blurs it by 8px; React Native cannot.
-const edgeGradient = () => `linear-gradient(rgba(${rgb()},1) 0%, rgba(${rgb()},0.743) 55%, rgba(${rgb()},0.64) 60%, rgba(${rgb()},0) 100%)`;
+const edgeGradient = (rgb: string) => `linear-gradient(rgba(${rgb},1) 0%, rgba(${rgb},0.743) 55%, rgba(${rgb},0.64) 60%, rgba(${rgb},0) 100%)`;
+const lightEdge = { ...StyleSheet.absoluteFill, backgroundImage: edgeGradient('242,242,247') };
+const darkEdge = { ...StyleSheet.absoluteFill, backgroundImage: edgeGradient('0,0,0') };
 
 export function useScrollEdge(listener?: (y: number) => void) {
   const y = useState(() => new Animated.Value(0))[0];
@@ -31,6 +34,8 @@ const ALWAYS = new Animated.Value(1).interpolate({ inputRange: [0, 1], outputRan
 
 export function NavBar({ title, t, back = true, leading, trailing }: { title?: string; t?: Animated.AnimatedInterpolation<number>; back?: boolean; leading?: ReactNode; trailing?: ReactNode }) {
   const styles = useStyles();
+  const transition = useThemeTransition();
+  const dark = isDarkNow();
   const { t: tr } = useTranslation();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -41,7 +46,11 @@ export function NavBar({ title, t, back = true, leading, trailing }: { title?: s
   const titleOpacity = show.interpolate({ inputRange: [0.55, 0.95], outputRange: [0, 1], extrapolate: 'clamp' });
   return (
     <View style={[styles.bar, { height: BAR_H + insets.top, paddingTop: insets.top }]} pointerEvents="box-none">
-      <Animated.View style={[styles.edge, { opacity: show }]} pointerEvents="none" />
+      <Animated.View style={[styles.edge, { opacity: show }]} pointerEvents="none">
+        {/* Crossfade fixed gradients: changing the gradient string would flash the entire scroll edge. */}
+        <Reanimated.View style={[lightEdge, transition, { transitionProperty: ['opacity'], opacity: dark ? 0 : 1 }]} />
+        <Reanimated.View style={[darkEdge, transition, { transitionProperty: ['opacity'], opacity: dark ? 1 : 0 }]} />
+      </Animated.View>
       <View style={[styles.barIn, { paddingHorizontal: gutter(width) }]} pointerEvents="box-none">
         <View style={[styles.side, { minWidth: sideWidth }]}>
           <View style={styles.sideContent} onLayout={(e) => setLeadingWidth(e.nativeEvent.layout.width)}>{leading ?? (back && <GlassButton icon="chevron-back" size={22} label={tr('nav.back')} onPress={goBack} testID="nav-back" />)}</View>
@@ -104,7 +113,7 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
 const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   bar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
-  edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -24, backgroundImage: edgeGradient() },
+  edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -24 },
   barIn: { height: BAR_H, flexDirection: 'row', alignItems: 'center', gap: 8 },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   trail: { justifyContent: 'flex-end', gap: 8 },

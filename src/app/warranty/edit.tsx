@@ -1,7 +1,8 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';

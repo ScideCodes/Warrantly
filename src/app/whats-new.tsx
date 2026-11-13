@@ -1,5 +1,6 @@
+import { Text } from '@/components/themeMotion';
 import { useEffect } from 'react';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { goBack } from '@/nav';
 import { Page } from '@/components/Page';

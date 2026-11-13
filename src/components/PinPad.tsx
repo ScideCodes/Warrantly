@@ -1,5 +1,6 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { Animated, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';

@@ -1,6 +1,7 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
+import { AppState, BackHandler, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { PinLayout, PinPad } from '@/components/PinPad';

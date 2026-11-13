@@ -1,4 +1,5 @@
-import { StyleSheet, Text } from 'react-native';
+import { Text } from '@/components/themeMotion';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Page } from '@/components/Page';
 import { colors, TYPE, themed } from '@/theme';

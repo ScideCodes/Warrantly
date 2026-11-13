@@ -1,7 +1,8 @@
+import { Pressable, Text, TextInput, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { Redirect, router, useFocusEffect } from 'expo-router';
-import { AccessibilityInfo, ActivityIndicator, Animated, Pressable, RefreshControl, SectionList, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { AccessibilityInfo, ActivityIndicator, Animated, RefreshControl, SectionList, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -375,8 +376,12 @@ function TabButton({ tab, on, labelOpacity }: { tab: Tab; on: boolean; labelOpac
     >
       {/* The faded label still takes space. Move the glyph by half that space plus
           the gap so the compact tab is visually centered, at every label scale. */}
-      <Animated.View style={{ transform: [{ scale }, { translateY: labelOpacity.interpolate({ inputRange: [0, 1], outputRange: [(labelHeight + 2) / 2, 0] }) }] }}>
-        <AppIcon name={on && tab.iconOn ? tab.iconOn : tab.icon} size={24} color={on ? colors.tint : colors.ink} />
+      {/* Keep native press scale separate from the JS-driven compact geometry. A
+          shared transform graph promotes width/left to the unsupported native driver. */}
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Animated.View style={{ transform: [{ translateY: labelOpacity.interpolate({ inputRange: [0, 1], outputRange: [(labelHeight + 2) / 2, 0] }) }] }}>
+          <AppIcon name={on && tab.iconOn ? tab.iconOn : tab.icon} size={24} color={on ? colors.tint : colors.ink} />
+        </Animated.View>
       </Animated.View>
       <Animated.Text onLayout={(e) => setLabelHeight(e.nativeEvent.layout.height)} style={[styles.tabLabel, on && { color: colors.tintInk }, { opacity: labelOpacity }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>
         {tab.label}

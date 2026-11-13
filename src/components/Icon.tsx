@@ -2,6 +2,11 @@ import type { ComponentProps } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { StyleSheet } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { useThemeTransition } from '@/components/themeMotion';
+
+const AnimatedIonicons = Animated.createAnimatedComponent(Ionicons);
+const AnimatedProductIcon = Animated.createAnimatedComponent(MaterialCommunityIcons);
 
 export type IconName = keyof typeof Ionicons.glyphMap;
 type Props = ComponentProps<typeof Ionicons>;
@@ -24,10 +29,11 @@ const optical: Partial<Record<IconName, readonly [number, number]>> = {
 };
 
 export default function Icon({ name, size = 24, style, ...props }: Props) {
+  const transition = useThemeTransition();
   const [x, y] = optical[name] ?? [0, 0];
   const transform = StyleSheet.flatten(style)?.transform;
   return (
-    <Ionicons
+    <AnimatedIonicons
       {...props}
       name={name}
       size={size}
@@ -35,6 +41,7 @@ export default function Icon({ name, size = 24, style, ...props }: Props) {
       style={[
         glyphBox(size),
         style,
+        { ...transition, transitionProperty: ['color'], color: props.color },
         (x !== 0 || y !== 0) && { transform: typeof transform === 'string'
           ? `${transform} translate(${x * size}px, ${y * size}px)`
           : [...(transform ?? []), { translateX: x * size }, { translateY: y * size }] },
@@ -45,5 +52,6 @@ export default function Icon({ name, size = 24, style, ...props }: Props) {
 
 // Product/category glyphs use a second font but the same stable layout box.
 export function ProductIcon({ size = 18, style, ...props }: ComponentProps<typeof MaterialCommunityIcons>) {
-  return <MaterialCommunityIcons {...props} size={size} allowFontScaling={false} style={[glyphBox(size), style]} />;
+  const transition = useThemeTransition();
+  return <AnimatedProductIcon {...props} size={size} allowFontScaling={false} style={[glyphBox(size), style, { ...transition, transitionProperty: ['color'], color: props.color }]} />;
 }

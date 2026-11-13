@@ -106,3 +106,27 @@ Not checked: a real phone, a release build, TalkBack, tablets and landscape.
 ## 5. Checks
 
 `node --test` 109/109, `tsc --noEmit` clean, `expo lint` only the existing i18n warning, `git diff --check` clean.
+
+## 6. Smooth theme transition follow-up
+
+Shared text, cards, controls, inputs and glyphs now transition their colours over 220 ms on the UI thread.
+`src/components/themeMotion.tsx` keeps this policy in one place. Layout, scrolling and press transforms are
+excluded. The preference listener also responds to Reduce Motion changes while the app is open; reduced motion
+uses zero duration. Press colours apply immediately while a control is held.
+
+The navigation scroll edge crossfades two fixed gradients, avoiding an abrupt gradient-string replacement.
+Existing core Animated scroll/press hosts stay native hosts: wrapping them in Reanimated disconnects native
+scroll opacity updates on Android. The tab icon's native press scale also has its own view, separate from the
+JS-driven compact geometry; sharing that transform graph produced unsupported native width/left warnings.
+
+Reanimated 4.7.1 and Worklets 0.13.1 were already in the lockfile and Android autolinking/build. They are now
+explicit dependencies at the same versions. No native module or runtime-version change is needed for this OTA.
+
+Verification: 109 unit tests, typecheck, lint (existing i18n warning only); Android emulator theme cycling and
+an Auto change under an unsaved Add form, plus library/filter/detail/document/dialog/form/Settings tour.
+A screen recording confirms intermediate colours rather than a hard cut. These checks use a debug build,
+not a physical device or an iOS build. The reusable Maestro checks are `.maestro/theme-transition.yaml`
+and `.maestro/theme-draft.yaml`; pass `-e N=<screenshot-prefix>`, flip the emulator system scheme between them,
+and use synthetic app data (lock disabled or the test PIN 1234).
+The final cycle also passed at 360 dp width and 140% text, followed by an Auto change with Android animations
+disabled; the draft and scroll position survived, with no React Native or Android runtime errors in logcat.

@@ -1,6 +1,7 @@
+import { Text, View } from '@/components/themeMotion';
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { ProductIcon } from '@/components/Icon';
