@@ -665,7 +665,8 @@ const useStyles = themed(() => StyleSheet.create({
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   // Summary line (shortlist 1): three equal buttons on one card.
   summary: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: RADIUS, backgroundColor: colors.card },
-  sumItem: { flex: 1, minHeight: 56, borderRadius: RADIUS - 4, alignItems: 'center', justifyContent: 'center', paddingVertical: 6, paddingHorizontal: 4 },
+  // Align the counts even when one translated label needs another line.
+  sumItem: { flex: 1, minHeight: 56, borderRadius: RADIUS - 4, alignItems: 'center', justifyContent: 'flex-start', paddingVertical: 6, paddingHorizontal: 4 },
   sumOn: { backgroundColor: colors.select },
   sumPressed: { opacity: 0.6 },
   sumValue: { ...TYPE.title3, color: colors.ink, fontVariant: ['tabular-nums'] },
