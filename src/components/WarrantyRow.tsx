@@ -3,6 +3,7 @@ import type { TFunction } from 'i18next';
 import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
+import { ProductIcon } from '@/components/Icon';
 import type { Warranty } from '@/db/repo.ts';
 import { documentUriOrNull } from '@/documents';
 import { colors, TONE, TYPE } from '@/theme';
@@ -73,7 +74,7 @@ export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: W
         <Image source={{ uri: photo }} style={styles.tile} accessibilityIgnoresInvertColors />
       ) : (
         <View style={[styles.tile, { backgroundColor: CATEGORY_TILE[w.category ?? ''] ?? TILE.blue }]} importantForAccessibility="no-hide-descendants">
-          <MaterialCommunityIcons name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color="#fff" />
+          <ProductIcon name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color="#fff" />
         </View>
       )}
       <View style={styles.text}>

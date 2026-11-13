@@ -2,7 +2,7 @@ import { Children, cloneElement, Fragment, isValidElement, useCallback, useState
 import { router, useFocusEffect } from 'expo-router';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
@@ -26,7 +26,7 @@ import { colors, RADIUS, ROW_X, TYPE } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
-type Icon = keyof typeof Ionicons.glyphMap;
+type Icon = IconName;
 
 // Settings (section 13): mail accounts, app lock, reminders and backup.
 export default function Settings() {
@@ -370,7 +370,7 @@ export default function Settings() {
               // The reference's to-do circles: 22dp, --ink-3 ring, filled with the tint when on.
               <Row key={g} iconInset style={styles.row} onPress={() => toggleGroup(g)} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>
                 <View style={styles.tileSpace}>
-                  <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <Ionicons name="checkmark" size={15} color="#fff" />}</View>
+                  <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <AppIcon name="checkmark" size={15} color="#fff" />}</View>
                 </View>
                 <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
               </Row>

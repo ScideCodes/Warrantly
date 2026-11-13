@@ -4,7 +4,7 @@ import { goBack } from '@/nav';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { getDb } from '@/db/client';
 import {
   addManualWithDocument, applyLengthToStore, getWarranty, ignoreWarranty, listAccounts, nextNeedsInput, saveStoreRule, sourceOf,
@@ -348,7 +348,7 @@ export default function EditWarranty() {
           </>
         ) : (
           <>
-            <Ionicons name={failed ? 'alert-circle-outline' : 'document-outline'} size={40} color={colors.ink2} />
+            <AppIcon name={failed ? 'alert-circle-outline' : 'document-outline'} size={40} color={colors.ink2} />
             <Text style={styles.sourceTitle} accessibilityRole="header">
               {t(failed ? 'form.loadFailedTitle' : 'form.missingTitle')}
             </Text>
@@ -405,7 +405,7 @@ export default function EditWarranty() {
               {scan.state === 'done' || scan.state === 'attached' ? (
                 // Review before save: say plainly that the form was filled from the document.
                 <View style={styles.review} accessibilityLiveRegion="polite">
-                  <Ionicons name="checkmark-circle" size={20} color={colors.ok} />
+                  <AppIcon name="checkmark-circle" size={20} color={colors.ok} />
                   <Text style={styles.reviewText}>{t(scan.state === 'done' ? 'form.scanned' : 'form.imported')}</Text>
                 </View>
               ) : (

@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { KEY_SIZE, PinPad } from '@/components/PinPad';
 import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { logError } from '@/errorLog';
@@ -85,7 +85,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     <SafeAreaView style={styles.screen}>
       <View style={styles.top}>
         <View style={styles.logo}>
-          <Ionicons name="shield-checkmark" size={32} color="#fff" />
+          <AppIcon name="shield-checkmark" size={32} color="#fff" />
         </View>
         <Text style={styles.title} accessibilityRole="header">
           {t('lock.title')}
@@ -107,7 +107,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
               accessibilityRole="button"
               accessibilityLabel={t('lock.biometric')}
             >
-              <Ionicons name="finger-print" size={34} color={colors.tint} />
+              <AppIcon name="finger-print" size={34} color={colors.tint} />
             </Pressable>
           )
         }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
 import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
@@ -327,7 +327,7 @@ export default function WarrantyDetail() {
                   <Image source={{ uri: photo }} style={styles.photo} />
                 ) : (
                   <View style={[styles.photo, styles.photoEmpty]}>
-                    <Ionicons name="camera-outline" size={28} color={colors.tint} />
+                    <AppIcon name="camera-outline" size={28} color={colors.tint} />
                   </View>
                 )}
               </Pressable>
@@ -363,7 +363,7 @@ export default function WarrantyDetail() {
                     <Text style={[styles.docType, missing && styles.docMissing]}>{missing ? t('detail.fileMissing') : t('detail.pdf')}</Text>
                   </View>
                   <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => setSheet({ doc: d })} accessibilityRole="button" accessibilityLabel={t('detail.documentOptions', { name: d.filename })}>
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.ink} />
+                    <AppIcon name="ellipsis-horizontal" size={20} color={colors.ink} />
                   </Pressable>
                 </View>
                 {!missing && (
@@ -385,7 +385,7 @@ export default function WarrantyDetail() {
             );
           })}
           <Row separator={docs.length > 0} iconInset onPress={() => setSheet('add')} disabled={documentBusy !== null} accessibilityState={{ busy: documentBusy === 'attach' }}>
-            <View style={styles.glyph}>{documentBusy === 'attach' ? <ActivityIndicator color={colors.tint} /> : <Ionicons name="add-circle-outline" size={22} color={colors.tint} />}</View>
+            <View style={styles.glyph}>{documentBusy === 'attach' ? <ActivityIndicator color={colors.tint} /> : <AppIcon name="add-circle-outline" size={22} color={colors.tint} />}</View>
             <Text style={styles.addText}>{t(documentBusy === 'attach' ? 'form.scanning' : 'detail.addDocument')}</Text>
           </Row>
         </Section>
@@ -438,7 +438,7 @@ export default function WarrantyDetail() {
               </Text>
               {/* A visible button, not a long-press: hidden gestures are hard to discover. */}
               <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
-                <Ionicons name="trash-outline" size={20} color={colors.bad} />
+                <AppIcon name="trash-outline" size={20} color={colors.bad} />
               </Pressable>
             </Row>
           ))}
