@@ -13,6 +13,7 @@ appId: dev.warrantly.prototype
 - tapOn: "Add a warranty"
 - tapOn: { id: "product_name" }
 - inputText: "Review kettle"
+- hideKeyboard # on CI's API 34 screen the open keyboard covers the store field
 - tapOn: { id: "store_name" }
 - inputText: "Example retailer"
 - hideKeyboard

@@ -44,9 +44,11 @@ export default function Home() {
   const listRef = useRef<SectionList<Warranty, { key: Group }>>(null);
   // Three labels side by side need about 300dp of text-scaled width ("Beállítások", "Hozzáadás" at 14–15sp).
   // With less (large system text on a small phone) the bar becomes three full-width rows instead of
-  // breaking words or shrinking text.
+  // breaking words or shrinking text. The bar's measured width counts, not the window's: screens are capped
+  // at 720dp (see _layout) and lose safe-area insets; the cap is the estimate until the first layout.
   const { width, fontScale } = useWindowDimensions();
-  const stacked = width / fontScale < 300;
+  const [barWidth, setBarWidth] = useState<number | null>(null);
+  const stacked = (barWidth ?? Math.min(width, 720)) / fontScale < 300;
 
   const load = useCallback(async () => {
     const db = await getDb();
@@ -260,7 +262,7 @@ export default function Home() {
           }} enabled={!!accounts?.length} colors={[colors.primary]} />
         }
       />
-      <View style={stacked ? styles.barStacked : styles.bar}>
+      <View style={stacked ? styles.barStacked : styles.bar} onLayout={(e) => setBarWidth(e.nativeEvent.layout.width)}>
         <Pressable
           style={stacked ? styles.barRow : styles.barItem}
           onPress={() => listRef.current?.getScrollResponder()?.scrollTo({ y: 0 })}

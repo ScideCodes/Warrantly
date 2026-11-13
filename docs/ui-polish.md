@@ -42,8 +42,22 @@ Screenshots inspected (paths relative to the workspace; `.expo/` is ignored by G
 
 The exported copies are in `.expo/ui-review/final/exported/`.
 
-`.maestro/run.sh` runs both flows, compares the exported bytes, and restores font/display settings before the existing regression flows. GitHub's device workflow runs them on API 34; that CI run was not triggered in this pass.
+`.maestro/run.sh` runs both flows, compares the exported bytes, and restores font/display settings before the existing regression flows. GitHub's device workflow runs them on API 34; see the review follow-up below for its result.
 
 ## Limits
 
-Not verified: a physical phone, iOS, Google account sign-in, Gmail sync, Drive backup, the widget, camera OCR, and TalkBack. The single-warranty filter sheet is short; long-sheet scrolling was verified on the More sheet at 160% and in the earlier browser preview with a long store list. The existing native PDF renderer is unchanged.
+Not verified: a physical phone, iOS, Google account sign-in, Gmail sync, Drive backup, the widget, camera OCR, and TalkBack. The More sheet at 160% only proves Close stays reachable when the content fits; real overflow is covered by `sheet-scroll.yaml` (review follow-up below). The existing native PDF renderer is unchanged.
+
+## Review follow-up
+
+Fixes for the confirmed issues in the review of `d3c6750`:
+
+- **Edit/copy source loading** (`src/formSource.ts`, `src/app/warranty/edit.tsx`). The form now shows a loading state, a "no longer here" state when the warranty was deleted (nothing saved, a Back button), and a failure state with Retry. Saving an edit is impossible until the source has loaded, so a failed load can no longer create a duplicate. Stale slow loads are ignored. Seven unit tests cover the loader (`src/formSource.test.ts`).
+- **Navigation breakpoint** (`src/app/index.tsx`). The bar uses its own measured width instead of the window width, so on a wide screen with very large text (1200dp, 300%) it stacks instead of overflowing the 720dp content column. Reproduced before the fix, fixed after; at the real 200% maximum the bar stays side by side.
+- **A sheet that really overflows** (`.maestro/sheet-scroll.yaml`, 12 synthetic warranties from `fixtures.py`). At 360dp and 160% the last store starts off-screen, scrolls into view, filters the list, and Close stays visible throughout.
+- **Missing source flow** (`.maestro/form-source.yaml`): edit and copy links to a deleted warranty show the message without a Save button; a real edit and an "Add another warranty" copy still save.
+- `ui-polish.yaml` hides the keyboard after typing the name: on CI's API 34 screen it covered the store field.
+
+Checks after these changes: `npm test` 93/93 passed, `tsc --noEmit` clean, lint 0 errors and the existing warning at `src/i18n/index.ts:24`, `git diff --check` clean. A complete local replay on the API 37 emulator passed `ui-polish` (exports byte-identical), `ui-polish-large`, `sheet-scroll` and `form-source`. The transient failure + Retry path is covered by unit tests only.
+
+CI on `d3c6750` (API 34): `ui-polish` failed at `store_name` (the keyboard issue fixed here) and `ui-polish-large` failed after it. `main`, `share`, `lock` and `fingerprint` also failed there, identically on the earlier `0cf253c`; they predate this work and are not addressed here.

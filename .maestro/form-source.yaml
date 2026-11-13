@@ -1,0 +1,38 @@
+appId: dev.warrantly.prototype
+---
+# Edit/copy links to a warranty that no longer exists show a message and a way back, never a dead or
+# blank form that could save a new warranty. Then an ordinary edit and copy still load and save.
+# Runs after ui-polish (the "Review kettle" warranty exists).
+- launchApp
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+- openLink: warrantly://warranty/edit?id=999999
+- extendedWaitUntil: { visible: "This warranty is no longer here", timeout: 20000 }
+- assertNotVisible: "Save warranty"
+- takeScreenshot: form-missing-edit
+- tapOn: "Back to warranties"
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+- openLink: warrantly://warranty/edit?copyFrom=999999
+- extendedWaitUntil: { visible: "This warranty is no longer here", timeout: 20000 }
+- assertNotVisible: "Save warranty"
+- tapOn: "Back to warranties"
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+- scrollUntilVisible: { element: "Review kettle", timeout: 20000 } # sheet-scroll adds 12 items above it
+- tapOn: "Review kettle"
+- tapOn: "Edit"
+- extendedWaitUntil: { visible: "Edit warranty", timeout: 20000 }
+- tapOn: { id: "product_name" }
+- eraseText
+- inputText: "Review kettle edited"
+- hideKeyboard
+- scrollUntilVisible: { element: "Save warranty" }
+- tapOn: "Save warranty"
+- extendedWaitUntil: { visible: "Review kettle edited", timeout: 20000 }
+- tapOn: "More actions"
+- tapOn: "Add another warranty \\(e.g. extended plan\\)"
+- extendedWaitUntil: { visible: "Add warranty", timeout: 20000 }
+- assertVisible: "Review kettle edited"
+- takeScreenshot: form-copy-loaded
+- scrollUntilVisible: { element: "Save warranty" }
+- tapOn: "Save warranty"
+- scrollUntilVisible: { element: "Other warranties for this purchase", timeout: 20000 }
+- takeScreenshot: form-copy-saved

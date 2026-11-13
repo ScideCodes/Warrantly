@@ -10,3 +10,14 @@ Image.new('RGB', (600, 600), (40, 120, 200)).save('fixture-photo.jpg', quality=9
 item = {'warranty': {'product_name': 'Shared Kettle', 'store_name': 'Shop', 'purchase_date': '2026-01-01',
                      'warranty_start_date': '2026-01-01', 'warranty_months': 24}, 'history': [], 'documents': []}
 json.dump({'format': 'warrantly-share', 'v': 1, 'items': [item]}, open('fixture-shared.json', 'w'))
+
+
+# sheet-scroll.yaml: more stores than fit in the filter sheet; the long name sorts last.
+def stock(product, store):
+    return {'warranty': {'product_name': product, 'store_name': store, 'purchase_date': '2026-01-01',
+                         'warranty_start_date': '2026-01-01', 'warranty_months': 24}, 'history': [], 'documents': []}
+
+
+stores = [stock(f'Sheet item {n:02}', f'Store {n:02}') for n in range(1, 12)]
+stores.append(stock('Long store item', 'Zeta Appliances and Home Electronics Outlet, Budapest Central'))
+json.dump({'format': 'warrantly-share', 'v': 1, 'items': stores}, open('fixture-stores.json', 'w'))

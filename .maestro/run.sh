@@ -9,7 +9,7 @@ adb install -r -g app.apk
 adb logcat -c
 adb logcat -v time ReactNativeJS:V ReactNative:V AndroidRuntime:E ExpoModulesCore:V expo-share-intent:V ExpoShareIntent:V '*:S' > out/applog.txt 2>&1 &
 adb logcat -v time > out/fulllog.txt 2>&1 &
-for f in fixture-invoice.pdf fixture-share.pdf fixture-shared.json; do adb push "$f" /sdcard/Download/; done
+for f in fixture-invoice.pdf fixture-share.pdf fixture-shared.json fixture-stores.json; do adb push "$f" /sdcard/Download/; done
 adb push fixture-photo.jpg /sdcard/Pictures/
 adb shell content call --uri content://media --method scan_volume --arg external_primary >/dev/null
 sleep 5
@@ -33,9 +33,11 @@ adb shell wm size 720x1600
 adb shell wm density 320
 adb shell settings put system font_scale 1.6
 flow ui-polish-large
+flow sheet-scroll
 adb shell settings put system font_scale 1.0
 adb shell wm size reset
 adb shell wm density reset
+flow form-source
 
 flow main
 

@@ -17,6 +17,7 @@ import { colors, BUTTON_HEIGHT, BUTTON_RADIUS, FONT, SPACE } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
 import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
+import { SourceLoader, sourceKey, type SourceState } from '@/formSource';
 import { takeSharedFile } from '@/shareInbox';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
@@ -66,8 +67,12 @@ export default function EditWarranty() {
   const saving = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [loadedSource, setLoadedSource] = useState<string | null>(null);
-  const sourceReady = !(id || copyFrom) || loadedSource === (id || copyFrom);
+  // Edit and copy start from a stored warranty: the form stays hidden (and Save blocked) until that exact
+  // record has loaded, so a missing or failed source can never turn into an accidental new warranty.
+  const key = sourceKey(id, copyFrom);
+  const [source, setSource] = useState<SourceState>({ key, status: key ? 'loading' : 'ready' });
+  const [attempt, setAttempt] = useState(0); // Retry after a failed load
+  const sourceReady = source.key === key && source.status === 'ready';
   const busy = isSaving || scan.state === 'busy' || !sourceReady;
   useEffect(() => {
     mounted.current = true;
@@ -89,40 +94,38 @@ export default function EditWarranty() {
 
   useEffect(() => {
     let cancelled = false;
+    void getDb().then(listAccounts).then(
+      (found) => { if (!cancelled) setAccounts(found); },
+      (e) => { if (!cancelled) setSaveError(i18n.t('form.saveFailed', { detail: e instanceof Error ? e.message : String(e) })); },
+    );
+    return () => { cancelled = true; };
+  }, [i18n]);
+
+  useEffect(() => {
     savedId.current = null;
-    void getDb().then(async (db) => {
-      const foundAccounts = await listAccounts(db);
-      if (cancelled) return;
-      setAccounts(foundAccounts);
-      if (copyFrom) {
-        const from = await getWarranty(db, Number(copyFrom));
-        if (cancelled) return;
-        if (!from) return;
-        setForm({ ...fromWarranty(null), product_name: from.product_name ?? '', store_name: from.store_name, purchase_date: from.purchase_date,
-          warranty_start_date: from.warranty_start_date, category: from.category ?? '', order_number: from.order_number ?? '', serial_number: from.serial_number ?? '' });
-        setAccountId(from.account_id);
+    const loader = new SourceLoader<Warranty>((state, w) => {
+      setSource(state);
+      if (!w) return setExisting(null);
+      if (state.key?.startsWith('copy:')) {
+        setForm({ ...fromWarranty(null), product_name: w.product_name ?? '', store_name: w.store_name, purchase_date: w.purchase_date,
+          warranty_start_date: w.warranty_start_date, category: w.category ?? '', order_number: w.order_number ?? '', serial_number: w.serial_number ?? '' });
+        setAccountId(w.account_id);
         setCoverage('extended');
-        setLoadedSource(copyFrom);
         return;
       }
-      if (!id) return;
-      const w = await getWarranty(db, Number(id));
-      if (cancelled || !w) return;
       savedId.current = w.id;
       setExisting(w);
       setForm(fromWarranty(w));
-      setAccountId(w?.account_id ?? null);
-      setCoverage(w?.coverage ?? null);
+      setAccountId(w.account_id ?? null);
+      setCoverage(w.coverage ?? null);
       // "Next" reuses this screen with a new id: start the item fresh.
       setErrors([]);
       setRemember(false);
       setMail({ state: 'hidden' });
-      setLoadedSource(id);
-    }).catch((e) => {
-      if (!cancelled) setSaveError(i18n.t('form.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
     });
-    return () => { cancelled = true; };
-  }, [id, copyFrom, i18n]);
+    void loader.load(key, async () => getWarranty(await getDb(), Number(id ?? copyFrom)));
+    return () => loader.cancel();
+  }, [key, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const file = shared ? takeSharedFile() : null;
@@ -176,6 +179,7 @@ export default function EditWarranty() {
     };
     const db = await getDb();
     const saved = await draft.current.save(async (localPath) => {
+      if (id && !savedId.current) throw new Error(t('form.missingTitle')); // never turn a lost edit into a new warranty
       if (savedId.current) await updateWarranty(db, savedId.current, input);
       else savedId.current = await addManualWithDocument(db, input, localPath);
     });
@@ -312,9 +316,44 @@ export default function EditWarranty() {
     );
   };
 
+  const header = <Stack.Screen options={{ headerShown: true, title: t(id ? 'form.titleEdit' : 'form.titleAdd') }} />;
+  if (!sourceReady) {
+    const status = source.key === key ? source.status : 'loading'; // the route just changed: its load starts now
+    const failed = status === 'failed';
+    return (
+      <>
+        {header}
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={[styles.screen, styles.sourceState]}>
+          {status === 'loading' ? (
+            <>
+              <ActivityIndicator size="large" color={colors.primary} />
+              <Text style={styles.sourceText} accessibilityLiveRegion="polite">{t('form.loading')}</Text>
+            </>
+          ) : (
+            <>
+              <Ionicons name={failed ? 'alert-circle-outline' : 'document-outline'} size={40} color={colors.muted} />
+              <Text style={styles.sourceTitle} accessibilityRole="header">{t(failed ? 'form.loadFailedTitle' : 'form.missingTitle')}</Text>
+              <Text style={styles.sourceText} accessibilityLiveRegion="polite">
+                {failed ? t('form.loadFailedBody', { detail: source.error }) : t('form.missingBody')}
+              </Text>
+              {failed && (
+                <Pressable style={[styles.button, styles.sourceButton]} onPress={() => setAttempt((n) => n + 1)} accessibilityRole="button">
+                  <Text style={styles.buttonText}>{t('home.retry')}</Text>
+                </Pressable>
+              )}
+              <Pressable style={[failed ? styles.secondary : styles.button, styles.sourceButton]} onPress={() => goBack()} accessibilityRole="button">
+                <Text style={failed ? styles.secondaryText : styles.buttonText}>{t('form.backToList')}</Text>
+              </Pressable>
+            </>
+          )}
+        </SafeAreaView>
+      </>
+    );
+  }
+
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: t(id ? 'form.titleEdit' : 'form.titleAdd') }} />
+      {header}
       <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView ref={scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           {resolving && existing?.origin === 'gmail' && (
@@ -513,6 +552,10 @@ const styles = StyleSheet.create({
   currency: { width: 96 },
   screen: { flex: 1, backgroundColor: colors.background },
   content: { padding: SPACE.screen, gap: 16, paddingBottom: 32 },
+  sourceState: { alignItems: 'center', justifyContent: 'center', gap: 12, padding: SPACE.screen },
+  sourceTitle: { fontSize: FONT.heading, fontWeight: '700', color: colors.text, textAlign: 'center' },
+  sourceText: { fontSize: FONT.body, color: colors.muted, textAlign: 'center' },
+  sourceButton: { alignSelf: 'stretch' },
   field: { gap: 6 },
   label: { fontSize: 15, fontWeight: '600', color: colors.text },
   input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 16, fontSize: 17, color: colors.text, backgroundColor: colors.surface },
