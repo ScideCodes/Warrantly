@@ -65,6 +65,12 @@ Not tested: the PDF viewer at high zoom, a release build, a real device, low mem
 
 ## 3. Product pictures as warranty icons
 
+> **Removed on 13 Nov 2026.** Warrantly no longer looks pictures up online: the Settings switch, the background
+> lookups, "Find a picture online" and the picture credit are gone, and nothing is sent to Wikimedia. Only the
+> person's own photo (camera or gallery) is kept. Phones that held found pictures delete them once on the next
+> list load (`src/legacyPictures.ts`). What follows is history.
+
+
 Source: Wikidata (which item is it, its P18 image) and Wikimedia Commons (thumbnail, author, licence). Free, no key,
 openly licensed; the credit (author, licence, link to the file page) is shown under the detail hero. Requests carry an
 identifying User-Agent, as Wikimedia's policy asks, are spaced 1.1 s apart and stop for an hour on HTTP 429/503.

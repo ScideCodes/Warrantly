@@ -1,5 +1,11 @@
 # Existing warranty pictures and readable selectors
 
+> **Removed on 13 Nov 2026.** Warrantly no longer looks pictures up online: the Settings switch, the background
+> lookups, "Find a picture online" and the picture credit are gone, and nothing is sent to Wikimedia. Only the
+> person's own photo (camera or gallery) is kept. Phones that held found pictures delete them once on the next
+> list load (`src/legacyPictures.ts`). The selector part below still applies; the picture part is history.
+
+
 Enabling Product pictures now immediately starts one shared background pass over all
 eligible existing warranties, replacing the former six-item limit. Returning to Home
 joins that pass rather than starting a duplicate. Each successful picture refreshes

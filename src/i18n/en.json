@@ -193,12 +193,7 @@
     "support": "Support and claims",
     "supportSearch": "Manufacturer support",
     "more": "More actions",
-    "shareRecord": "Share warranty details (file)",
-    "pictureFind": "Find a picture online",
-    "pictureRemove": "Remove found picture",
-    "pictureNone": "No picture matched this product name with certainty, so the category icon stays.",
-    "pictureFailed": "Couldn't look for a picture. Check the internet connection and try again.",
-    "pictureCredit": "Picture: {{artist}}, {{license}}, Wikimedia Commons"
+    "shareRecord": "Share warranty details (file)"
   },
   "reminder": {
     "channel": "Warranty reminders",
@@ -265,9 +260,7 @@
     "rate": "Rate Warrantly",
     "security": "Privacy and security",
     "about": "Help and about",
-    "remindersSection": "Reminders",
-    "pictures": "Product pictures",
-    "picturesHint": "Checks existing and new warranties in the background. Shows a product picture when its exact model is found on Wikimedia Commons. Only the product name is sent."
+    "remindersSection": "Reminders"
   },
   "backup": {
     "section": "Backup",
@@ -456,8 +449,6 @@
       "If you turn backups on, your data is encrypted on this phone with your backup password and stored in your own Google Drive, in a folder only Warrantly can see. Without the password nobody can read it, the developer included.",
       "## Scans and documents",
       "Scanning and reading text from receipts happens on the phone (Google ML Kit, on-device). Documents are stored in the app on this phone and, if backups are on, encrypted in your Drive.",
-      "## Product pictures",
-      "Product pictures are on by default and can be turned off in Settings (you can also tap \"Find a picture online\" on a warranty). While they are on, the product name, and nothing else, is sent to Wikidata and Wikimedia Commons (run by the Wikimedia Foundation) to find a picture of that exact model. The picture is saved on the phone and shown with its author and licence. Wikimedia sees your IP address like any website.",
       "## Other services",
       "App updates are downloaded from Expo (expo.dev), which sees your IP address like any website. Reminders are scheduled on the phone. Errors are logged on the phone and only leave it if you attach them to a feedback mail.",
       "## Your choices",
