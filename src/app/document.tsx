@@ -1,12 +1,14 @@
 import { useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, FlatList, Image, PixelRatio, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import PdfPages, { type PdfPage } from '../../modules/pdf-pages';
 import { documentUri, openDocument, saveDocument } from '@/documents';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS, SPACE } from '@/theme';
+import { NavBar } from '@/components/Page';
+import { Button, type IconName } from '@/components/ui';
+import { BAR_H, colors, gutter, isDark, TYPE } from '@/theme';
 
 const ZOOMS = [1, 2, 3];
 type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'sharing' } | { kind: 'saved' } | { kind: 'error'; action: 'save' | 'share'; detail: string };
@@ -20,6 +22,7 @@ export default function DocumentViewer() {
   const { width: windowWidth, fontScale } = useWindowDimensions();
   const width = Math.min(windowWidth, 720);
   const stackActions = width / fontScale < 360;
+  const insets = useSafeAreaInsets();
   const [pages, setPages] = useState<PdfPage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [zoom, setZoom] = useState(0);
@@ -72,20 +75,21 @@ export default function DocumentViewer() {
 
   return (
     <View style={styles.screen}>
-      <Stack.Screen options={{ headerShown: true, title: title || t('viewer.title') }} />
-      <View style={styles.zoomBar}>
-        <Pressable style={styles.zoomButton} onPress={() => setZoom((z) => z - 1)} disabled={zoom === 0} accessibilityRole="button" accessibilityLabel={t('viewer.zoomOut')}>
-          <Ionicons name="remove" size={24} color={zoom === 0 ? colors.primaryDisabled : colors.text} />
-        </Pressable>
-        <Text style={styles.zoom}>{ZOOMS[zoom] * 100}%</Text>
-        <Pressable style={styles.zoomButton} onPress={() => setZoom((z) => z + 1)} disabled={zoom === ZOOMS.length - 1} accessibilityRole="button" accessibilityLabel={t('viewer.zoomIn')}>
-          <Ionicons name="add" size={24} color={zoom === ZOOMS.length - 1 ? colors.primaryDisabled : colors.text} />
-        </Pressable>
+      <View style={{ height: insets.top + BAR_H }} />
+      {/* Zoom out, the level and zoom in share one capsule (the reference's `.pc-tools`). */}
+      <View style={styles.tools}>
+        <View style={styles.capsule}>
+          <ToolButton icon="remove" label={t('viewer.zoomOut')} onPress={() => setZoom((z) => z - 1)} disabled={zoom === 0} />
+          <Text style={styles.zoom}>{ZOOMS[zoom] * 100}%</Text>
+          <ToolButton icon="add" label={t('viewer.zoomIn')} onPress={() => setZoom((z) => z + 1)} disabled={zoom === ZOOMS.length - 1} />
+        </View>
       </View>
       {error ? (
-        <View style={styles.fill}><Text style={styles.error}>{t('viewer.failed', { detail: error })}</Text></View>
+        <View style={styles.fill}>
+          <Text style={styles.error}>{t('viewer.failed', { detail: error })}</Text>
+        </View>
       ) : !pages ? (
-        <ActivityIndicator style={styles.loading} color={colors.primary} size="large" />
+        <ActivityIndicator style={styles.loading} color={colors.tint} size="large" />
       ) : (
         <ScrollView style={styles.fill} horizontal scrollEnabled={zoom > 0}>
           <FlatList
@@ -102,45 +106,61 @@ export default function DocumentViewer() {
           />
         </ScrollView>
       )}
-      <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.actions}>
+      <View style={[styles.actions, { paddingBottom: insets.bottom + 12, paddingHorizontal: gutter(windowWidth) }]}>
         {status.kind !== 'idle' && (
           <Text style={[styles.status, status.kind === 'error' && styles.statusError]} accessibilityLiveRegion="polite">
             {status.kind === 'saving' ? t('viewer.saving') : status.kind === 'sharing' ? t('viewer.sharing') : status.kind === 'saved' ? t('viewer.saved') : t(status.action === 'save' ? 'detail.saveFailed' : 'detail.shareFailed', { detail: status.detail })}
           </Text>
         )}
         <View style={[styles.actionRow, stackActions && styles.stacked]}>
-          <Pressable style={[styles.action, stackActions && styles.stackedButton, styles.primary, busy && styles.disabled]} onPress={save} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy: status.kind === 'saving' }}>
-            <Ionicons name="download-outline" size={22} color={colors.onPrimary} />
-            <Text style={styles.primaryText}>{t('detail.save')}</Text>
-          </Pressable>
-          <Pressable style={[styles.action, stackActions && styles.stackedButton, busy && styles.disabled]} onPress={share} disabled={busy} accessibilityRole="button" accessibilityState={{ disabled: busy, busy: status.kind === 'sharing' }}>
-            <Ionicons name="share-social-outline" size={22} color={colors.primary} />
-            <Text style={styles.actionText}>{t('viewer.shareShort')}</Text>
-          </Pressable>
+          <Button title={t('detail.save')} icon="download-outline" onPress={save} disabled={busy} busy={status.kind === 'saving'} style={!stackActions && styles.action} />
+          <Button kind="glass" title={t('viewer.shareShort')} icon="share-social-outline" onPress={share} disabled={busy} busy={status.kind === 'sharing'} style={!stackActions && styles.action} />
         </View>
-      </SafeAreaView>
+      </View>
+      <NavBar title={title || t('viewer.title')} />
     </View>
   );
 }
 
+// A round 44dp tool in the capsule: label colour, presses to .94 on --press.
+function ToolButton({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled: boolean }) {
+  return (
+    <Pressable
+      style={({ pressed }) => [styles.round, pressed && styles.roundPressed, disabled && styles.roundDisabled]}
+      onPress={onPress}
+      disabled={disabled}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled }}
+    >
+      <Ionicons name={icon} size={20} color={colors.ink} />
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.expired.bg },
-  zoomBar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 4, backgroundColor: colors.background, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
-  zoomButton: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  zoom: { minWidth: 56, textAlign: 'center', fontSize: 16, fontWeight: '600', color: colors.text },
-  page: { marginBottom: 8, backgroundColor: colors.background },
+  screen: { flex: 1, backgroundColor: colors.bg },
+  tools: { alignItems: 'center', paddingBottom: 14, paddingHorizontal: 16 },
+  capsule: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 3,
+    borderRadius: 28,
+    backgroundColor: isDark ? colors.card2 : colors.card,
+    boxShadow: isDark ? undefined : 'inset 0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06)',
+  },
+  round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  roundPressed: { backgroundColor: colors.press, transform: [{ scale: 0.94 }] },
+  roundDisabled: { opacity: 0.35 },
+  zoom: { minWidth: 56, paddingHorizontal: 8, textAlign: 'center', ...TYPE.sub, fontWeight: '600', color: colors.ink },
+  page: { marginBottom: 8, backgroundColor: '#fff' },
   fill: { flex: 1 },
   loading: { flex: 1 },
-  error: { margin: 16, fontSize: 16, color: colors.soon.fg },
-  actions: { paddingHorizontal: SPACE.group, paddingTop: 10, backgroundColor: colors.surface, borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.divider },
-  status: { fontSize: 15, color: colors.text, textAlign: 'center', paddingBottom: 8 },
-  statusError: { color: colors.soon.fg },
-  actionRow: { flexDirection: 'row', gap: 10, paddingBottom: 10 },
-  action: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 12, paddingVertical: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
+  error: { margin: 16, ...TYPE.body, color: colors.bad },
+  actions: { paddingTop: 12, backgroundColor: colors.bg },
+  status: { ...TYPE.foot, color: colors.ink, textAlign: 'center', paddingBottom: 8 },
+  statusError: { color: colors.bad },
+  actionRow: { flexDirection: 'row', gap: 8 },
+  action: { flex: 1, minWidth: 0 },
   stacked: { flexDirection: 'column' },
-  stackedButton: { flex: 0 },
-  disabled: { opacity: 0.5 },
-  primary: { backgroundColor: colors.primary },
-  primaryText: { flexShrink: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.onPrimary },
-  actionText: { flexShrink: 1, textAlign: 'center', fontSize: 17, fontWeight: '700', color: colors.primary },
 });

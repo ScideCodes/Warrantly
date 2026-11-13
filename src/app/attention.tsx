@@ -1,12 +1,14 @@
 import { useCallback, useState } from 'react';
-import { Stack, useFocusEffect } from 'expo-router';
-import { FlatList, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { formatDate, WarrantyRow } from '@/components/WarrantyRow';
+import { ListPage } from '@/components/Page';
+import { Button, Group, SectionHeader } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { answerReturn, deleteWarranty, listReturnPrompts, listWarranties, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments } from '@/documents';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { colors, RADIUS, TYPE } from '@/theme';
 
 // "Needs your attention" (section 9): return/refund questions first (section 11), then incomplete items.
 export default function Attention() {
@@ -21,7 +23,7 @@ export default function Attention() {
   }, []);
   useFocusEffect(reload);
 
-  // Nothing is deleted without the user's answer (section 11).
+  // Nothing is deleted without an answer (section 11).
   async function answer(p: ReturnPrompt, remove: boolean) {
     const db = await getDb();
     if (remove) deleteDocuments(await deleteWarranty(db, p.warranty_id));
@@ -29,56 +31,54 @@ export default function Attention() {
     reload();
   }
 
-  const header = returns.length ? (
-    <View style={styles.cards}>
+  const header = (
+    <>
       {returns.map((p) => (
-        <View key={p.id} style={styles.card}>
-          <Text style={styles.cardTitle} accessibilityRole="header">
-            {t('returns.title')}
-          </Text>
-          <Text style={styles.cardBody}>
-            {t('returns.body', { store: p.store_name, date: formatDate(p.received_at.slice(0, 10), i18n.language), product: p.product_name ?? t('warranty.unknownProduct') })}
-          </Text>
-          <View style={styles.actions}>
-            <Pressable style={[styles.action, styles.delete]} onPress={() => answer(p, true)} accessibilityRole="button">
-              <Text style={styles.deleteText}>{t('returns.delete')}</Text>
-            </Pressable>
-            <Pressable style={styles.action} onPress={() => answer(p, false)} accessibilityRole="button">
-              <Text style={styles.keepText}>{t('returns.keep')}</Text>
-            </Pressable>
-          </View>
+        <View key={p.id}>
+          <SectionHeader title={t('returns.title')} />
+          <Group style={styles.card}>
+            <Text style={styles.cardBody}>
+              {t('returns.body', { store: p.store_name, date: formatDate(p.received_at.slice(0, 10), i18n.language), product: p.product_name ?? t('warranty.unknownProduct') })}
+            </Text>
+            <View style={styles.actions}>
+              <Button kind="destructive" title={t('returns.delete')} onPress={() => answer(p, true)} style={styles.action} />
+              <Button kind="glass" title={t('returns.keep')} onPress={() => answer(p, false)} style={styles.action} />
+            </View>
+          </Group>
         </View>
       ))}
-    </View>
-  ) : undefined;
+      {items.length > 0 && <View style={returns.length ? styles.gap : styles.top} />}
+    </>
+  );
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t('attention.title') }} />
-      <FlatList
-        style={styles.screen}
-        contentContainerStyle={styles.list}
-        data={items}
-        keyExtractor={(w) => String(w.id)}
-        renderItem={({ item }) => <WarrantyRow warranty={item} to={{ pathname: '/warranty/edit', params: { id: String(item.id) } }} />}
-        ListHeaderComponent={header}
-        ListEmptyComponent={returns.length ? undefined : <Text style={styles.empty}>{t('attention.empty')}</Text>}
-      />
-    </>
+    <ListPage
+      title={t('attention.title')}
+      header={header}
+      data={items}
+      keyExtractor={(w) => String(w.id)}
+      renderItem={({ item, index }) => (
+        <WarrantyRow
+          warranty={item}
+          separator={index > 0}
+          style={[styles.row, index === 0 && styles.first, index === items.length - 1 && styles.last]}
+          to={{ pathname: '/warranty/edit', params: { id: String(item.id) } }}
+        />
+      )}
+      ListEmptyComponent={returns.length ? undefined : <Text style={styles.empty}>{t('attention.empty')}</Text>}
+    />
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  list: { paddingHorizontal: 24, paddingBottom: 24 },
-  empty: { fontSize: 16, color: colors.muted, textAlign: 'center', marginTop: 48 },
-  cards: { gap: 12, paddingTop: 16, paddingBottom: 8 },
-  card: { borderRadius: 8, padding: 16, gap: 8, backgroundColor: colors.warning.bg },
-  cardTitle: { fontSize: 16, fontWeight: '700', color: colors.warning.fg },
-  cardBody: { fontSize: 15, lineHeight: 22, color: colors.text },
-  actions: { flexDirection: 'row', gap: 12 },
-  action: { flex: 1, minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  delete: { borderColor: colors.soon.fg },
-  deleteText: { fontSize: 15, fontWeight: '600', color: colors.soon.fg },
-  keepText: { fontSize: 15, fontWeight: '600', color: colors.text },
+  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 48 },
+  card: { padding: 16, gap: 12 },
+  cardBody: { ...TYPE.body, color: colors.ink },
+  actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  action: { flexGrow: 1, flexBasis: 120 },
+  gap: { height: 28 },
+  top: { height: 20 },
+  row: { backgroundColor: colors.card },
+  first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
+  last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },
 });

@@ -1,0 +1,32 @@
+appId: dev.warrantly.prototype
+---
+# A filter sheet with more stores than fit on screen: the last store starts below the fold, scrolls into
+# view and filters the list, while Close stays fixed and reachable. run.sh sets 360dp and font_scale=1.6
+# and supplies fixture-stores.json (12 synthetic warranties, the last store with a long name).
+- launchApp
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+# No retry tap: on a slow emulator the push animation looks like "no change" and a second tap lands
+# on whatever Settings shows at that spot.
+- tapOn: { text: "Settings", retryTapIfNoChange: false }
+- extendedWaitUntil: { visible: "Ignored emails", timeout: 20000 }
+- scrollUntilVisible: { element: "Import a shared list", timeout: 30000 }
+- waitForAnimationToEnd
+- tapOn: "Import a shared list"
+- runFlow: { file: pick-file.yaml, env: { FILE: fixture-stores.json } }
+- extendedWaitUntil: { visible: "12 warranties added\\.", timeout: 30000 }
+- tapOn: "OK"
+- back
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+- tapOn: "Filter"
+- assertVisible: { id: "sheet-close" }
+- assertVisible: "All warranties"
+- assertNotVisible: "Zeta Appliances.*"
+- takeScreenshot: sheet-overflow-top
+- scrollUntilVisible: { element: "Zeta Appliances.*", timeout: 20000 }
+- assertVisible: { id: "sheet-close" }
+- takeScreenshot: sheet-overflow-scrolled
+- tapOn: "Zeta Appliances.*"
+- extendedWaitUntil: { visible: "Long store item", timeout: 20000 }
+- assertNotVisible: "Review kettle"
+- assertNotVisible: "Sheet item 01"
+- takeScreenshot: sheet-overflow-filtered

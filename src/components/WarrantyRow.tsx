@@ -1,11 +1,12 @@
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
-import { Image, Pressable, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Image, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { Warranty } from '@/db/repo.ts';
 import { documentUriOrNull } from '@/documents';
-import { colors } from '@/theme';
+import { colors, TONE, TYPE } from '@/theme';
+import { Row, TILE } from '@/components/ui';
 import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
 
 export function daysLabel(t: TFunction, daysLeft: number): string {
@@ -43,32 +44,36 @@ export function formatDate(ymd: string, language: string): string {
   return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-// One row for a warranty everywhere (home, attention list, other covers on the detail screen):
-// photo or product icon, the name (up to two lines), then a small badge that says how long is left,
-// with the store and the end date beside it. Colour only backs up what the badge text says.
-// `to` overrides where a tap goes (the attention list opens the resolve form directly).
-export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle> }) {
+// One row for a warranty everywhere (home, attention list, other covers on the detail screen), laid out like
+// the reference's hardware cell (`.cell`, ios.css line 276): a 29dp tile, the name (up to two lines), the
+// store, then a small badge that says how long is left with the end date beside it, and a chevron. Colour
+// only backs up what the badge text says. `to` overrides where a tap goes (the attention list opens the
+// resolve form directly).
+export function WarrantyRow({ warranty: w, to, style, separator }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle>; separator?: boolean }) {
   const { t, i18n } = useTranslation();
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
   const level = urgency(days);
-  const tone = level === 'ok' ? { fg: colors.muted, bg: colors.background } : colors[level];
+  const tone = TONE[level];
   const product = displayName(t, w);
   const left = daysLabel(t, days);
   const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) });
   const store = w.coverage ? `${w.store_name} · ${t(`coverage.${w.coverage}`)}` : w.store_name;
+  const photo = w.photo_path ? documentUriOrNull(w.photo_path) : null;
 
   return (
-    <Pressable
-      style={({ pressed }) => [styles.row, style, pressed && styles.pressed]}
+    <Row
       onPress={() => router.push(to ?? `/warranty/${w.id}`)}
-      accessibilityRole="button" // TalkBack reads the texts inside in order: name, store, time left, end date
+      separator={separator}
+      iconInset
+      chevron
+      style={[styles.row, style]} // TalkBack reads the texts inside in order: name, store, time left, end date
     >
-      {w.photo_path && documentUriOrNull(w.photo_path) ? (
-        <Image source={{ uri: documentUriOrNull(w.photo_path)! }} style={styles.thumb} accessibilityIgnoresInvertColors />
+      {photo ? (
+        <Image source={{ uri: photo }} style={styles.tile} accessibilityIgnoresInvertColors />
       ) : (
-        <View style={styles.icon} importantForAccessibility="no-hide-descendants">
-          <MaterialCommunityIcons name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={26} color={colors.primary} />
+        <View style={[styles.tile, { backgroundColor: CATEGORY_TILE[w.category ?? ''] ?? TILE.blue }]} importantForAccessibility="no-hide-descendants">
+          <MaterialCommunityIcons name={productIcon(w.product_name, w.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={18} color="#fff" />
         </View>
       )}
       <View style={styles.text}>
@@ -80,33 +85,34 @@ export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to
         </Text>
         <View style={styles.status}>
           <View style={[styles.badge, { backgroundColor: tone.bg }]}>
-            <Text style={[styles.badgeText, level === 'ok' && styles.quietBadge, { color: tone.fg }]}>{left}</Text>
+            <Text style={[styles.badgeText, { color: tone.fg }, (level === 'ok' || level === 'expired') && styles.quietBadge]}>{left}</Text>
           </View>
           <Text style={styles.meta}>{ends}</Text>
         </View>
       </View>
-    </Pressable>
+    </Row>
   );
 }
 
+// Tile colours per category, from the reference's tile palette (which colour goes with which category is Warrantly's).
+const CATEGORY_TILE: Record<string, string> = {
+  electronics: TILE.blue,
+  computers: TILE.indigo,
+  phones: TILE.green,
+  appliances: TILE.orange,
+  home: TILE.teal,
+  tools: TILE.grey,
+  other: TILE.cyan,
+};
+
 const styles = StyleSheet.create({
-  row: {
-    minHeight: 80,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 14,
-    paddingVertical: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.divider,
-  },
-  pressed: { opacity: 0.7 },
-  thumb: { width: 46, height: 46, borderRadius: 12 },
-  icon: { width: 46, height: 46, borderRadius: 12, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
-  text: { flex: 1, gap: 4 },
-  title: { fontSize: 17, fontWeight: '600', color: colors.text },
-  meta: { fontSize: 15, color: colors.muted },
-  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4, marginTop: 2 },
-  badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
-  badgeText: { fontSize: 14, fontWeight: '700' },
-  quietBadge: { fontWeight: '500' },
+  row: { minHeight: 60, gap: 15, paddingVertical: 8 },
+  tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  text: { flex: 1, paddingVertical: 4 },
+  title: { ...TYPE.body, color: colors.ink },
+  meta: { ...TYPE.foot, color: colors.ink2 },
+  status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4, marginTop: 4 },
+  badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
+  badgeText: { ...TYPE.foot, fontWeight: '600' },
+  quietBadge: { fontWeight: '400' },
 });

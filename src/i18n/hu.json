@@ -105,6 +105,12 @@
     "remember": "Jegyezze meg ezt a hosszt ennél az üzletnél: {{store}}",
     "save": "Garancia mentése",
     "saveFailed": "Nem sikerült menteni a garanciát. Az adataid megmaradtak; próbáld újra. ({{detail}})",
+    "loading": "A garancia betöltése…",
+    "missingTitle": "Ez a garancia már nincs meg",
+    "missingBody": "Lehet, hogy törölték. Semmi nem változott.",
+    "loadFailedTitle": "Nem sikerült megnyitni a garanciát",
+    "loadFailedBody": "Hiba történt a betöltéskor. Próbáld újra. ({{detail}})",
+    "backToList": "Vissza a garanciákhoz",
     "errProduct": "Add meg a termék nevét.",
     "errStore": "Add meg az üzletet.",
     "errDate": "Adj meg valós dátumot ÉÉÉÉ-HH-NN formában.",
@@ -502,5 +508,11 @@
   },
   "sheet": {
     "close": "Bezárás"
+  },
+  "nav": {
+    "back": "Vissza"
+  },
+  "dialog": {
+    "ok": "OK"
   }
 }

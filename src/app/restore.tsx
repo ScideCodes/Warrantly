@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { router, Stack } from 'expo-router';
-import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { router } from 'expo-router';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { latestBackup, PasswordNeededError, restoreBackup } from '@/backup';
 import { WrongPasswordError } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { Page } from '@/components/Page';
+import { showAlert } from '@/components/Dialog';
+import { Button, Group, Input } from '@/components/ui';
+import { colors, TYPE } from '@/theme';
 
 // Restore the newest backup from Google Drive (section 17). Replaces everything on this phone.
 export default function Restore() {
@@ -27,7 +30,7 @@ export default function Restore() {
   const date = backup ? new Date(backup.createdTime).toLocaleString(i18n.language) : '';
 
   function confirm() {
-    Alert.alert(t('restore.confirmTitle'), t('restore.confirmBody', { date }), [
+    showAlert(t('restore.confirmTitle'), t('restore.confirmBody', { date }), [
       { text: t('restore.cancel'), style: 'cancel' },
       { text: t('restore.confirm'), style: 'destructive', onPress: restore },
     ]);
@@ -38,7 +41,7 @@ export default function Restore() {
     setMessage(null);
     try {
       await restoreBackup(await getDb(), backup!.id, password || null);
-      Alert.alert(t('restore.done'));
+      showAlert(t('restore.done'));
       router.replace('/');
     } catch (e) {
       setMessage(e instanceof PasswordNeededError ? t('restore.needPassword') : e instanceof WrongPasswordError ? t('restore.wrong') : e instanceof Error ? e.message : String(e));
@@ -48,12 +51,10 @@ export default function Restore() {
   }
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t('restore.title') }} />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+    <Page title={t('restore.title')} contentContainerStyle={styles.content}>
         {backup === undefined && (
           <View style={styles.row}>
-            <ActivityIndicator color={colors.primary} />
+            <ActivityIndicator color={colors.tint} />
             <Text style={styles.body}>{t('restore.looking')}</Text>
           </View>
         )}
@@ -61,16 +62,14 @@ export default function Restore() {
         {backup && (
           <>
             <Text style={styles.title}>{t('restore.found', { date })}</Text>
-            <View style={styles.field}>
+            <Group style={styles.panel}>
               <Text style={styles.label} nativeID="restore-pw">
                 {t('restore.password')}
               </Text>
-              <TextInput style={styles.input} value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" accessibilityLabelledBy="restore-pw" />
+              <Input value={password} onChangeText={setPassword} secureTextEntry autoCapitalize="none" accessibilityLabelledBy="restore-pw" />
               <Text style={styles.hint}>{t('restore.passwordHint')}</Text>
-            </View>
-            <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={confirm} disabled={busy} accessibilityRole="button">
-              {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t('restore.button')}</Text>}
-            </Pressable>
+            </Group>
+            <Button title={t('restore.button')} onPress={confirm} busy={busy} />
           </>
         )}
         {message && (
@@ -78,23 +77,17 @@ export default function Restore() {
             {message}
           </Text>
         )}
-      </ScrollView>
-    </>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 16 },
-  row: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  title: { fontSize: 18, fontWeight: '600', color: colors.text },
-  body: { fontSize: 16, color: colors.muted },
-  field: { gap: 6 },
-  label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text },
-  hint: { fontSize: 14, color: colors.muted },
-  error: { fontSize: 14, color: colors.soon.fg },
-  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { backgroundColor: colors.primaryDisabled },
-  buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  content: { gap: 16 },
+  row: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingHorizontal: 4 },
+  title: { ...TYPE.headline, color: colors.ink, paddingHorizontal: 4 },
+  body: { ...TYPE.body, color: colors.ink2, paddingHorizontal: 4 },
+  panel: { paddingVertical: 12, paddingHorizontal: 16, gap: 10 },
+  label: { ...TYPE.foot, color: colors.ink2 },
+  hint: { ...TYPE.foot, color: colors.ink2 },
+  error: { ...TYPE.foot, color: colors.bad, paddingHorizontal: 4 },
 });

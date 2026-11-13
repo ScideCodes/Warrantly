@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Stack } from 'expo-router';
 import { goBack } from '@/nav';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { PinPad } from '@/components/PinPad';
 import { MAX_PIN, MIN_PIN } from '@/lock/pin.ts';
@@ -9,7 +8,9 @@ import { getDb } from '@/db/client';
 import { isLockEnabled, setPin } from '@/lock/store';
 import { setWidgetNames } from '@/settings';
 import { updateWidget } from '@/widget';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { NavBar } from '@/components/Page';
+import { Button } from '@/components/ui';
+import { colors, TYPE } from '@/theme';
 
 // Choose a PIN (turn the lock on, change it, or after "Forgot PIN"): enter, then confirm.
 export default function PinSetup() {
@@ -36,7 +37,6 @@ export default function PinSetup() {
 
   return (
     <>
-      <Stack.Screen options={{ headerShown: true, title: t('settings.lock') }} />
       <View style={styles.screen}>
         <View style={styles.top}>
           <Text style={styles.title} accessibilityRole="header">
@@ -48,32 +48,28 @@ export default function PinSetup() {
         </View>
         <PinPad value={value} dots={first?.length ?? Math.max(MIN_PIN, value.length)} onDigit={onDigit} onDelete={() => setValue((v) => v.slice(0, -1))} />
         {first === null && (
-          <Pressable
-            style={[styles.button, value.length < MIN_PIN && styles.buttonDisabled]}
+          <Button
+            title={t('pin.continue')}
             disabled={value.length < MIN_PIN}
+            style={styles.button}
             onPress={() => {
               setFirst(value);
               setValue('');
               setMismatch(false);
             }}
-            accessibilityRole="button"
-            accessibilityState={{ disabled: value.length < MIN_PIN }}
-          >
-            <Text style={styles.buttonText}>{t('pin.continue')}</Text>
-          </Pressable>
+          />
         )}
       </View>
+      <NavBar title={t('settings.lock')} />
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'space-evenly', padding: 24 },
-  top: { alignItems: 'center', gap: 12 },
-  title: { fontSize: 22, fontWeight: '700', color: colors.text, textAlign: 'center' },
-  hint: { fontSize: 15, color: colors.muted, textAlign: 'center', maxWidth: 320 },
-  error: { color: colors.soon.fg },
-  button: { minHeight: BUTTON_HEIGHT, minWidth: 200, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { backgroundColor: colors.primaryDisabled },
-  buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  screen: { flex: 1, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'space-evenly', padding: 24, paddingTop: 84 },
+  top: { alignItems: 'center', gap: 8 },
+  title: { ...TYPE.title2, color: colors.ink, textAlign: 'center' },
+  hint: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', maxWidth: 320 },
+  error: { color: colors.bad },
+  button: { minWidth: 200 },
 });

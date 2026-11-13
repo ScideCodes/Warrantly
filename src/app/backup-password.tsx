@@ -1,12 +1,14 @@
 import { useState } from 'react';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { runBackup, setBackupPassword } from '@/backup';
 import { getDb } from '@/db/client';
 import { setSetting } from '@/settings';
-import { colors, BUTTON_HEIGHT, BUTTON_RADIUS } from '@/theme';
+import { Page } from '@/components/Page';
+import { Button, Group, Input } from '@/components/ui';
+import { colors, TYPE } from '@/theme';
 
 const MIN_PASSWORD = 8;
 
@@ -32,20 +34,30 @@ export default function BackupPassword() {
     goBack();
   }
 
+  // Form fields as in the reference's panels: a Footnote label above a filled field.
   const input = (label: string, value: string, onChange: (v: string) => void, id: string) => (
     <View style={styles.field}>
       <Text style={styles.label} nativeID={id}>
         {label}
       </Text>
-      <TextInput style={styles.input} value={value} onChangeText={onChange} secureTextEntry autoCapitalize="none" autoComplete="new-password" accessibilityLabelledBy={id} />
+      <Input value={value} onChangeText={onChange} secureTextEntry autoCapitalize="none" autoComplete="new-password" accessibilityLabelledBy={id} />
     </View>
   );
 
   return (
-    <>
-      <Stack.Screen options={{ headerShown: true, title: t('backupPassword.title') }} />
-      <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.warning}>{t('backupPassword.body')}</Text>
+    <Page
+      title={t('backupPassword.title')}
+      footer={
+        <>
+          {busy && <Text style={styles.hint}>{t('backupPassword.working')}</Text>}
+          <Button title={t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')} onPress={save} busy={busy} />
+        </>
+      }
+    >
+      <View style={styles.warning}>
+        <Text style={styles.warningText}>{t('backupPassword.body')}</Text>
+      </View>
+      <Group style={styles.panel}>
         {input(t('backupPassword.password'), password, setPassword, 'pw')}
         {input(t('backupPassword.confirm'), repeat, setRepeat, 'pw2')}
         {error && (
@@ -53,25 +65,17 @@ export default function BackupPassword() {
             {error}
           </Text>
         )}
-        <Pressable style={[styles.button, busy && styles.buttonDisabled]} onPress={save} disabled={busy} accessibilityRole="button">
-          {busy ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.buttonText}>{t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')}</Text>}
-        </Pressable>
-        {busy && <Text style={styles.hint}>{t('backupPassword.working')}</Text>}
-      </ScrollView>
-    </>
+      </Group>
+    </Page>
   );
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 24, gap: 16 },
-  warning: { fontSize: 15, lineHeight: 22, color: colors.warning.fg, backgroundColor: colors.warning.bg, padding: 12, borderRadius: 8 },
-  field: { gap: 6 },
-  label: { fontSize: 15, fontWeight: '600', color: colors.text },
-  input: { minHeight: BUTTON_HEIGHT, borderWidth: 1, borderColor: colors.border, borderRadius: BUTTON_RADIUS, paddingHorizontal: 12, fontSize: 16, color: colors.text },
-  error: { fontSize: 14, color: colors.soon.fg },
-  hint: { fontSize: 14, color: colors.muted, textAlign: 'center' },
-  button: { minHeight: BUTTON_HEIGHT, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  buttonDisabled: { backgroundColor: colors.primaryDisabled },
-  buttonText: { fontSize: 16, fontWeight: '600', color: colors.onPrimary },
+  warning: { marginTop: 8, padding: 16, borderRadius: 26, backgroundColor: colors.warnSoft },
+  warningText: { ...TYPE.sub, color: colors.warn },
+  panel: { marginTop: 22, paddingVertical: 12, paddingHorizontal: 16 },
+  field: { gap: 10, paddingVertical: 4 },
+  label: { ...TYPE.foot, color: colors.ink2, marginTop: 6 },
+  error: { ...TYPE.foot, color: colors.bad, marginTop: 8 },
+  hint: { ...TYPE.foot, color: colors.ink2, textAlign: 'center', marginBottom: 8 },
 });
