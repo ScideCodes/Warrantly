@@ -10,7 +10,7 @@ import { deleteDriveBackups } from '@/backup';
 import { fromBase64, toBase64 } from '@/backup/format.ts';
 import { documentExists, readDocument, writeDocument } from '@/documents';
 import { clearLock } from '@/lock/store';
-import { importShared, sharedWarranties, wipeDb, type Db } from '@/db/repo.ts';
+import { importShared, sharedWarranties, wipeDb, type Db, type SharedWarranty } from '@/db/repo.ts';
 import { updateWidget } from '@/widget';
 
 // Export and "delete all my data" (GDPR: access and erasure).
@@ -39,13 +39,23 @@ export async function sharePdf(name: string, html: string): Promise<void> {
 // app (mail, chat, Drive) and merged in on the other phone.
 const SHARE_FORMAT = 'warrantly-share';
 
-export async function shareWarranties(db: Db, ids: number[], name: string): Promise<void> {
-  const items = await sharedWarranties(db, ids);
+async function embedDocuments(items: SharedWarranty[]): Promise<SharedWarranty[]> {
   for (const item of items) {
     item.documents = await Promise.all(
-      item.documents.filter((d) => documentExists(d.local_path!)).map(async (d) => ({ filename: d.filename, data: toBase64(await readDocument(d.local_path!)) })),
+      item.documents.filter((d) => documentExists(d.local_path!)).map(async (d) => ({ filename: d.filename, label: d.label, data: toBase64(await readDocument(d.local_path!)) })),
     );
   }
+  return items;
+}
+
+export async function shareWarranties(db: Db, ids: number[], name: string): Promise<void> {
+  const items = await embedDocuments(await sharedWarranties(db, ids));
+  await shareText(name, JSON.stringify({ format: SHARE_FORMAT, v: 1, items }), 'application/json');
+}
+
+// Transfer (shortlist 18): one item, only the chosen parts, as a Warrantly file the new owner imports.
+export async function shareTransferFile(item: SharedWarranty, name: string): Promise<void> {
+  const items = await embedDocuments([item]);
   await shareText(name, JSON.stringify({ format: SHARE_FORMAT, v: 1, items }), 'application/json');
 }
 

@@ -1,15 +1,16 @@
 import { memo } from 'react';
-import { Text, View } from '@/components/themeMotion';
+import { Pressable, Text, View } from '@/components/themeMotion';
+import AppIcon, { ProductIcon } from '@/components/Icon';
 import { router, type Href } from 'expo-router';
 import type { TFunction } from 'i18next';
 import { Image, StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
-import { ProductIcon } from '@/components/Icon';
 import type { Warranty } from '@/db/repo.ts';
 import { useProductPhoto } from '@/components/useProductPhoto';
 import { colors, TONE, TYPE, themed } from '@/theme';
 import { Row, TILE } from '@/components/ui';
+import type { Density } from '@/settings';
 import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
 
 export function daysLabel(t: TFunction, daysLeft: number): string {
@@ -52,7 +53,14 @@ export function formatDate(ymd: string, language: string): string {
 // small badge beside it that says how long is left, then the store and end date on one line, and a chevron.
 // Colour only backs up what the badge text says. `to` overrides where a tap goes (the attention list opens the
 // resolve form directly).
-export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, separator }: { warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle>; separator?: boolean }) {
+// Shortlist: `density` compact uses less padding and keeps store and date on one line (text size unchanged).
+// `selecting` turns a tap into select/deselect (bulk actions), with a check circle before the tile.
+// `onDocument` adds a document button (opens the only document, a picker, or a way to add one); the rest of
+// the row still opens the details.
+export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, separator, density = 'comfortable', selecting, selected, onToggle, onDocument, onLongPress }: {
+  warranty: Warranty; to?: Href; style?: StyleProp<ViewStyle>; separator?: boolean; density?: Density;
+  selecting?: boolean; selected?: boolean; onToggle?: (id: number) => void; onDocument?: (w: Warranty) => void; onLongPress?: (id: number) => void;
+}) {
   const styles = useStyles();
   const { t, i18n } = useTranslation();
   const today = todayYmd();
@@ -67,14 +75,25 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
   // The person's own photo; the category icon when there is none or it cannot be shown.
   const photo = useProductPhoto(w);
 
+  const compact = density === 'compact';
+  const docs = w.doc_count ?? 0;
   return (
     <Row
-      onPress={() => router.push(to ?? `/warranty/${w.id}`)}
+      onPress={selecting ? () => onToggle?.(w.id) : () => router.push(to ?? `/warranty/${w.id}`)}
+      onLongPress={onLongPress && !selecting ? () => onLongPress(w.id) : undefined}
       separator={separator}
       iconInset
-      chevron
-      style={[styles.row, style]} // TalkBack reads the texts inside in order: name, store, time left, end date
+      chevron={!selecting && !onDocument}
+      accessibilityRole={selecting ? 'checkbox' : 'button'}
+      accessibilityState={selecting ? { checked: !!selected } : undefined}
+      selected={selecting && selected}
+      style={[styles.row, compact && styles.rowCompact, style]} // TalkBack reads the texts inside in order: name, store, time left, end date
     >
+      {selecting && (
+        <View style={[styles.check, selected && styles.checkOn]} importantForAccessibility="no-hide-descendants">
+          {selected && <AppIcon name="checkmark" size={15} color="#fff" />}
+        </View>
+      )}
       {photo ? (
         <Image source={{ uri: photo.uri }} onError={photo.onError} style={styles.tile} accessibilityIgnoresInvertColors />
       ) : (
@@ -86,6 +105,11 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
         {/* The name and the days-left badge share a line; the badge drops below only when the name would get
             narrower than 55 % (large text, small phones). */}
         <View style={styles.top}>
+          {!!w.favorite && (
+            <View style={styles.pin} accessible accessibilityLabel={t('row.pinned')}>
+              <AppIcon name="star" size={14} color={colors.warn} />
+            </View>
+          )}
           <Text style={styles.title} numberOfLines={2}>
             {product}
           </Text>
@@ -95,15 +119,28 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
         </View>
         {/* Store and end date share a line; a long store is cut to one line and the date moves below it, so
             the date is never the part that gets cut. */}
-        <View style={styles.metaRow}>
+        <View style={[styles.metaRow, compact && styles.metaCompact]}>
           {!!store && (
             <Text style={[styles.meta, styles.store]} numberOfLines={1}>
               {`${store} ·`}
             </Text>
           )}
-          <Text style={styles.meta}>{ends}</Text>
+          <Text style={styles.meta} numberOfLines={compact ? 1 : undefined}>{ends}</Text>
         </View>
       </View>
+      {onDocument && !selecting && (
+        // 44dp target; the glyph says whether there is a document. Its label names the product.
+        <Pressable
+          onPress={() => onDocument(w)}
+          style={({ pressed }) => [styles.docButton, pressed && styles.docPressed]}
+          accessibilityRole="button"
+          accessibilityLabel={docs ? t('row.openDocuments', { count: docs, product }) : t('row.addDocument', { product })}
+          hitSlop={4}
+        >
+          <AppIcon name={docs ? 'document-text-outline' : 'document-attach-outline'} size={21} color={docs ? colors.tint : colors.ink3} />
+          {docs > 1 && <Text style={styles.docCount}>{docs}</Text>}
+        </Pressable>
+      )}
     </Row>
   );
 });
@@ -121,6 +158,14 @@ const CATEGORY_TILE: Record<string, string> = {
 
 const useStyles = themed(() => StyleSheet.create({
   row: { gap: 12, paddingVertical: 9 },
+  rowCompact: { paddingVertical: 5, minHeight: 44 },
+  pin: { paddingTop: 3 },
+  metaCompact: { flexWrap: 'nowrap' },
+  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  checkOn: { backgroundColor: colors.tint, borderColor: colors.tint },
+  docButton: { width: 44, height: 44, marginRight: -8, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  docPressed: { backgroundColor: colors.press },
+  docCount: { ...TYPE.cap, color: colors.tint, position: 'absolute', right: 6, bottom: 6, fontWeight: '700' },
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   text: { flex: 1, gap: 2 },
   top: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'flex-start', columnGap: 8, rowGap: 3 },

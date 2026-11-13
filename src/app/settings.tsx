@@ -18,6 +18,8 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
+import { getDensity, setDensity, type Density } from '@/settings';
+import { forgetRecent } from '@/recentStore';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
@@ -41,6 +43,7 @@ export default function Settings() {
   const [time, setTime] = useState(getReminderTime);
   const [language, setLanguage] = useState(getLanguageSetting);
   const [theme, setTheme] = useState(getThemeSetting);
+  const [density, setDensityState] = useState<Density>(getDensity);
   const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
@@ -107,6 +110,7 @@ export default function Settings() {
     setThemeSetting(next);
     setTheme(next);
     applyTheme();
+    void getDb().then(updateWidget).catch(() => {}); // the widget follows the app's appearance
   }
 
   // Reminder time: Android's own clock picker; elsewhere (web preview) 9:00 and 18:00 alternate.
@@ -397,6 +401,17 @@ export default function Settings() {
             theme,
             chooseTheme,
           )}
+          {choices(
+            'list-outline',
+            TILE.teal,
+            t('settings.density'),
+            [
+              { key: 'comfortable', label: t('settings.density_comfortable') },
+              { key: 'compact', label: t('settings.density_compact') },
+            ],
+            density,
+            (d: string) => { setDensity(d as Density); setDensityState(d as Density); },
+          )}
           {choices('globe-outline', TILE.blue, t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, label: t(`settings.lang_${key}`) })), language, chooseLanguage)}
         </>,
       )}
@@ -408,6 +423,7 @@ export default function Settings() {
           {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), () => router.push('/pin'))}
           {lock && canBiometric && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
           {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
+          {link('time-outline', TILE.grey, t('recent.clear'), () => { forgetRecent(); showAlert(t('recent.cleared')); }, { hint: t('recent.clearHint') })}
         </>,
       )}
 
@@ -450,6 +466,7 @@ export default function Settings() {
               <Text style={styles.linkSmall}>{t('backup.change')}</Text>
             </Pressable>
           </Row>
+          {link('pulse-outline', TILE.green, t('health.title'), () => router.push('/backup-status'))}
           {link('cloud-download-outline', TILE.cyan, t('backup.restore'), () => router.push('/restore'))}
         </>,
       )}

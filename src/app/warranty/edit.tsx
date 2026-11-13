@@ -1,6 +1,7 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
 import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
@@ -18,10 +19,12 @@ import { showAlert } from '@/components/Dialog';
 import { Button, Group, Input, inputStyle, SectionHeader, Switch } from '@/components/ui';
 import { colors, FIELD_RADIUS, pairWidth, ROW_X, TYPE, themed, useRoom } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
-import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
+import { copyStoredDocument, deleteDocuments, importDocument, scanDocument } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
 import { SourceLoader, sourceKey, type SourceState } from '@/formSource';
-import { takeSharedFile } from '@/shareInbox';
+import { discardInbox, getInboxItem } from '@/db/features.ts';
+import { saveKnownText } from '@/docIndex';
+import { whenUnlocked } from '@/lock/gate';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
 import { CATEGORIES, formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
@@ -54,9 +57,9 @@ export default function EditWarranty() {
   const styles = useStyles();
   const room = useRoom();
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
-  // shared: a file sent from another app is waiting in the share inbox.
+  // inbox: a file waiting in the document inbox becomes this warranty's document.
   // scan: opened from the app icon's "Scan receipt" shortcut.
-  const { id, copyFrom, shared, scan: scanNow } = useLocalSearchParams<{ id?: string; copyFrom?: string; shared?: string; scan?: string }>();
+  const { id, copyFrom, inbox, scan: scanNow, more: moreParam } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
@@ -94,7 +97,12 @@ export default function EditWarranty() {
   const resolving = existing?.status === 'needs_input'; // section 9 resolve view
   // A new warranty asks only for the essentials; the rest opens on request, or by itself when there is
   // something in it to see (editing, a copied purchase, a scan, an error in the start date).
-  const [more, setMore] = useState(false);
+  const [more, setMore] = useState(!!moreParam);
+  // A serial number read by the scanner screen (shortlist 11) comes back here.
+  useFocusEffect(useCallback(() => {
+    const serial = takeScannedSerial();
+    if (serial) setForm((f) => ({ ...f, serial_number: serial }));
+  }, []));
   const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date');
 
   useEffect(() => {
@@ -133,10 +141,13 @@ export default function EditWarranty() {
   }, [key, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const file = shared ? takeSharedFile() : null;
-    if (file) void runScan(() => fileToDocument(file.uri, file.name, file.mimeType));
-    else if (scanNow && !id) void runScan(scanDocument);
-  }, [shared, scanNow]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (inbox) {
+      void getDb().then((db) => getInboxItem(db, Number(inbox))).then((item) => {
+        // The inbox keeps its file until this warranty is saved; the form works on its own copy.
+        if (item) void runScan(async () => ({ text: item.text, localPath: await copyStoredDocument(item.local_path) }));
+      });
+    } else if (scanNow && !id) void whenUnlocked().then(() => runScan(scanDocument)); // shortcut under the lock
+  }, [inbox, scanNow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -188,6 +199,10 @@ export default function EditWarranty() {
       if (savedId.current) await updateWarranty(db, savedId.current, input);
       else savedId.current = await addManualWithDocument(db, input, localPath);
     });
+    if (saved && inbox) {
+      const gone = await discardInbox(db, Number(inbox)); // its copy now belongs to this warranty
+      if (gone) deleteDocuments([gone]);
+    }
     if (!saved || !mounted.current) return;
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
     if (!resolving) return goBack();
@@ -244,6 +259,7 @@ export default function EditWarranty() {
       const result = await current.capture(source);
       if (!mounted.current) return;
       if (!result) return setScan(previous);
+      void saveKnownText(result.localPath, result.text).catch(() => {}); // search reads it without OCR again
       const found = parseScanText(result.text, todayYmd());
       setForm((f) => ({
         ...f,
@@ -494,6 +510,7 @@ export default function EditWarranty() {
               </View>
               {field('order_number', t('form.orderNumber'))}
               {field('serial_number', t('form.serial'))}
+              <Button kind="glass" icon="barcode-outline" title={t('serial.scan')} onPress={() => router.push('/scan-serial')} disabled={busy} />
               {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
               {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
               {field('website_url', t('form.website'), { keyboard: 'url' })}

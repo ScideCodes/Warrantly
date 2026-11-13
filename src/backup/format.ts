@@ -5,13 +5,17 @@ import type { Db } from '../db/repo.ts';
 // from the user's backup password. Google Drive only ever sees the sealed envelope.
 
 // `returns` points at warranty ids, so it must travel with them (old backups without it restore as empty).
-const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments', 'returns', 'history'] as const;
+// v13 tables (bundles, claims, collections, custom reminders, the inbox and "not a duplicate" answers) travel
+// too; a backup made before them restores with those tables empty. The text index is not backed up: it is
+// read again from the documents.
+export const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments', 'returns', 'history', 'bundles', 'claims', 'collections',
+  'collection_items', 'custom_reminders', 'inbox', 'duplicate_dismissals'] as const;
 
 export interface BackupData {
   app: 'warrantly';
   schema: number; // PRAGMA user_version of the database the rows came from
   createdAt: string;
-  tables: Record<(typeof TABLES)[number], Record<string, unknown>[]>;
+  tables: Partial<Record<(typeof TABLES)[number], Record<string, unknown>[]>>;
   settings: Record<string, string | null>;
 }
 
@@ -25,7 +29,8 @@ export async function dumpDb(db: Db, settings: Record<string, string | null>, no
 // Replaces everything on this phone with the backup. Only columns this app version knows are copied,
 // so a backup from an older version restores into a newer schema.
 export async function restoreDb(db: Db, data: BackupData): Promise<void> {
-  if (data.app !== 'warrantly') throw new Error('Not a Warrantly backup');
+  if (data?.app !== 'warrantly' || typeof data.tables !== 'object' || data.tables === null) throw new Error('Not a Warrantly backup');
+  for (const t of TABLES) if (data.tables[t] !== undefined && !Array.isArray(data.tables[t])) throw new Error('Damaged backup');
   const current = (await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version', []))?.user_version ?? 0;
   if (data.schema > current) throw new Error('This backup is from a newer app version. Update Warrantly first.');
   await db.withTransactionAsync(async () => {
@@ -33,7 +38,9 @@ export async function restoreDb(db: Db, data: BackupData): Promise<void> {
     for (const t of TABLES) {
       const known = new Set((await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${t})`, [])).map((c) => c.name));
       for (const row of data.tables[t] ?? []) {
+        if (typeof row !== 'object' || row === null) throw new Error('Damaged backup');
         const cols = Object.keys(row).filter((c) => known.has(c));
+        if (!cols.length) continue;
         await db.runAsync(
           `INSERT INTO ${t} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`,
           cols.map((c) => row[c] as string | number | null),

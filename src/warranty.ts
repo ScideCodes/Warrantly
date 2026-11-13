@@ -85,7 +85,7 @@ const REMINDER_DAYS = reminderDays(ALL_GROUPS);
 
 export interface Reminder {
   warrantyId: number;
-  kind: 'expiry' | 'return';
+  kind: 'expiry' | 'return' | 'custom';
   date: string; // YYYY-MM-DD, delivered at a fixed local time
   daysLeft: number;
 }
@@ -101,17 +101,29 @@ export const returnDeadline = (w: { origin: string; warranty_start_date: string 
 // keeps at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling
 // window). Today's are included: the caller drops them once their time of day has passed.
 // `return_by` adds one reminder two days before the return window closes.
+// `custom`: per-product dates the user set (shortlist 12), on top of these; only for warranties in the list,
+// and a custom date that falls on the same day as another reminder of that product is sent once.
 export function reminderPlan(
   warranties: { id: number; end_date: string; return_by?: string | null }[],
   today: string,
   limit = 60,
   days: number[] = REMINDER_DAYS,
+  custom: { warrantyId: number; date: string }[] = [],
 ): Reminder[] {
-  return warranties
+  const known = new Set(warranties.map((w) => w.id));
+  const plan = warranties
     .flatMap((w): Reminder[] => [
       ...days.map((daysLeft) => ({ warrantyId: w.id, kind: 'expiry' as const, daysLeft, date: addDays(w.end_date, -daysLeft) })),
       ...(w.return_by ? [{ warrantyId: w.id, kind: 'return' as const, daysLeft: RETURN_WARNING, date: addDays(w.return_by, -RETURN_WARNING) }] : []),
-    ].filter((r) => r.date >= today))
+    ]);
+  const taken = new Set(plan.map((r) => `${r.warrantyId}:${r.date}`));
+  for (const c of custom) {
+    if (!known.has(c.warrantyId) || taken.has(`${c.warrantyId}:${c.date}`)) continue;
+    taken.add(`${c.warrantyId}:${c.date}`);
+    plan.push({ warrantyId: c.warrantyId, kind: 'custom', daysLeft: 0, date: c.date });
+  }
+  return plan
+    .filter((r) => r.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date) || a.warrantyId - b.warrantyId)
     .slice(0, limit);
 }
