@@ -457,7 +457,7 @@
       "## Beolvasás és dokumentumok",
       "A nyugták beolvasása és a szöveg felismerése a telefonon történik (Google ML Kit, eszközön). A dokumentumok az alkalmazásban maradnak ezen a telefonon, mentés esetén titkosítva a Drive-odban.",
       "## Termékképek",
-      "A termékképek ki vannak kapcsolva, amíg be nem kapcsolod őket a Beállításokban, vagy egy garanciánál nem koppintasz a „Kép keresése az interneten” gombra. Ekkor csak a terméknév kerül el a Wikidatához és a Wikimedia Commonshoz (a Wikimedia Foundation üzemelteti), hogy megtaláljuk a pontos modell képét. A kép a telefonon marad, a szerzőjével és a licencével együtt jelenik meg. A Wikimedia látja az IP-címedet, mint bármely weboldal.",
+      "A termékképek alapértelmezetten be vannak kapcsolva, a Beállításokban kikapcsolhatod őket (egy garanciánál a „Kép keresése az interneten” gombbal is kérhetsz egyet). Amíg be vannak kapcsolva, csak a terméknév kerül el a Wikidatához és a Wikimedia Commonshoz (a Wikimedia Foundation üzemelteti), hogy megtaláljuk a pontos modell képét. A kép a telefonon marad, a szerzőjével és a licencével együtt jelenik meg. A Wikimedia látja az IP-címedet, mint bármely weboldal.",
       "## Más szolgáltatások",
       "A frissítések az Expo (expo.dev) szervereiről töltődnek le, ami mint bármely weboldal, látja az IP-címedet. Az emlékeztetők a telefonon ütemeződnek. A hibák a telefonon naplózódnak, és csak akkor kerülnek ki, ha egy visszajelzéshez csatolod őket.",
       "## Választási lehetőségeid",
