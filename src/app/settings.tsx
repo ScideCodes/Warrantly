@@ -328,30 +328,37 @@ export default function Settings() {
   return (
     <Page title={t('settings.title')}>
       {/* The reference's profile row: a 48dp grey avatar, the name in Title 3 and a Subheadline hint. */}
-      <Pressable style={styles.profile} accessibilityRole="button" accessibilityLabel={t('settings.editName')}
-        onPress={() => { setDraftName(name ?? ''); setEditingName(true); }}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
-        </View>
-        <View style={styles.rowText}>
-          <Text style={styles.profileName} numberOfLines={2}>
-            {name?.trim() || t('settings.title')}
-          </Text>
-          <Text style={styles.profileHint}>{t('settings.profileHint')}</Text>
-        </View>
-        <AppIcon name="pencil-outline" size={20} color={colors.tint} />
-      </Pressable>
-      {editingName && (
-        <Group style={styles.nameEditor}>
-          <Text style={styles.label}>{t('settings.editName')}</Text>
-          <Input testID="settings-name" value={draftName} onChangeText={setDraftName} maxLength={30} autoFocus
-            accessibilityLabel={t('settings.editName')} autoCapitalize="words" returnKeyType="done" onSubmitEditing={saveName} />
-          <View style={styles.nameButtons}>
-            <Button title={t('detail.cancel')} kind="glass" style={styles.nameButton} onPress={() => setEditingName(false)} />
-            <Button title={t('collections.save')} style={styles.nameButton} onPress={saveName} disabled={!draftName.trim()} />
-          </View>
-        </Group>
-      )}
+      <View style={styles.profile}>
+        {editingName ? (
+          <>
+            <View style={styles.profileRow}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
+              </View>
+              <Input style={styles.rowText} testID="settings-name" value={draftName} onChangeText={setDraftName} maxLength={30} autoFocus
+                accessibilityLabel={t('settings.editName')} autoCapitalize="words" returnKeyType="done" onSubmitEditing={saveName} />
+            </View>
+            <View style={styles.nameButtons}>
+              <Button title={t('detail.cancel')} kind="glass" style={styles.nameButton} onPress={() => setEditingName(false)} />
+              <Button title={t('collections.save')} style={styles.nameButton} onPress={saveName} disabled={!draftName.trim()} />
+            </View>
+          </>
+        ) : (
+          <Pressable style={styles.profileRow} accessibilityRole="button" accessibilityLabel={t('settings.editName')}
+            onPress={() => { setDraftName(name ?? ''); setEditingName(true); }}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
+            </View>
+            <View style={styles.rowText}>
+              <Text style={styles.profileName} numberOfLines={2}>
+                {name?.trim() || t('settings.title')}
+              </Text>
+              <Text style={styles.profileHint}>{t('settings.profileHint')}</Text>
+            </View>
+            <AppIcon name="pencil-outline" size={20} color={colors.tint} />
+          </Pressable>
+        )}
+      </View>
 
       {section(
         t('accounts.section'),
@@ -522,8 +529,9 @@ export default function Settings() {
 }
 
 const useStyles = themed(() => StyleSheet.create({
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 10, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.tintSoft, alignItems: 'center', justifyContent: 'center' },
+  profile: { gap: 12, paddingVertical: 10, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
+  avatar: { width: 48, height: 48, flexShrink: 0, borderRadius: 24, backgroundColor: colors.tintSoft, alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 21, lineHeight: 24, fontWeight: '600', color: colors.tintInk },
   profileName: { ...TYPE.title3, color: colors.ink },
   profileHint: { ...TYPE.sub, color: colors.ink2 },
@@ -533,7 +541,6 @@ const useStyles = themed(() => StyleSheet.create({
   label: { ...TYPE.body, color: colors.ink, flexShrink: 1 },
   hint: { ...TYPE.foot, color: colors.ink2 },
   value: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%', textAlign: 'right' },
-  nameEditor: { padding: 16, gap: 12, marginTop: 8 },
   nameButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   nameButton: { flexGrow: 1, flexBasis: 120 },
   inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4, marginTop: 4 },
