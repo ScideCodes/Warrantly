@@ -1,0 +1,37 @@
+appId: dev.warrantly.prototype
+---
+# Reuse ui-polish's library. Font-scale changes can recreate the Android activity.
+# run.sh sets 360dp width and system font_scale=1.6 before launching this flow.
+- launchApp
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+- tapOn: "Settings"
+- scrollUntilVisible: { element: "Magyar", timeout: 20000 }
+- tapOn: "Magyar"
+- back
+- extendedWaitUntil: { visible: "Garanciák keresése", timeout: 20000 }
+- takeScreenshot: polish-large-hu-home
+- tapOn: "Szűrés"
+- assertVisible: "Bezárás"
+- takeScreenshot: polish-large-hu-filter
+- tapOn: { id: "sheet-close" }
+- tapOn: "Review kettle"
+- scrollUntilVisible: { element: "Megnézem: Review kettle.pdf", timeout: 20000 }
+- takeScreenshot: polish-large-hu-documents
+- tapOn: "Megnézem: Review kettle.pdf"
+- extendedWaitUntil: { visible: "100%", timeout: 30000 }
+- extendedWaitUntil: { visible: "1. oldal / 1", timeout: 30000 }
+- assertVisible: "Mentés"
+- assertVisible: "Megosztás"
+- takeScreenshot: polish-large-hu-viewer
+- back
+- tapOn: "További műveletek"
+- assertVisible: "Bezárás"
+- takeScreenshot: polish-large-hu-more
+- scrollUntilVisible: { element: "Törlés", timeout: 20000 }
+- assertVisible: { id: "sheet-close" }
+- takeScreenshot: polish-large-hu-more-scrolled
+- tapOn: { id: "sheet-close" }
+- back
+- tapOn: "Beállítások"
+- scrollUntilVisible: { element: "English", timeout: 20000 }
+- tapOn: "English"

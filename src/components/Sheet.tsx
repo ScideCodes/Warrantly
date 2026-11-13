@@ -1,6 +1,6 @@
 import Ionicons from '@expo/vector-icons/Ionicons';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { BUTTON_HEIGHT, BUTTON_RADIUS, colors, FONT, SPACE } from '@/theme';
 
@@ -24,17 +24,19 @@ export interface SheetSection {
 // the bottom where the thumb is; a tap outside, Back or Close dismisses it. Plain Modal: no native library.
 export function Sheet({ open, onClose, title, subtitle, sections }: { open: boolean; onClose: () => void; title: string; subtitle?: string; sections: SheetSection[] }) {
   const { t } = useTranslation();
+  const { height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   return (
     <Modal visible={open} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={styles.backdrop} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('sheet.close')} />
-      <View style={styles.panel}>
-        <SafeAreaView edges={['bottom', 'left', 'right']}>
+      <View style={[styles.panel, { maxHeight: Math.min(height * 0.85, height - insets.top - 16) }]}>
+        <SafeAreaView edges={['bottom', 'left', 'right']} style={styles.safeArea}>
           <View style={styles.handle} />
-          <Text style={styles.title} accessibilityRole="header">
-            {title}
-          </Text>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
           <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+            <Text style={styles.title} accessibilityRole="header">
+              {title}
+            </Text>
+            {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
             {sections.map((s, i) => (
               <View key={i} style={i > 0 && styles.sectionGap}>
                 {s.title ? <Text style={styles.sectionTitle}>{s.title}</Text> : null}
@@ -58,7 +60,7 @@ export function Sheet({ open, onClose, title, subtitle, sections }: { open: bool
               </View>
             ))}
           </ScrollView>
-          <Pressable style={styles.close} onPress={onClose} accessibilityRole="button">
+          <Pressable testID="sheet-close" style={styles.close} onPress={onClose} accessibilityRole="button">
             <Text style={styles.closeText}>{t('sheet.close')}</Text>
           </Pressable>
         </SafeAreaView>
@@ -69,12 +71,13 @@ export function Sheet({ open, onClose, title, subtitle, sections }: { open: bool
 
 const styles = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(0,0,0,0.45)' },
-  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, maxHeight: '85%', backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: SPACE.group },
+  panel: { position: 'absolute', left: 0, right: 0, bottom: 0, backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingHorizontal: SPACE.group },
+  safeArea: { flexShrink: 1, minHeight: 0 },
   handle: { alignSelf: 'center', width: 40, height: 4, borderRadius: 2, backgroundColor: colors.divider, marginTop: 8, marginBottom: 12 },
   title: { fontSize: FONT.heading, fontWeight: '700', color: colors.text, paddingHorizontal: 4 },
   subtitle: { fontSize: FONT.small, color: colors.muted, paddingHorizontal: 4, marginTop: 4 },
-  scroll: { flexGrow: 0 },
-  content: { paddingTop: 12, paddingBottom: 8 },
+  scroll: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
+  content: { paddingBottom: 8, gap: 12 },
   sectionGap: { marginTop: 16 },
   sectionTitle: { fontSize: 14, fontWeight: '700', color: colors.muted, paddingHorizontal: 4, paddingBottom: 4 },
   option: { flexDirection: 'row', alignItems: 'center', gap: 14, minHeight: BUTTON_HEIGHT, paddingVertical: 10, paddingHorizontal: 12, borderRadius: BUTTON_RADIUS },
@@ -84,6 +87,6 @@ const styles = StyleSheet.create({
   labelSelected: { fontWeight: '700', color: colors.primary },
   destructive: { color: colors.soon.fg },
   count: { fontSize: FONT.small, color: colors.muted },
-  close: { minHeight: BUTTON_HEIGHT, alignItems: 'center', justifyContent: 'center', marginVertical: 8, borderRadius: BUTTON_RADIUS, backgroundColor: colors.background },
+  close: { flexShrink: 0, minHeight: BUTTON_HEIGHT, padding: 12, alignItems: 'center', justifyContent: 'center', marginVertical: 8, borderRadius: BUTTON_RADIUS, backgroundColor: colors.background },
   closeText: { fontSize: FONT.body, fontWeight: '600', color: colors.text },
 });

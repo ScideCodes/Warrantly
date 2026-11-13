@@ -1,0 +1,53 @@
+appId: dev.warrantly.prototype
+---
+# Disposable emulator only. run.sh supplies the PDF and an empty export folder.
+- launchApp:
+    clearState: true
+- extendedWaitUntil: { visible: "Welcome to Warrantly", timeout: 90000 }
+- tapOn: "Your name"
+- inputText: "UI review"
+- hideKeyboard
+- tapOn: "Continue"
+- tapOn: "Later"
+- extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
+- tapOn: "Add a warranty"
+- tapOn: { id: "product_name" }
+- inputText: "Review kettle"
+- tapOn: { id: "store_name" }
+- inputText: "Example retailer"
+- hideKeyboard
+- tapOn: "Import a photo or PDF"
+- runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
+- extendedWaitUntil: { visible: "Document attached. Fill in the details below.", timeout: 30000 }
+- takeScreenshot: polish-attached-form
+- tapOn: "Save warranty"
+- extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
+- extendedWaitUntil: { visible: "Review kettle", timeout: 20000 }
+- tapOn: "Review kettle"
+- extendedWaitUntil: { visible: "View: Review kettle.pdf", timeout: 20000 }
+- takeScreenshot: polish-documents
+- tapOn: "View: Review kettle.pdf"
+- extendedWaitUntil: { visible: "100%", timeout: 30000 }
+- extendedWaitUntil: { visible: "Page 1 of 1", timeout: 30000 }
+- takeScreenshot: polish-pdf-viewer
+
+# Backing out of the system picker leaves the viewer without a success/error message.
+- tapOn: "Save"
+- extendedWaitUntil: { visible: "USE THIS FOLDER|Use this folder", timeout: 20000 }
+- back
+- assertVisible: "100%"
+- assertNotVisible: "Couldn't save.*"
+- assertNotVisible: "Saved to the folder you chose."
+
+# Save from detail, then the viewer. run.sh checks both copies against the source bytes.
+- back
+- tapOn: "Save: Review kettle.pdf"
+- runFlow: save-folder.yaml
+- extendedWaitUntil: { visible: "Saved to the folder you chose.", timeout: 20000 }
+- tapOn: "OK"
+- tapOn: "View: Review kettle.pdf"
+- extendedWaitUntil: { visible: "100%", timeout: 30000 }
+- tapOn: "Save"
+- runFlow: save-folder.yaml
+- extendedWaitUntil: { visible: "Saved to the folder you chose.", timeout: 20000 }
+- takeScreenshot: polish-pdf-saved

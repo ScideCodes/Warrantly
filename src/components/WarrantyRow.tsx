@@ -51,7 +51,8 @@ export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to
   const { t, i18n } = useTranslation();
   const today = todayYmd();
   const days = daysUntil(w.end_date, today);
-  const tone = colors[urgency(days)];
+  const level = urgency(days);
+  const tone = level === 'ok' ? { fg: colors.muted, bg: colors.background } : colors[level];
   const product = displayName(t, w);
   const left = daysLabel(t, days);
   const ends = t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: formatDate(w.end_date, i18n.language) });
@@ -79,7 +80,7 @@ export function WarrantyRow({ warranty: w, to, style }: { warranty: Warranty; to
         </Text>
         <View style={styles.status}>
           <View style={[styles.badge, { backgroundColor: tone.bg }]}>
-            <Text style={[styles.badgeText, { color: tone.fg }]}>{left}</Text>
+            <Text style={[styles.badgeText, level === 'ok' && styles.quietBadge, { color: tone.fg }]}>{left}</Text>
           </View>
           <Text style={styles.meta}>{ends}</Text>
         </View>
@@ -107,4 +108,5 @@ const styles = StyleSheet.create({
   status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4, marginTop: 2 },
   badge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 },
   badgeText: { fontSize: 14, fontWeight: '700' },
+  quietBadge: { fontWeight: '500' },
 });

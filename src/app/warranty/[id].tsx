@@ -1,8 +1,8 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import { router, Stack, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Linking, Pressable, ScrollView, StyleSheet, Text, TextInput, useWindowDimensions, View } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
 import { Sheet, type SheetSection } from '@/components/Sheet';
@@ -14,6 +14,7 @@ import {
 } from '@/db/repo.ts';
 import { shareWarranties } from '@/dataTools';
 import { deleteDocuments, documentExists, documentUriOrNull, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
+import { DocumentDraft } from '@/documentDraft';
 import { claimEmail } from '@/claim';
 import { sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
@@ -34,6 +35,18 @@ export default function WarrantyDetail() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [note, setNote] = useState('');
   const [sheet, setSheet] = useState<SheetKind>(null);
+  const { width, fontScale } = useWindowDimensions();
+  const stackActions = Math.min(width, 720) / fontScale < 360;
+  const operation = useRef(false);
+  const mounted = useRef(false);
+  const draft = useRef(new DocumentDraft(deleteDocuments));
+  const [documentBusy, setDocumentBusy] = useState<number | 'attach' | 'share' | null>(null);
+  useEffect(() => {
+    mounted.current = true;
+    const current = new DocumentDraft(deleteDocuments);
+    draft.current = current;
+    return () => { mounted.current = false; draft.current.dispose(); };
+  }, []);
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
@@ -78,28 +91,57 @@ export default function WarrantyDetail() {
 
   // Save asks Android where to put the copy; backing out of the folder picker is not an error.
   async function save(d: Attachment) {
-    if (!documentExists(d.local_path)) return Alert.alert(t('detail.documentMissing'));
+    if (operation.current) return;
+    operation.current = true;
+    setDocumentBusy(d.id);
     try {
-      if (await saveDocument(d.local_path, d.filename)) Alert.alert(t('detail.saved'));
+      if (!documentExists(d.local_path)) return Alert.alert(t('detail.documentMissing'));
+      if (await saveDocument(d.local_path, d.filename) && mounted.current) Alert.alert(t('detail.saved'));
     } catch (e) {
-      Alert.alert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
+      if (mounted.current) Alert.alert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }));
+    } finally {
+      operation.current = false;
+      if (mounted.current) setDocumentBusy(null);
     }
   }
 
-  const share = (d: Attachment) =>
-    documentExists(d.local_path) ? void openDocument(d.local_path).catch((e) => Alert.alert(String(e))) : Alert.alert(t('detail.documentMissing'));
+  async function share(d: Attachment) {
+    if (operation.current) return;
+    operation.current = true;
+    setDocumentBusy('share');
+    try {
+      if (!documentExists(d.local_path)) return Alert.alert(t('detail.documentMissing'));
+      await openDocument(d.local_path);
+    } catch (e) {
+      if (mounted.current) Alert.alert(t('detail.shareFailed', { detail: e instanceof Error ? e.message : String(e) }));
+    } finally {
+      operation.current = false;
+      if (mounted.current) setDocumentBusy(null);
+    }
+  }
 
   // Any warranty can get a document later (scanned, or a photo or PDF from the phone), e.g. the paper
   // invoice of a mail-imported purchase.
   async function attach(source: typeof scanDocument) {
+    if (operation.current) return;
+    operation.current = true;
+    setDocumentBusy('attach');
+    const current = draft.current;
     try {
-      const result = await source();
+      const result = await current.capture(source);
       if (!result) return;
       const db = await getDb();
-      await addAttachment(db, w!.id, docs.length ? `${product} (${docs.length + 1}).pdf` : `${product}.pdf`, result.localPath); // names tell them apart
-      setDocs(await listAttachments(db, w!.id));
+      const saved = await current.save(async (path) => {
+        await addAttachment(db, w!.id, docs.length ? `${product} (${docs.length + 1}).pdf` : `${product}.pdf`, path!);
+      });
+      if (saved && mounted.current) setDocs(await listAttachments(db, w!.id));
     } catch (e) {
-      Alert.alert(t('form.scanFailed', { detail: e instanceof Error ? e.message : String(e) }));
+      current.dispose();
+      draft.current = new DocumentDraft(deleteDocuments);
+      if (mounted.current) Alert.alert(t('form.scanFailed', { detail: e instanceof Error ? e.message : String(e) }));
+    } finally {
+      operation.current = false;
+      if (mounted.current) setDocumentBusy(null);
     }
   }
 
@@ -225,18 +267,19 @@ export default function WarrantyDetail() {
       ],
     },
   };
-  const docSheet = (d: Attachment): { title: string; sections: SheetSection[] } => ({
-    title: d.filename,
+  const selectedDoc = typeof sheet === 'object' && sheet ? sheet.doc : null;
+  const docSheet: { title: string; sections: SheetSection[] } | null = selectedDoc ? {
+    title: selectedDoc.filename,
     sections: [
       {
         options: [
-          { key: 'share', icon: 'share-social-outline', label: t('detail.shareFile'), onPress: () => share(d) },
-          { key: 'remove', icon: 'trash-outline', label: t('detail.removeDocument'), destructive: true, onPress: () => confirmRemoveDocument(d) },
+          { key: 'share', icon: 'share-social-outline', label: t('detail.shareFile'), onPress: () => { void share(selectedDoc); } },
+          { key: 'remove', icon: 'trash-outline', label: t('detail.removeDocument'), destructive: true, onPress: () => confirmRemoveDocument(selectedDoc) },
         ],
       },
     ],
-  });
-  const openSheet = sheet === null ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet(sheet.doc);
+  } : null;
+  const openSheet = sheet === null ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet;
   const returnBy = returnDeadline(w);
   const details = [
     { label: t('warranty.purchaseDate'), value: `${date(w.purchase_date)} (${agoLabel(t, w.purchase_date, today)})` },
@@ -326,23 +369,23 @@ export default function WarrantyDetail() {
                   </Pressable>
                 </View>
                 {!missing && (
-                  <View style={styles.docActions}>
-                    <Pressable style={[styles.docButton, styles.docPrimary]} onPress={() => viewDocument(d)} accessibilityRole="button" accessibilityLabel={`${t('detail.view')}: ${d.filename}`}>
+                  <View style={[styles.docActions, stackActions && styles.stacked]}>
+                    <Pressable style={[styles.docButton, stackActions && styles.stackedButton, styles.docPrimary]} onPress={() => viewDocument(d)} accessibilityRole="button" accessibilityLabel={`${t('detail.view')}: ${d.filename}`}>
                       <Ionicons name="eye-outline" size={20} color={colors.onPrimary} />
                       <Text style={styles.docPrimaryText}>{t('detail.view')}</Text>
                     </Pressable>
-                    <Pressable style={styles.docButton} onPress={() => void save(d)} accessibilityRole="button" accessibilityLabel={`${t('detail.save')}: ${d.filename}`}>
-                      <Ionicons name="download-outline" size={20} color={colors.primary} />
-                      <Text style={styles.docButtonText}>{t('detail.save')}</Text>
+                    <Pressable style={[styles.docButton, stackActions && styles.stackedButton, documentBusy !== null && styles.disabled]} onPress={() => void save(d)} disabled={documentBusy !== null} accessibilityRole="button" accessibilityState={{ disabled: documentBusy !== null, busy: documentBusy === d.id }} accessibilityLabel={`${t('detail.save')}: ${d.filename}`}>
+                      {documentBusy === d.id ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="download-outline" size={20} color={colors.primary} />}
+                      <Text style={styles.docButtonText}>{t(documentBusy === d.id ? 'viewer.saving' : 'detail.save')}</Text>
                     </Pressable>
                   </View>
                 )}
               </View>
             );
           })}
-          <Pressable style={styles.addRow} onPress={() => setSheet('add')} accessibilityRole="button">
-            <Ionicons name="add-circle-outline" size={24} color={colors.primary} />
-            <Text style={styles.addText}>{t('detail.addDocument')}</Text>
+          <Pressable style={[styles.addRow, documentBusy !== null && styles.disabled]} onPress={() => setSheet('add')} disabled={documentBusy !== null} accessibilityRole="button" accessibilityState={{ disabled: documentBusy !== null, busy: documentBusy === 'attach' }}>
+            {documentBusy === 'attach' ? <ActivityIndicator color={colors.primary} /> : <Ionicons name="add-circle-outline" size={24} color={colors.primary} />}
+            <Text style={styles.addText}>{t(documentBusy === 'attach' ? 'form.scanning' : 'detail.addDocument')}</Text>
           </Pressable>
         </Section>
 
@@ -443,17 +486,20 @@ const styles = StyleSheet.create({
   docName: { fontSize: FONT.body, fontWeight: '600', color: colors.text },
   docType: { fontSize: 14, color: colors.muted },
   docMissing: { color: colors.soon.fg },
-  docActions: { flexDirection: 'row', gap: 10, marginLeft: 38 },
-  docButton: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
+  docActions: { flexDirection: 'row', gap: 10 },
+  stacked: { flexDirection: 'column' },
+  stackedButton: { flex: 0 },
+  disabled: { opacity: 0.5 },
+  docButton: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 48, paddingHorizontal: 12, paddingVertical: 10, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primarySoft },
   docPrimary: { backgroundColor: colors.primary },
-  docPrimaryText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary },
-  docButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  docPrimaryText: { flexShrink: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.onPrimary },
+  docButtonText: { flexShrink: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: colors.primary },
   iconButton: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center', borderRadius: 24 },
   addRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: BUTTON_HEIGHT, paddingVertical: 10 },
   addText: { flex: 1, fontSize: FONT.body, fontWeight: '600', color: colors.primary },
   lastRow: { borderBottomWidth: 0 },
   claim: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: BUTTON_HEIGHT, paddingHorizontal: 16, marginVertical: 14, borderRadius: BUTTON_RADIUS, backgroundColor: colors.primary },
-  claimText: { fontSize: 16, fontWeight: '700', color: colors.onPrimary, textAlign: 'center' },
+  claimText: { flexShrink: 1, fontSize: 16, fontWeight: '700', color: colors.onPrimary, textAlign: 'center' },
   noteItem: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 6, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.divider },
   noteText: { fontSize: 16, color: colors.text },
   noteRow: { flexDirection: 'row', gap: 8, paddingVertical: 14 },

@@ -17,6 +17,26 @@ sleep 5
 export MAESTRO_CLI_NO_ANALYTICS=1
 flow() { (cd out && maestro test --format junit --output "$1.xml" --debug-output "debug-$1" --test-output-dir "tests-$1" "../.maestro/$1.yaml" > "$1.log" 2>&1); result $? "$1"; tail -5 "out/$1.log"; adb exec-out screencap -p > "out/end-$1.png"; }
 
+adb shell mkdir -p /sdcard/Download/WarrantlyExports
+flow ui-polish
+adb pull /sdcard/Download/WarrantlyExports out/exported
+python3 - <<'PY'
+from pathlib import Path
+source = Path('fixture-invoice.pdf').read_bytes()
+exports = sorted(Path('out/exported').glob('*.pdf'))
+assert [p.name for p in exports] == ['Review kettle (1).pdf', 'Review kettle.pdf'], [p.name for p in exports]
+assert source.startswith(b'%PDF-')
+assert all(p.read_bytes() == source for p in exports), 'Exported bytes differ from the imported PDF'
+PY
+result $? "saved-pdfs-match-source"
+adb shell wm size 720x1600
+adb shell wm density 320
+adb shell settings put system font_scale 1.6
+flow ui-polish-large
+adb shell settings put system font_scale 1.0
+adb shell wm size reset
+adb shell wm density reset
+
 flow main
 
 # Share into Warrantly (#3), the way a person does it: Files app, long-press the PDF, Share, Warrantly.

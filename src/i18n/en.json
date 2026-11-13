@@ -104,6 +104,7 @@
     "notes": "Notes (optional)",
     "remember": "Remember this length for {{store}}",
     "save": "Save warranty",
+    "saveFailed": "Couldn't save the warranty. Your details are still here; try again. ({{detail}})",
     "errProduct": "Enter the product name.",
     "errStore": "Enter the store.",
     "errDate": "Enter a real date as YYYY-MM-DD.",
@@ -149,7 +150,7 @@
     "claimNoEmail": "No store email saved. Call or open the website above, or add the email with Edit.",
     "noMailApp": "No email app found on this phone.",
     "attachScan": "Scan and attach a document",
-    "documentMissing": "The document file is no longer on this phone (backups do not include documents yet).",
+    "documentMissing": "The document file is no longer on this phone. Attach it again or restore a backup that includes it.",
     "removeDocument": "Remove",
     "removeDocumentTitle": "Remove this document?",
     "attachImport": "Attach a photo or PDF",
@@ -179,6 +180,7 @@
     "pdf": "PDF document",
     "saved": "Saved to the folder you chose.",
     "saveFailed": "Couldn't save: {{detail}}",
+    "shareFailed": "Couldn't share: {{detail}}",
     "details": "Purchase and coverage",
     "support": "Support and claims",
     "supportSearch": "Manufacturer support",
@@ -367,6 +369,7 @@
     "page": "Page {{page}} of {{count}}",
     "shareShort": "Share",
     "saving": "Saving…",
+    "sharing": "Opening share options…",
     "saved": "Saved to the folder you chose."
   },
   "category": {

@@ -104,6 +104,7 @@
     "notes": "Megjegyzés (nem kötelező)",
     "remember": "Jegyezze meg ezt a hosszt ennél az üzletnél: {{store}}",
     "save": "Garancia mentése",
+    "saveFailed": "Nem sikerült menteni a garanciát. Az adataid megmaradtak; próbáld újra. ({{detail}})",
     "errProduct": "Add meg a termék nevét.",
     "errStore": "Add meg az üzletet.",
     "errDate": "Adj meg valós dátumot ÉÉÉÉ-HH-NN formában.",
@@ -149,7 +150,7 @@
     "claimNoEmail": "Nincs mentett e-mail cím az üzlethez. Hívd fel vagy nyisd meg a fenti weboldalt, vagy add meg a címet a Szerkesztésben.",
     "noMailApp": "Nem található levelezőalkalmazás ezen a telefonon.",
     "attachScan": "Dokumentum beolvasása és csatolása",
-    "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon (a mentések még nem tartalmazzák a dokumentumokat).",
+    "documentMissing": "A dokumentum fájlja már nincs ezen a telefonon. Csatold újra, vagy állíts vissza egy mentést, amely tartalmazza.",
     "removeDocument": "Eltávolítás",
     "removeDocumentTitle": "Eltávolítod ezt a dokumentumot?",
     "attachImport": "Fotó vagy PDF csatolása",
@@ -179,6 +180,7 @@
     "pdf": "PDF dokumentum",
     "saved": "Elmentve a választott mappába.",
     "saveFailed": "Nem sikerült menteni: {{detail}}",
+    "shareFailed": "Nem sikerült megosztani: {{detail}}",
     "details": "Vásárlás és garancia",
     "support": "Ügyfélszolgálat és reklamáció",
     "supportSearch": "Gyártói ügyfélszolgálat",
@@ -367,6 +369,7 @@
     "page": "{{page}}. oldal / {{count}}",
     "shareShort": "Megosztás",
     "saving": "Mentés…",
+    "sharing": "Megosztási lehetőségek megnyitása…",
     "saved": "Elmentve a választott mappába."
   },
   "category": {

@@ -322,6 +322,16 @@ export async function addManual(db: Db, w: WarrantyInput, origin: 'manual' | 'sc
   return res.lastInsertRowId;
 }
 
+// A new warranty and its scanned/imported PDF are one save: failure leaves neither database row.
+export async function addManualWithDocument(db: Db, w: WarrantyInput, localPath: string | null): Promise<number> {
+  let id = 0;
+  await db.withTransactionAsync(async () => {
+    id = await addManual(db, w, localPath ? 'scan' : 'manual');
+    if (localPath) await addAttachment(db, id, `${w.product_name}.pdf`, localPath);
+  });
+  return id;
+}
+
 // Editing confirms the item: suggested labels go, and a needs-input item becomes complete.
 export async function updateWarranty(db: Db, id: number, w: WarrantyInput, now = new Date().toISOString()): Promise<void> {
   await db.runAsync(
