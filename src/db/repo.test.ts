@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import type { MailProvider } from '../mail/provider.ts';
 import type { MailMessage } from '../parser/types.ts';
-import { addManualWithDocument, importShared, setPhoto, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
+import { addManualWithDocument, importShared, setPhoto, sharedWarranties, wipeDb, addAttachment, addHistory, addManual, listHistory, otherCovers, answerReturn, applyLengthToStore, listReturnPrompts, nextNeedsInput, sourceOf, storeItemsMissingLength, deleteAccount, deleteAttachment, getIgnoredDetail, listAttachments, listIgnored, restoreIgnored, deleteWarranty, dumpAccount, listAccounts, restoreAccount, upsertAccount, getWarranty, ignoreWarranty, listWarranties, loadStoreRules, migrate, saveStoreRule, updateWarranty } from './repo.ts';
 import { syncAccount, syncStart } from './sync.ts';
 import { nodeDb } from './testDb.ts';
 
@@ -247,6 +247,14 @@ test('ignored mails are listed with their subject and can be restored for review
     ['Már dolgozunk rajta. / 1060000001 sz. megr.', 'Mixing Desk FIFINE SC3'],
     ['Thank you for your recent purchase for Rust', null],
   ]);
+  const detail0 = await getIgnoredDetail(db, ignored[0].id);
+  assert.equal(detail0?.reason, 'no_warranty');
+  assert.equal(detail0?.account_email, 'user@example.com');
+  assert.equal(detail0?.product_name, 'Mixing Desk FIFINE SC3');
+  const detail1 = await getIgnoredDetail(db, ignored[1].id);
+  assert.equal(detail1?.reason, 'sender');
+  assert.equal(detail1?.account_email, 'user@example.com');
+  assert.equal(detail1?.store_domain, 'steampowered.com');
   await restoreIgnored(db, ignored[0].id);
   await restoreIgnored(db, ignored[1].id);
   assert.deepEqual((await listWarranties(db, 'needs_input')).map((w) => [w.product_name, w.missing_fields]).sort(), [
