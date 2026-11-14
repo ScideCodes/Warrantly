@@ -30,3 +30,19 @@ export function findDate(text: string, today: string, labeledOnly = false): stri
     .sort((a, b) => Number(b.labeled) - Number(a.labeled) || a.at - b.at)[0]?.date ?? null;
 }
 
+// Labeled start/delivery date for warranties (e.g. installation, delivery, activation).
+export function findWarrantyStartDate(text: string, today: string): string | null {
+  const found: { date: string | null; at: number }[] = [];
+  for (const m of text.matchAll(/\b(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\b/g)) found.push({ date: ymd(+m[1], +m[2], +m[3]), at: m.index });
+  for (const m of text.matchAll(/\b(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]\s*(20\d{2})\b/g)) found.push({ date: ymd(+m[3], +m[2], +m[1]), at: m.index });
+  for (const m of text.matchAll(/\b([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]{3,10})\.?\s+(\d{1,2}),?\s+(20\d{2})\b/g)) found.push({ date: ymd(+m[3], MONTHS[m[1].toLowerCase()] ?? 0, +m[2]), at: m.index });
+  for (const m of text.matchAll(/\b(20\d{2})\.\s*([a-záéíóöőúüű]{3,10})\.?\s*(\d{1,2})\b/gi)) found.push({ date: ymd(+m[1], MONTHS[m[2].toLowerCase()] ?? 0, +m[3]), at: m.index });
+
+  return found.map(f => {
+    const prefix = text.slice(Math.max(0, f.at - 100), f.at);
+    const labeled = /(?:garancia\s*kezdete|jótállás\s*kezdete|érvényesség\s*kezdete|kezdete|start\s*date|warranty\s*start|(?:beüzemelés|üzembe\s*helyezés|átvétel|teljesítés|delivery|szállítás)(?:\s*dátuma|\s*időpontja|\s*napja|\s*date)?)\s*[:：-]?\s*$/i.test(prefix);
+    return { ...f, labeled };
+  }).filter(f => f.date && f.date <= today && f.labeled)
+    .sort((a, b) => a.at - b.at)[0]?.date ?? null;
+}
+

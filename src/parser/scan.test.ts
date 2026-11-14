@@ -46,15 +46,50 @@ test('parseScanText suggests store, product, date, warranty and order number', (
     storeName: 'MEDIAMARKT',
     productName: 'Philips vízforraló HD9350',
     purchaseDate: '2026-01-15',
+    warrantyStartDate: null,
     warrantyMonths: 36,
     orderNumber: '2026-778899',
+    price: 19990,
+    currency: 'HUF',
+    serialNumber: 'HD9350',
+    serialNumbers: ['HD9350'],
   });
 });
 
 test('parseScanText leaves unknown fields empty', () => {
   assert.deepEqual(parseScanText('Köszönjük a vásárlást!', '2026-11-11'), {
-    storeName: 'Köszönjük a vásárlást!', productName: null, purchaseDate: null, warrantyMonths: null, orderNumber: null,
+    storeName: 'Köszönjük a vásárlást!',
+    productName: null,
+    purchaseDate: null,
+    warrantyStartDate: null,
+    warrantyMonths: null,
+    orderNumber: null,
+    price: null,
+    currency: null,
+    serialNumber: null,
+    serialNumbers: [],
   });
+});
+
+test('parseScanText identifies warranty start, serial number and price from warranty PDF', () => {
+  const pdfInvoice = `ALZA.HU
+Számla és jótállási jegy
+Számlaszám: 2026-INV-9988
+Vásárlás dátuma: 2026.02.10
+Beüzemelés dátuma: 2026.02.12
+Apple MacBook Air M3 1 db 499 990 Ft
+S/N: C02G1234MD6R
+Jótállás: 24 hó
+Fizetendő végösszeg: 499 990 Ft`;
+  const result = parseScanText(pdfInvoice, '2026-11-11');
+  assert.equal(result.storeName, 'ALZA.HU');
+  assert.equal(result.productName, 'Apple MacBook Air M3');
+  assert.equal(result.purchaseDate, '2026-02-10');
+  assert.equal(result.warrantyStartDate, '2026-02-12');
+  assert.equal(result.warrantyMonths, 24);
+  assert.equal(result.serialNumber, 'C02G1234MD6R');
+  assert.equal(result.price, 499990);
+  assert.equal(result.currency, 'HUF');
 });
 
 test('scanning a mixed-warranty receipt does not give the first product the second guarantee', () => {

@@ -3,7 +3,7 @@ import { Pressable, Text, TextInput, View } from '@/components/themeMotion';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, Animated, Keyboard, RefreshControl, SectionList, StyleSheet, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -32,7 +32,7 @@ import { liveRecent } from '@/recent';
 import { forgetRecent, readRecent } from '@/recentStore';
 import { rescheduleReminders } from '@/reminders';
 import { readBackupHealth } from '@/backupStatus';
-import { getBundleLead, getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
+import { getBundleLead, getDensity, getListSort, getUsername, hasBundleLead, setListSort, type Density } from '@/settings';
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
@@ -206,11 +206,19 @@ export default function Home() {
         bundleMap.set(item.bundle_id, arr);
       }
     }
+    const hasSearch = searchQuery.trim() !== '';
+    const hasFilter = filter.kind !== 'all' || quick !== null;
     const isBundleLead = (item: Warranty): boolean => {
+      if (hasSearch || hasFilter) return true;
       if (!item.bundle_id) return true;
+      if (!hasBundleLead(item.bundle_id)) return true;
       const group = bundleMap.get(item.bundle_id);
       if (!group || group.length <= 1) return true;
-      return item.id === getBundleLead(item.bundle_id, group);
+      const leadId = getBundleLead(item.bundle_id, group);
+      if (item.id === leadId) return true;
+      const lead = group.find((m) => m.id === leadId);
+      if (lead && daysUntil(lead.end_date, today) < 0 && daysUntil(item.end_date, today) >= 0) return true;
+      return false;
     };
     const leadBase = base.filter(isBundleLead);
     const common = {
@@ -228,7 +236,7 @@ export default function Home() {
     const soon: Warranty[] = [], covered: Warranty[] = [];
     for (const w of rest) (daysUntil(w.end_date, today) <= 30 ? soon : covered).push(w);
     return { pinned, soon, covered, expired: pick(filterWarranties(leadBase, { ...common, tab: 'expired' }, today)), archived: [] as Warranty[] };
-  }, [warranties, archived, filter, quick, sort, matches, members, today]);
+  }, [warranties, archived, filter, quick, sort, matches, members, today, searchQuery]);
   const expiredOpen = showExpired || searchQuery.trim() !== '' || quick === 'nodocs'; // search includes expired items
   const sections = useMemo(() => [
     { key: 'pinned' as const, data: visible.pinned },
@@ -249,8 +257,14 @@ export default function Home() {
     }
     const leadWarranties = warranties.filter((item) => {
       if (!item.bundle_id) return true;
+      if (!hasBundleLead(item.bundle_id)) return true;
       const group = bundleMap.get(item.bundle_id);
-      return !group || group.length <= 1 || item.id === getBundleLead(item.bundle_id, group);
+      if (!group || group.length <= 1) return true;
+      const leadId = getBundleLead(item.bundle_id, group);
+      if (item.id === leadId) return true;
+      const lead = group.find((m) => m.id === leadId);
+      if (lead && daysUntil(lead.end_date, today) < 0 && daysUntil(item.end_date, today) >= 0) return true;
+      return false;
     });
     return summary(leadWarranties, today);
   }, [warranties, today]);
@@ -583,6 +597,11 @@ export default function Home() {
         keyboardDismissMode="on-drag"
         onScroll={edge.onScroll}
         scrollEventThrottle={16}
+        initialNumToRender={12}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={Platform.OS === 'android'}
+        updateCellsBatchingPeriod={50}
         refreshControl={
           <RefreshControl
             refreshing={sync.kind === 'syncing'}
@@ -673,7 +692,7 @@ function TabBar({ tabs, current }: { tabs: Tab[]; current: string }) {
     <>
       <View style={[styles.scrollEdge, { height: 80 + insets.bottom }]} pointerEvents="none" />
       <View style={[styles.tabbar, { width: barW, bottom: insets.bottom + 8 }]} accessibilityRole="tablist">
-        <View style={[styles.tabSurface, glass(), { boxShadow: colors.tabbarEdge, width: barW, left: 0 }]} pointerEvents="none" />
+        <View style={[styles.tabSurface, glass(false), { boxShadow: colors.tabbarEdge, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.materialEdge, width: barW, left: 0 }]} pointerEvents="none" />
         <View style={[styles.lens, { top: 4, height: tabH, width: tabW, left: 4 + at * tabW }]} pointerEvents="none" />
         {tabs.map((tab, i) => (
           <View key={tab.key} style={styles.tabSlot} onLayout={i === at ? (e) => setTabH(e.nativeEvent.layout.height) : undefined}>

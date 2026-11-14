@@ -16,12 +16,13 @@ export function Section({ title, children, first }: { title: string; children: R
 }
 
 // A label and its value side by side (iOS's Value1 cell): the label in the secondary colour at the left, the
-// value right-aligned. Each wraps inside its own column (label up to 45 %), so a long Hungarian label or a long
-// value adds a line, not a stacked block. Only when the column is narrower than 260 text-size-adjusted dp
-// (small phone with large text) does the label go above the value. The line between rows is inset 16.
+// value right-aligned. Each wraps inside its own column (label up to 50 %), so a long label or a long
+// value wraps cleanly without breaking the horizontal alignment. Only when the column is narrower than 260
+// text-size-adjusted dp (small phone with large accessibility text) does the label go above the value. The line
+// between rows is inset 16.
 export function Field({ label, value, onPress, last }: { label: string; value: string; onPress?: () => void; last?: boolean }) {
   const styles = useStyles();
-  const side = useRoom()(Math.max(260, label.length * 16 * 0.6 / 0.45 + 32));
+  const side = useRoom()(260);
   const body = (
     <>
       <Text style={[styles.label, side && styles.labelSide]}>{label}</Text>

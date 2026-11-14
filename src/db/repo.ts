@@ -238,7 +238,12 @@ export async function setLastSynced(db: Db, accountId: number, iso: string): Pro
 }
 
 export async function knownMessageIds(db: Db, accountId: number): Promise<Set<string>> {
-  const rows = await db.getAllAsync<{ message_id: string }>('SELECT DISTINCT message_id FROM sources WHERE account_id = ?', [accountId]);
+  const rows = await db.getAllAsync<{ message_id: string }>(
+    `SELECT DISTINCT s.message_id FROM sources s
+     LEFT JOIN warranties w ON w.id = s.warranty_id
+     WHERE s.account_id = ? AND (s.warranty_id IS NULL OR w.deleted_at IS NULL)`,
+    [accountId],
+  );
   return new Set(rows.map((r) => r.message_id));
 }
 

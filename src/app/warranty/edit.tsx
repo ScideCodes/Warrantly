@@ -32,12 +32,13 @@ import { saveKnownText } from '@/docIndex';
 import { whenUnlocked } from '@/lock/gate';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
+import { getDefaultCurrency } from '@/settings';
 import { CATEGORIES, formErrors, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [6, 12, 24, 36];
 type Form = Record<FormField | 'order_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
 
-const localCurrency = () => getLocales()[0]?.currencyCode ?? 'EUR';
+const localCurrency = () => getDefaultCurrency() || (getLocales()[0]?.currencyCode ?? 'EUR');
 
 const fromWarranty = (w: Warranty | null): Form => ({
   product_name: w?.product_name ?? '',
@@ -311,9 +312,20 @@ export default function EditWarranty() {
         product_name: f.product_name || found.productName || '',
         store_name: f.store_name || found.storeName || '',
         purchase_date: found.purchaseDate ?? f.purchase_date,
+        warranty_start_date: found.warrantyStartDate ?? f.warranty_start_date ?? found.purchaseDate ?? f.purchase_date,
         warranty_months: found.warrantyMonths ? String(found.warrantyMonths) : f.warranty_months,
         order_number: f.order_number || found.orderNumber || '',
+        price: f.price || (found.price != null ? String(found.price) : ''),
+        currency: f.price ? f.currency : (found.currency || f.currency),
       }));
+      if (found.serialNumbers.length > 0) {
+        setSerials((prev) => {
+          if (prev.length <= 1 && !prev[0]?.value) {
+            return found.serialNumbers.map((s) => ({ label: '', value: s }));
+          }
+          return prev;
+        });
+      }
       setScan({ state: result.text ? 'done' : 'attached' });
     } catch (e) {
       if (mounted.current) setScan({ state: 'failed', detail: e instanceof Error ? e.message : String(e) });
