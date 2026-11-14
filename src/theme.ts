@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { Appearance, AppState, useWindowDimensions, type TextStyle } from 'react-native';
-import { getThemeSetting } from '@/settings';
+import { getAccentSetting, getThemeSetting } from '@/settings';
 import { createThemeStore, resolveDark, type ThemeState } from '@/themeStore';
 
 // The bencepc.hu "iOS 27" design system (public/assets/ios.css at 551a366). Every colour comes from that file
@@ -10,13 +10,13 @@ export type { Palette, ThemeSetting } from '@/themeStore';
 
 // Live theme: Light, Dark or Auto (the phone's setting) apply at once, without a restart. `colors` is one
 // object updated in place; components that read it subscribe with useTheme() or a themed() style hook.
-const store = createThemeStore(resolveDark(getThemeSetting(), Appearance.getColorScheme()));
+const store = createThemeStore(resolveDark(getThemeSetting(), Appearance.getColorScheme()), getAccentSetting());
 export const colors = store.colors;
 export const TONE = store.tone;
 
 // Re-reads the setting and the phone's scheme. Called after Settings changes the setting, when the phone
 // switches (Auto), and when the app comes back from the background (a change made meanwhile).
-export const applyTheme = (): boolean => store.set(resolveDark(getThemeSetting(), Appearance.getColorScheme()));
+export const applyTheme = (): boolean => store.set(resolveDark(getThemeSetting(), Appearance.getColorScheme()), getAccentSetting());
 Appearance.addChangeListener(() => applyTheme());
 AppState.addEventListener('change', (state) => state === 'active' && applyTheme());
 

@@ -1,3 +1,4 @@
+import { accentColors } from '@/accent';
 import { Platform } from 'react-native';
 import {
   FlexWidget, getWidgetInfo, ImageWidget, registerWidgetTaskHandler, requestWidgetUpdate, TextWidget,
@@ -9,7 +10,7 @@ import { listReturnPrompts, listWarranties, type Db, type Warranty } from '@/db/
 import { photoForWidget } from '@/documents';
 import i18n from '@/i18n';
 import { isLockEnabled } from '@/lock/store';
-import { getThemeSetting, getWidgetConfigText, getWidgetNames, removeWidgetConfig } from '@/settings';
+import { getAccentSetting, getThemeSetting, getWidgetConfigText, getWidgetNames, removeWidgetConfig } from '@/settings';
 import { todayYmd, urgency } from '@/warranty';
 import { namesShown, parseWidgetConfig, widgetLayout, widgetRows, type WidgetConfig, type WidgetRow } from '@/widgetModel';
 
@@ -122,9 +123,16 @@ export async function renderFor(db: Db, info: Pick<WidgetInfo, 'widgetId' | 'wid
   const layout = widgetLayout(info.width, info.height, info.screenInfo?.fontScale ?? 1, cfg.actions, [i18n.t('widget.scan'), i18n.t('widget.add'), i18n.t('widget.search')]);
   const data = await load(db, cfg, layout.rows);
   const theme = getThemeSetting();
-  if (theme === 'light') return <Body data={data} cfg={cfg} layout={layout} c={LIGHT} />;
-  if (theme === 'dark') return <Body data={data} cfg={cfg} layout={layout} c={DARK} />;
-  return { light: <Body data={data} cfg={cfg} layout={layout} c={LIGHT} />, dark: <Body data={data} cfg={cfg} layout={layout} c={DARK} /> };
+  const accent = getAccentSetting();
+  const tinted = (base: WidgetPalette, dark: boolean): WidgetPalette => {
+    if (accent === 'blue') return base;
+    const c = accentColors(accent, dark);
+    return { ...base, action: c.tintSoft as Hex, actionInk: c.tintInk as Hex, badge: { fg: c.tintInk as Hex, bg: c.tintSoft as Hex } };
+  };
+  const light = tinted(LIGHT, false), dark = tinted(DARK, true);
+  if (theme === 'light') return <Body data={data} cfg={cfg} layout={layout} c={light} />;
+  if (theme === 'dark') return <Body data={data} cfg={cfg} layout={layout} c={dark} />;
+  return { light: <Body data={data} cfg={cfg} layout={layout} c={light} />, dark: <Body data={data} cfg={cfg} layout={layout} c={dark} /> };
 }
 
 // Redraw every placed widget after the list changes (home loads, edits, theme change). No-op when none.
