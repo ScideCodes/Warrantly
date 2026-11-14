@@ -507,6 +507,10 @@
     "feedbackSubject": "Warrantly feedback",
     "faq": [
       {
+        "q": "How do I add a purchase from an email?",
+        "a": "Open the email, select its text and choose Share, then Warrantly. A PDF attachment can be shared the same way, and so can a mail saved as an .eml file. It waits in the Inbox until you add it, and the form fills in what it can read."
+      },
+      {
         "q": "Why doesn't a purchase show up?",
         "a": "Warrantly only imports warranty documents and mails that state a warranty length (for example \"24 months warranty\"), so plain order confirmations stay out. Add the purchase with + Add, or scan its receipt."
       },

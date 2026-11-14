@@ -72,7 +72,9 @@
         {
           "androidIntentFilters": [
             "image/*",
-            "application/pdf"
+            "application/pdf",
+            "message/rfc822",
+            "text/plain"
           ],
           "disableIOS": true
         }

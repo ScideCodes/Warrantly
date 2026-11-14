@@ -60,7 +60,7 @@ novelty, viability and fit, top three deepened.
 
 | Path | Needs Google review | Verdict |
 |---|---|---|
-| Share an email into Warrantly (selected body text, a PDF attachment, or a `.eml` file) and run the existing parser | No | Best next step. PDFs already work. Test on a real phone what Gmail's Android app can share; `.eml` may only come from Gmail web or other mail apps. Needs `message/rfc822` and `text/plain` share filters and an RFC 822 to Gmail-message adapter. |
+| Share an email into Warrantly (selected body text, a PDF attachment, or a `.eml` file) and run the existing parser | No | Built for 1.0 (`src/mail/rfc822.ts`, share filters `message/rfc822` and `text/plain`). PDFs already worked. Test on a real phone what Gmail's Android app can share; `.eml` may only come from Gmail web or other mail apps. Not yet tried on a real phone. |
 | Verification as above, asking for the CASA exemption | Yes | Do it in parallel. It is the only path that keeps the built automatic import. |
 | Apps Script in the user's own account writes found warranties to a Drive file the app created (`drive.file`) | No (for the app) | Power-user option only. Users see Google's "unverified app" screen for their own script, and the drive.file visibility of script-written files must be tested first. |
 | Google Takeout `.mbox` of one label, imported on the phone | No | Good one-time backfill once the RFC 822 adapter exists. |

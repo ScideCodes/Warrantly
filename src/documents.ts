@@ -8,6 +8,7 @@ import { extractTextFromImage } from 'expo-text-extractor';
 import { Linking } from 'react-native';
 import DocumentScanner, { ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
 import { mailtoUrl } from '@/claim';
+import { mailToText, parseRfc822 } from '@/mail/rfc822.ts';
 import { imageMime } from '@/safeLinks';
 import { saveDocumentCopy } from './documentSave';
 import PdfPages from '../modules/pdf-pages';
@@ -50,6 +51,33 @@ export async function fileToDocument(uri: string, name: string, mimeType: string
     return { text: '', localPath: pdf.name };
   }
   return imagesToPdf([{ uri, mimeType: imageMime(mimeType) }]); // the type comes from the sending app
+}
+
+const EMAIL_MAX_BYTES = 30 * 1024 * 1024; // mail providers cap a message near 25 MB
+
+// A mail shared as an .eml file: its first PDF attachment is the document; a mail without one is kept as a PDF
+// of its text. The text fills the form like a scanned receipt.
+export async function emailToDocument(uri: string, name: string): Promise<{ text: string; localPath: string; filename: string }> {
+  const file = new File(uri);
+  if ((file.size ?? 0) > EMAIL_MAX_BYTES) throw new Error('File too large');
+  const { message, pdfs } = parseRfc822(await file.bytes(), name);
+  const text = mailToText(message);
+  if (!pdfs[0]) return textToDocument(text, message.subject || name.replace(/\.eml$/i, ''));
+  const pdf = new File(folder(), `import-${Date.now()}.pdf`);
+  pdf.create();
+  await pdf.write(pdfs[0].bytes);
+  return { text, localPath: pdf.name, filename: pdfs[0].filename };
+}
+
+// Text shared from another app (for example a mail's text selected in Gmail), kept as a PDF. `title` names it
+// in the inbox; characters a file name cannot hold are dropped, since the name is used when the file is saved.
+export async function textToDocument(text: string, title: string): Promise<{ text: string; localPath: string; filename: string }> {
+  const esc = text.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!);
+  const { uri } = await Print.printToFileAsync({ html: `<html><body style="font-family:sans-serif;font-size:12px;white-space:pre-wrap;margin:32px">${esc}</body></html>`, width: 595, height: 842 });
+  const pdf = new File(uri);
+  await pdf.move(folder());
+  const name = title.replace(/[\\/:*?"<>|\n\r]/g, ' ').slice(0, 60).trim() || 'Text';
+  return { text, localPath: pdf.name, filename: `${name}.pdf` };
 }
 
 async function imagesToPdf(images: { uri: string; mimeType: string }[]): Promise<{ text: string; localPath: string }> {
