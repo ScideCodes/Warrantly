@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import * as Notifications from 'expo-notifications';
-import { AndroidImportance } from 'expo-notifications';
+import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notifications';
 import { router, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
@@ -18,9 +18,11 @@ Notifications.setNotificationHandler({
 let channelsReady = false;
 async function ensureChannels() {
   if (channelsReady || Platform.OS !== 'android') return;
-  await Notifications.setNotificationChannelAsync('reminders', { name: i18n.t('reminder.channel'), importance: AndroidImportance.HIGH });
+  // Product names stay off a locked screen: Android shows only "Warrantly" there (new channels; Android keeps
+  // the visibility of a channel created by an older version).
+  await Notifications.setNotificationChannelAsync('reminders', { name: i18n.t('reminder.channel'), importance: AndroidImportance.HIGH, lockscreenVisibility: AndroidNotificationVisibility.PRIVATE });
   // The expiry day is the one that must not be missed (section 16: "prominent").
-  await Notifications.setNotificationChannelAsync('expiry', { name: i18n.t('reminder.channelExpiry'), importance: AndroidImportance.MAX });
+  await Notifications.setNotificationChannelAsync('expiry', { name: i18n.t('reminder.channelExpiry'), importance: AndroidImportance.MAX, lockscreenVisibility: AndroidNotificationVisibility.PRIVATE });
   channelsReady = true;
 }
 

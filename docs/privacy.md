@@ -12,11 +12,11 @@ Warrantly's use and transfer of information received from Google APIs adheres to
 
 ## Backups
 
-If you turn backups on, your data is encrypted on this phone with your backup password and stored in your own Google Drive, in a folder only Warrantly can see. Without the password nobody can read it, the developer included.
+If you turn backups on, your data is encrypted on this phone with your backup password and stored in your own Google Drive, in a folder only Warrantly can see. Without the password nobody can read it, the developer included. Android's own app backup is switched off for Warrantly, so its database never leaves the phone unencrypted.
 
 ## Scans and documents
 
-Scanning and reading text from receipts happens on the phone (Google ML Kit, on-device). Documents are stored in the app on this phone and, if backups are on, encrypted in your Drive.
+Scanning, reading serial numbers and reading text from receipts for search happen on the phone (Google ML Kit, on-device). Documents are stored in the app on this phone and, if backups are on, encrypted in your Drive.
 
 ## Other services
 

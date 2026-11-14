@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
+import { mailUrl, telUrl, webUrl } from '@/safeLinks';
 import { ActivityIndicator, Image, Linking, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
@@ -459,10 +460,10 @@ export default function WarrantyDetail() {
     w.notes && { label: t('detail.notes'), value: w.notes },
   ].filter((f): f is { label: string; value: string } => !!f);
   const contacts = [
-    w.contact_email && { label: t('warranty.contact'), value: w.contact_email, url: `mailto:${w.contact_email}` },
-    w.contact_phone && { label: t('warranty.contact'), value: w.contact_phone, url: `tel:${w.contact_phone.replace(/[^\d+]/g, '')}` },
-    w.website_url && { label: t('warranty.website'), value: w.website_url.replace(/^https:\/\//, ''), url: w.website_url },
-  ].filter((f): f is { label: string; value: string; url: string } => !!f);
+    w.contact_email && { label: t('warranty.contact'), value: w.contact_email, url: mailUrl(w.contact_email) },
+    w.contact_phone && { label: t('warranty.contact'), value: w.contact_phone, url: telUrl(w.contact_phone) },
+    w.website_url && { label: t('warranty.website'), value: w.website_url.replace(/^https:\/\//, ''), url: webUrl(w.website_url) },
+  ].filter((f): f is { label: string; value: string; url: string } => !!f && !!f.url); // an unsafe link is not offered
 
   return (
     <>

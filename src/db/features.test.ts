@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { addAttachment, addHistory, addManual, deleteAttachment, deleteWarranty, getWarranty, listArchived, listAttachments, listWarranties, migrate, type Db } from './repo.ts';
+import { addAttachment, addHistory, addManual, deleteAttachment, deleteWarranty, getWarranty, importShared, listArchived, listAttachments, listWarranties, migrate, type Db } from './repo.ts';
 import {
   addClaim, addCustomReminder, addInbox, assignInbox, bundleMembers, bundleTogether, changeCount, cleanDocText, collectionsOf, createCollection,
   deleteCollection, discardInbox, indexCounts, leaveBundle, listClaims, listCollections, listCustomReminders, listInbox, markBackedUp, mergeWarranties,
@@ -250,4 +250,17 @@ test('backup restore: v13 tables travel; a v12 backup without them restores; jun
   assert.equal((await listClaims(target2, a)).length, 0);
   await assert.rejects(restoreDb(target2, { app: 'warrantly', schema: 1, createdAt: '', tables: { warranties: 'nope' }, settings: {} } as never), /Damaged/);
   await assert.rejects(restoreDb(target2, { app: 'other' } as never), /Not a Warrantly/);
+});
+
+test('a shared file from someone else binds only plain values', async () => {
+  const db = await fresh();
+  const added = await importShared(db, [{
+    warranty: { product_name: 'TV', store_name: 'Shop', purchase_date: '2026-01-01', warranty_start_date: '2026-01-01', warranty_months: 24, notes: { evil: 1 }, website_url: ['x'] },
+    history: [],
+    documents: [],
+  }], async () => null);
+  assert.equal(added, 1);
+  const [w] = await listWarranties(db, 'complete');
+  assert.equal(w.notes, null);
+  assert.equal(w.website_url, null);
 });

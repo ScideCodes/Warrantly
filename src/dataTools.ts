@@ -38,6 +38,7 @@ export async function sharePdf(name: string, html: string): Promise<void> {
 // Household sharing (section 13): warranties with their notes and documents as one file, sent with any
 // app (mail, chat, Drive) and merged in on the other phone.
 const SHARE_FORMAT = 'warrantly-share';
+const IMPORT_MAX_BYTES = 100 * 1024 * 1024;
 
 async function embedDocuments(items: SharedWarranty[]): Promise<SharedWarranty[]> {
   for (const item of items) {
@@ -63,7 +64,10 @@ export async function shareTransferFile(item: SharedWarranty, name: string): Pro
 export async function importSharedFile(db: Db): Promise<number | null> {
   const picked = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', 'application/octet-stream'], copyToCacheDirectory: true });
   if (picked.canceled || !picked.assets.length) return null;
-  const data = JSON.parse(await new File(picked.assets[0].uri).text());
+  // A file from someone else: a bounded size, so a huge one cannot exhaust memory while it is read.
+  const file = new File(picked.assets[0].uri);
+  if ((picked.assets[0].size ?? file.size ?? 0) > IMPORT_MAX_BYTES) throw new Error('This file is too large to be a Warrantly file');
+  const data = JSON.parse(await file.text());
   if (data?.format !== SHARE_FORMAT || !Array.isArray(data.items)) throw new Error('Not a Warrantly file');
   return importShared(db, data.items, async (doc) => {
     if (typeof doc.data !== 'string') return null;
