@@ -13,6 +13,7 @@ An Android app that finds your purchase and warranty emails, keeps the receipts 
 ![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-146%20passing-2ea44f)
 ![Languages](https://img.shields.io/badge/languages-English%20%7C%20Hungarian-8e8e93)
+![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
 [Screenshots](#screenshots) · [Features](#features) · [Privacy](#privacy) · [Install](#install) · [Design](#design) · [Under the hood](#under-the-hood) · [Docs](#docs)
 
@@ -103,3 +104,7 @@ npx expo lint
 ## Docs
 
 [Privacy policy](docs/privacy.md) · [Releasing](docs/releasing.md) · [Visual reference](docs/visual-reference.md) · [UI polish notes](docs/ui-polish.md) · [Development notes](docs/development.md) · [Original plan](docs/brainstorm.md)
+
+## License
+
+[MIT](LICENSE). Security reports: see [SECURITY.md](SECURITY.md).
