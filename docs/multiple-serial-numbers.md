@@ -14,3 +14,9 @@ Uses Impeccable and the code-review skill, retaining the pinned iOS27 materials,
 - At 320dp / 160% font scale, inputs remain full width and scan/remove buttons move below them. Inspected the rendered form and detail layout for alignment and clipping.
 - Removed the first component, saved and reopened: the outdoor serial stayed intact and became primary.
 - Only synthetic warranties were used. Barcode-camera recognition itself was not retested; the existing scanner's confirmation and row-targeted return were tested. No new native dependencies or permissions.
+
+## Release
+
+- Main feature commit: `e71a89c`, pushed to the working and default branches.
+- Initial feature OTA: `v1.0.0-ota.5`, group `77c532e5-e12c-4745-b1a6-d92c325f48b6`. Verified the update card, Restart now, and adding a second serial field on the signed stable APK. Settings reported `update 01a1d9bf`.
+- That English light-theme review also exposed an existing Currency label squeezed into the 96dp column. Price and currency now keep their labels above their inputs; at narrow widths/large fonts the pair stacks vertically. The shared iOS27 field styling is unchanged. Typecheck, lint and all 172 tests pass after this correction.
