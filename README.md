@@ -49,7 +49,7 @@ Warrantly keeps your warranties on your phone: the product, the store, the dates
 
 | | What Warrantly provides |
 | --- | --- |
-| ➕ **Quick to add** | Type it in, scan a paper receipt, scan a serial number, or share a PDF or photo into Warrantly. |
+| ➕ **Quick to add** | Type it in, scan a paper receipt or a serial number, or share a PDF, a photo or an email (its text, or an .eml file) into Warrantly. |
 | 📧 **Gmail import (coming)** | Reads Gmail read-only and picks out warranty mails. Built, but hidden in 1.0 until Google finishes its review of the Gmail permission. |
 | ⏳ **Days left at a glance** | Covered, ending soon and expired, with a plain badge. Filter by store, search, ignore what does not matter. |
 | 📄 **Documents first** | Mail PDFs, photos and scans open inside the app. Scan a paper receipt with on-device text recognition. |

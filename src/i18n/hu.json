@@ -507,6 +507,10 @@
     "feedbackSubject": "Warrantly visszajelzés",
     "faq": [
       {
+        "q": "Hogyan adok hozzá egy vásárlást egy levélből?",
+        "a": "Nyisd meg a levelet, jelöld ki a szövegét, és válaszd a Megosztás, majd a Warrantly lehetőséget. A PDF-mellékletet és az .eml fájlba mentett levelet is így oszthatod meg. A Beérkezett listában vár, amíg hozzáadod, és az űrlap kitölti, amit ki tud olvasni."
+      },
+      {
         "q": "Miért nem jelenik meg egy vásárlás?",
         "a": "A Warrantly csak a garanciajegyeket és a garancia hosszát említő leveleket (pl. \"24 hó gar.\") veszi át, a sima rendelés-visszaigazolásokat nem. Add hozzá a + Hozzáadás gombbal, vagy olvasd be a nyugtát."
       },

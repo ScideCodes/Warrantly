@@ -91,3 +91,5 @@ preview build, then the matching OTA and GitHub release with the APK attached.
   backup health, transfer privacy, serial, widget model). `npx tsc --noEmit` clean. `npx expo lint` 0 errors.
 - 14 Nov 2026 (1.0.0): Gmail import switched off, app ID `dev.warrantly.app`. `npm test` 146 pass, 0 fail.
   `npx tsc --noEmit` clean. `npx expo lint` 0 errors (1 existing warning in `src/i18n/index.ts`).
+- 14 Nov 2026: email share import (`.eml` and shared text into the inbox). `npm test` 149 pass, 0 fail. tsc clean,
+  lint 0 errors. Not yet run on a device: the new share filters need a native build.

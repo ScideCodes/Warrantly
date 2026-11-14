@@ -5,6 +5,8 @@ import { mailtoUrl } from '@/claim';
 export const scanDocument = async (): Promise<{ text: string; localPath: string } | null> => null;
 export const importDocument = async (): Promise<{ text: string; localPath: string } | null> => null;
 export const fileToDocument = async (_uri: string, _name: string, _mimeType: string | null): Promise<{ text: string; localPath: string }> => ({ text: '', localPath: '' });
+export const emailToDocument = async (_uri: string, _name: string): Promise<{ text: string; localPath: string; filename: string }> => ({ text: '', localPath: '', filename: '' });
+export const textToDocument = async (text: string, _title: string): Promise<{ text: string; localPath: string; filename: string }> => ({ text, localPath: '', filename: '' });
 export const pickPhoto = async (_source: 'camera' | 'library'): Promise<string | null> => null;
 export const mailDocuments = { save: async (_bytes: Uint8Array, _filename: string): Promise<string> => '' };
 export const readDocument = async (_localPath: string): Promise<Uint8Array> => new Uint8Array();

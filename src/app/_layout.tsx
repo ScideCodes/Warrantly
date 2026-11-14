@@ -4,7 +4,7 @@ import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-rout
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { addInbox } from '@/db/features.ts';
-import { fileToDocument, deleteDocuments } from '@/documents';
+import { emailToDocument, fileToDocument, deleteDocuments, textToDocument } from '@/documents';
 import { setLockShowing } from '@/lock/gate';
 import { UndoHost } from '@/components/UndoHost';
 import { StatusBar } from 'expo-status-bar';
@@ -23,7 +23,7 @@ import { colors, useTheme } from '@/theme';
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
 
-// Share into Warrantly (section 18, shortlist 16): a PDF or photo sent from another app is stored at once in
+// Share into Warrantly (section 18, shortlist 16): a PDF, photo, mail (.eml) or text sent from another app is stored at once in
 // the document inbox, so it survives the app closing; the inbox then offers to add or attach it. The same
 // share delivered twice (Android re-sends an intent after a restart) is taken in once.
 function SharedFiles() {
@@ -33,13 +33,18 @@ function SharedFiles() {
   }, [error]);
   useEffect(() => {
     const file = shareIntent.files?.[0];
-    if (!hasShareIntent || !file) return;
+    const text = shareIntent.text?.trim();
+    if (!hasShareIntent || (!file && !text)) return;
     resetShareIntent();
-    const sourceKey = `${file.path}|${file.fileName}|${file.size ?? ''}`;
+    // A mail's text selected and shared (no mail account needed), or a mail saved as an .eml file.
+    const email = !!file && (file.mimeType === 'message/rfc822' || /\.eml$/i.test(file.fileName));
+    const sourceKey = file ? `${file.path}|${file.fileName}|${file.size ?? ''}` : `text|${text!.length}|${text!.slice(0, 200)}`;
     void (async () => {
       const db = await getDb();
-      const doc = await fileToDocument(file.path, file.fileName, file.mimeType);
-      if (!(await addInbox(db, { local_path: doc.localPath, text: doc.text, filename: file.fileName, source_key: sourceKey }))) deleteDocuments([doc.localPath]);
+      const doc = !file
+        ? await textToDocument(text!, text!.split('\n')[0])
+        : email ? await emailToDocument(file.path, file.fileName) : { ...(await fileToDocument(file.path, file.fileName, file.mimeType)), filename: file.fileName };
+      if (!(await addInbox(db, { local_path: doc.localPath, text: doc.text, filename: doc.filename, source_key: sourceKey }))) deleteDocuments([doc.localPath]);
       router.push('/inbox');
     })().catch((e) => showAlert(i18n.t('share.failed'), e instanceof Error ? e.message : String(e)));
   }, [hasShareIntent, shareIntent, resetShareIntent]);
