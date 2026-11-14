@@ -39,7 +39,7 @@ NOTES
 
 args=(--target "$sha" --title "Warrantly $version update $n" --notes-file "$notes" --prerelease --latest=false)
 [ "${DRAFT:-}" = 1 ] && args+=(--draft)
-[ -n "$apk" ] && args+=("$apk#Warrantly-$version-beta.apk")
+[ -n "$apk" ] && args+=("$apk#Warrantly-$version.apk")
 gh release create "$tag" "${args[@]}"
 rm -f "$notes"
 echo "Published update $group and release $tag"
