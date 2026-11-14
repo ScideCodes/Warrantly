@@ -109,7 +109,7 @@ export default function Redact() {
       </> : <>
         <Button kind="glass" title={t('redact.undo')} disabled={busy || !(masks[index]?.length)} onPress={() => setMasks(s => ({ ...s, [index]: s[index].slice(0, -1) }))} />
         <Text style={styles.hint}>{t('redact.precise')}</Text>
-        <View style={styles.coordinates}>{position.map((value, i) => <View key={i} style={styles.coordinate}><Text style={styles.label}>{t(`redact.coord${i}`)}</Text><Input keyboardType="decimal-pad" accessibilityLabel={t(`redact.coord${i}`)} value={value} onChangeText={v => setPosition(p => p.map((x, j) => j === i ? v : x))} editable={!busy} /></View>)}</View>
+        <View style={styles.coordinates}>{position.map((value, i) => <View key={i} style={styles.coordinate}><Text style={styles.label}>{t(`redact.coord${i}`)}</Text><Input style={styles.coordInput} keyboardType="decimal-pad" accessibilityLabel={t(`redact.coord${i}`)} value={value} onChangeText={v => setPosition(p => p.map((x, j) => j === i ? v : x))} editable={!busy} /></View>)}</View>
         <Button kind="glass" title={t('redact.addArea')} disabled={busy} onPress={() => {
           const [x, y, w, h] = position.map(v => Number(v.replace(',', '.')) / 100);
           if ([x, y, w, h].every(Number.isFinite) && x >= 0 && y >= 0 && w > 0 && h > 0 && x + w <= 1 && y + h <= 1) add({ x, y, width: w, height: h });
@@ -125,4 +125,5 @@ const useStyles = themed(() => StyleSheet.create({
   toggle: { padding: 14, flexDirection: 'row', gap: 12, alignItems: 'center', marginVertical: 12 }, flex: { flex: 1, ...TYPE.body, color: colors.ink },
   hint: { ...TYPE.foot, color: colors.ink2, marginVertical: 12 }, error: { ...TYPE.sub, color: colors.bad, marginVertical: 12 },
   coordinates: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 }, coordinate: { flexGrow: 1, flexBasis: 100, gap: 6 }, label: { ...TYPE.foot, color: colors.ink2 },
+  coordInput: { fontVariant: ['tabular-nums'] },
 }));
