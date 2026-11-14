@@ -11,7 +11,7 @@ An Android app that finds your purchase and warranty emails, keeps the receipts 
 ![Version](https://img.shields.io/badge/version-1.0.0-007aff)
 ![Android](https://img.shields.io/badge/Android-app-3ddc84?logo=android&logoColor=white)
 ![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-146%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-149%20passing-2ea44f)
 ![Languages](https://img.shields.io/badge/languages-English%20%7C%20Hungarian-8e8e93)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue)
 
@@ -21,7 +21,7 @@ An Android app that finds your purchase and warranty emails, keeps the receipts 
 
 ---
 
-Warrantly keeps your warranties on your phone: the product, the store, the dates, the receipt. Add a purchase by hand, scan its receipt or share a PDF into the app. Open the app and see what is still covered, what ends soon and what has expired. No account, no server, no ads, no tracking.
+Warrantly keeps your warranties on your phone: the product, the store, the dates, the receipt. Add a purchase by hand, scan its receipt or share a PDF or an email into the app. Open the app and see what is still covered, what ends soon and what has expired. No Warrantly account, no Warrantly server, no ads, no tracking.
 
 ---
 
@@ -62,20 +62,32 @@ Warrantly keeps your warranties on your phone: the product, the store, the dates
 
 ## Privacy
 
-Warrantly has no server and no account. Your warranties live in a database on the phone. Version 1.0 does not ask for Gmail access. Backups are encrypted on the phone (scrypt and AES-256-GCM) before they reach your Drive. Read the full [privacy policy](docs/privacy.md).
+Warrantly has no server and no account of its own. Your warranties live in a database on the phone. Data leaves the phone only when you choose: an encrypted backup to your own Google Drive (scrypt and AES-256-GCM, encrypted on the phone first), or an export or share you start. Version 1.0 does not ask for Gmail access; Gmail import waits for Google's review of the `gmail.readonly` permission ([status](docs/gmail-verification.md)).
+
+Read the full [privacy policy](https://bencepc.hu/warrantly/privacy/) and [terms](https://bencepc.hu/warrantly/terms/). Website: [bencepc.hu/warrantly](https://bencepc.hu/warrantly/).
 
 ---
 
 ## Install
 
-The app uses native modules, so Expo Go cannot run it. Build a test APK in the cloud and install it:
+Warrantly is not on Google Play yet. Install the APK from GitHub:
+
+1. Open the [latest release](https://github.com/ScideCodes/Warrantly/releases/latest) on your Android phone.
+2. Under **Assets**, tap the `.apk` file to download it.
+3. Open the download. If Android asks, allow your browser to install unknown apps.
+
+Releases without an APK are over-the-air updates: an installed app downloads them by itself on its next launch.
+
+### Build it yourself
+
+For developers. Needs Node 22.18 or newer and the Android SDK. The app uses native modules, so Expo Go cannot run it.
 
 ```sh
-npm install
-npx eas-cli@latest build --platform android --profile preview
+npm ci
+npx expo run:android      # debug build on a connected phone or emulator
 ```
 
-JavaScript-only changes reach an installed build over the air with `npx eas-cli@latest update --channel preview`. A change that adds native code needs a new `version` in `app.json` and a new build.
+Google sign-in (Drive backup) works only in builds signed with a key registered in this project's Google Cloud OAuth client. A build signed with your own key runs, but Drive backup fails until you create your own OAuth client and put its web client ID in `src/google.ts`. Cloud builds and over-the-air updates use the maintainer's EAS project; see [docs/releasing.md](docs/releasing.md).
 
 ---
 
@@ -92,7 +104,7 @@ The interface follows the bencepc.hu iOS 27 design system, rebuilt natively in R
 | **App** | Expo SDK 58, React Native 0.88, Expo Router, TypeScript, on-device SQLite |
 | **Native** | Two small local Expo modules in Kotlin: Gmail account tokens (`modules/google-account-token`) and PDF page rendering (`modules/pdf-pages`) |
 | **Logic** | Email parser, Gmail adapter, backup format and database logic are plain TypeScript, tested in Node |
-| **Checks** | 93 unit tests, strict typecheck, lint; Maestro flows drive the app on an Android emulator in GitHub Actions |
+| **Checks** | 149 unit tests, strict typecheck, lint; Maestro flows drive the app on an Android emulator in GitHub Actions |
 
 ```sh
 npm test            # parser, Gmail adapter, database, backup, translation key parity
@@ -104,7 +116,7 @@ npx expo lint
 
 ## Docs
 
-[Privacy policy](docs/privacy.md) · [Releasing](docs/releasing.md) · [Visual reference](docs/visual-reference.md) · [UI polish notes](docs/ui-polish.md) · [Development notes](docs/development.md) · [Original plan](docs/brainstorm.md)
+[Privacy policy](https://bencepc.hu/warrantly/privacy/) ([source](docs/privacy.md)) · [Gmail verification](docs/gmail-verification.md) · [Releasing](docs/releasing.md) · [Visual reference](docs/visual-reference.md) · [UI polish notes](docs/ui-polish.md) · [Development notes](docs/development.md) · [Original plan](docs/brainstorm.md)
 
 ## License
 

@@ -1,7 +1,7 @@
 # Warrantly: development notes
 
-Phone app (Expo, iOS + Android) that finds purchase and warranty emails and tracks how many
-days of warranty are left. Everything stays on the device. Full plan: [docs/brainstorm.md](docs/brainstorm.md).
+Android app (Expo) that finds purchase and warranty emails and tracks how many days of warranty are
+left. Data stays on the phone unless the user turns on the encrypted Drive backup or exports or shares it. Full plan: [docs/brainstorm.md](docs/brainstorm.md).
 
 ## Status
 
