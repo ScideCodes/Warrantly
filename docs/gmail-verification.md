@@ -7,14 +7,20 @@ verification. While the switch is off, sign-in asks only for `drive.file` (backu
 Source: [Restricted scope verification](https://developers.google.com/identity/protocols/oauth2/production-readiness/restricted-scope-verification),
 read 14 Nov 2026.
 
+## Status (14 Nov 2026)
+
+Branding: verified and published. Data access: verification submitted, Google confirmed receipt, awaiting review
+(not approved). Google estimates a first email in 3 to 5 days and the full review in 4 to 6 weeks. Contact:
+scide.business@gmail.com.
+
 ## What Google asks for
 
 | Item | Warrantly status |
 |---|---|
-| Public homepage that describes the app, links the privacy policy, on a domain you own (a Play listing does not count) | To do. GitHub Pages works if its domain can be verified (next row). |
-| Privacy policy on the same domain as the homepage, linked on the OAuth consent screen, following the User Data Policy and Limited Use | Text ready: `docs/privacy.md` (has the Limited Use sentence). Needs hosting. |
-| Domain ownership in Google Search Console, by an Owner/Editor of the Cloud project | To do. Check that the chosen domain is accepted as an authorized domain. |
-| Justification: how the scope is used and why a narrower one is not enough | Draft below. |
+| Public homepage that describes the app, links the privacy policy, on a domain you own (a Play listing does not count) | Done: https://bencepc.hu/warrantly/ (also Terms: https://bencepc.hu/warrantly/terms/). Source in ScideCodes/BencePC (`0d04fb3`, `d1026a3`). |
+| Privacy policy on the same domain as the homepage, linked on the OAuth consent screen, following the User Data Policy and Limited Use | Done: https://bencepc.hu/warrantly/privacy/. Compliance may still be assessed during the review. |
+| Domain ownership in Google Search Console, by an Owner/Editor of the Cloud project | Done: bencepc.hu verified in Search Console and added as an authorized domain. |
+| Justification: how the scope is used and why a narrower one is not enough | Done: gmail.readonly use case and justification entered in the verification form. Draft kept below. |
 | Unlisted YouTube demo video, in English | Done 14 Nov 2026: https://www.youtube.com/watch?v=J82HG2bCe4U (staging build, test account). Shows the OAuth clients and scopes, the unverified-app warning, Gmail and Drive consent, an imported test mail with its PDF. |
 | Security assessment (CASA), yearly | Possibly not required. See "CASA" below. |
 
@@ -24,9 +30,9 @@ Warrantly finds warranty documents and purchase mails that state a warranty leng
 records on the user's phone. It must search the mailbox (`messages.list` with a query) and read matching messages and
 their PDF attachments (`messages.get`, `attachments.get`). `gmail.metadata` cannot read bodies or attachments, and
 the warranty length, product and order number are in the body or the PDF. `gmail.addons.*` scopes only work inside a
-Gmail add-on, not in an Android app. The app never sends, deletes, labels or changes mail. Mail is read on the phone
-only: there is no Warrantly server, and no mail content leaves the device except to the user's own encrypted Drive
-backup when they turn backups on.
+Gmail add-on, not in an Android app. The app never sends, deletes, labels or changes mail. Mail is read on the phone:
+there is no Warrantly server. Records built from mail leave the device only when the user chooses: an encrypted
+backup to their own Google Drive, or an export or share they start. Do not describe the whole app as device-only.
 
 ## Demo video script (about 3 minutes)
 
