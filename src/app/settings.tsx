@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
+import { Children, cloneElement, Fragment, isValidElement, useCallback, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
 import { SheetFrame, SheetBody } from '@/components/Sheet';
@@ -16,7 +16,7 @@ import { restartIntoUpdate, versionLine } from '@/appUpdate';
 import { openStorePage } from '@/rate';
 import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties } from '@/dataTools';
 import { toCsv, toHtml } from '@/export';
-import { chooseBackupAccount } from '@/google';
+import { chooseBackupAccount, configureGoogleSignIn } from '@/google';
 import { appLanguage, resources } from '@/i18n';
 import { getDensity, setDensity, setUsername, type Density } from '@/settings';
 import { forgetRecent } from '@/recentStore';
@@ -27,7 +27,7 @@ import { showAlert } from '@/components/Dialog';
 import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed, useRoom } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
-import { GMAIL_IMPORT } from '@/features';
+import { isGmailImportEnabled, setGmailImportEnabled, useGmailImport } from '@/features';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 type Icon = IconName;
@@ -59,6 +59,26 @@ export default function Settings() {
   const [name, setName] = useState(getUsername);
   const [editingName, setEditingName] = useState(false);
   const [draftName, setDraftName] = useState('');
+  const gmailImport = useGmailImport();
+  const versionTapCount = useRef(0);
+  const versionTapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleVersionTap = useCallback(() => {
+    versionTapCount.current += 1;
+    if (versionTapTimer.current) clearTimeout(versionTapTimer.current);
+    versionTapTimer.current = setTimeout(() => {
+      versionTapCount.current = 0;
+    }, 2500);
+
+    if (versionTapCount.current >= 7) {
+      versionTapCount.current = 0;
+      if (versionTapTimer.current) clearTimeout(versionTapTimer.current);
+      const next = !isGmailImportEnabled();
+      setGmailImportEnabled(next);
+      configureGoogleSignIn();
+      showAlert(t(next ? 'settings.devModeGmailOn' : 'settings.devModeGmailOff'));
+    }
+  }, [t]);
 
   // Back from PIN setup: show whether the lock is now on.
   useFocusEffect(
@@ -359,7 +379,7 @@ export default function Settings() {
         )}
       </View>
 
-      {GMAIL_IMPORT && section(
+      {gmailImport && section(
         t('accounts.section'),
         <>
           {accounts.map((a) => (
@@ -504,9 +524,11 @@ export default function Settings() {
           {link('shield-checkmark-outline', TILE.grey, t('privacy.title'), () => router.push('/privacy'))}
         </>,
       )}
-      <Text style={styles.version} selectable>
-        {t('settings.version', { version: versionLine(i18n.language) })}
-      </Text>
+      <Pressable onPress={handleVersionTap} hitSlop={12} accessibilityRole="button">
+        <Text style={styles.version} selectable={false}>
+          {t('settings.version', { version: versionLine(i18n.language) })}
+        </Text>
+      </Pressable>
       <SheetFrame open={reminderMenu} onClose={() => setReminderMenu(false)} title={t('settings.reminderSchedule')}>
         <SheetBody><Group inSheet>{[...ALL_GROUPS, 'daily' as ReminderGroup].map((g, index) => (
           <Row key={g} separator={index > 0} onPress={() => { void toggleGroup(g).catch(error => showAlert(t('settings.reminderFailed'), String(error))); }} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>

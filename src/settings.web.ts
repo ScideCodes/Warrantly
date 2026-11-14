@@ -37,8 +37,8 @@ export const getWidgetNames = (): boolean | null => {
 export const setWidgetNames = (on: boolean | null): void => (on === null ? localStorage.removeItem('widget_names') : localStorage.setItem('widget_names', on ? '1' : '0'));
 
 // Backup settings (section 17). The backup password's key lives in SecureStore, not here.
-export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account'): string | null => localStorage.getItem(key);
-export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account', value: string): void => localStorage.setItem(key, value);
+export const getSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account' | 'gmail_import_enabled'): string | null => localStorage.getItem(key);
+export const setSetting = (key: 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'backup_account' | 'gmail_import_enabled', value: string): void => localStorage.setItem(key, value);
 // What a backup carries besides the database.
 export const settingsSnapshot = (): Record<string, string | null> => ({ username: localStorage.getItem('username'), theme: localStorage.getItem('theme'), language: localStorage.getItem('language'), reminder_time: localStorage.getItem('reminder_time'), reminder_groups: localStorage.getItem('reminder_groups'), return_reminders: localStorage.getItem('return_reminders'), reminders_enabled: localStorage.getItem('reminders_enabled') });
 export function applySnapshot(s: Record<string, string | null>): void {

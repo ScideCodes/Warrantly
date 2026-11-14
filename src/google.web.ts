@@ -5,3 +5,4 @@ export const needsReconnect = (_e: unknown): boolean => false;
 export const getAccessToken = async (_expired?: string): Promise<string> => '';
 export const chooseBackupAccount = async (): Promise<string | null> => null;
 export const ensureDriveAccess = async (_interactive: boolean): Promise<boolean> => false;
+export const configureGoogleSignIn = (): void => {};
