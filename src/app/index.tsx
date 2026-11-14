@@ -32,7 +32,7 @@ import { liveRecent } from '@/recent';
 import { forgetRecent, readRecent } from '@/recentStore';
 import { rescheduleReminders } from '@/reminders';
 import { readBackupHealth } from '@/backupStatus';
-import { getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
+import { getBundleLead, getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
@@ -191,11 +191,28 @@ export default function Home() {
   // Search: name, store, order and serial number, and (once read) the text of the documents.
   const matches = useCallback((w: Warranty) => {
     if (!words.length) return true;
-    const text = plain(`${w.product_name ?? ''} ${w.store_name} ${w.order_number ?? ''} ${serialSummary(w) ?? ''}`);
+    const bundled = w.bundle_id ? warranties.filter((b) => b.bundle_id === w.bundle_id && b.id !== w.id) : [];
+    const bundledText = bundled.map((b) => `${b.product_name ?? ''} ${b.store_name} ${b.order_number ?? ''} ${serialSummary(b) ?? ''}`).join(' ');
+    const text = plain(`${w.product_name ?? ''} ${w.store_name} ${w.order_number ?? ''} ${serialSummary(w) ?? ''} ${bundledText}`);
     return words.every((word) => text.includes(word)) || (textHits.q === searchQuery && textHits.hits.has(w.id));
-  }, [words, textHits, searchQuery]);
+  }, [words, textHits, searchQuery, warranties]);
   const visible = useMemo(() => {
     const base = filter.kind === 'archived' ? archived : warranties;
+    const bundleMap = new Map<number, Warranty[]>();
+    for (const item of base) {
+      if (item.bundle_id) {
+        const arr = bundleMap.get(item.bundle_id) ?? [];
+        arr.push(item);
+        bundleMap.set(item.bundle_id, arr);
+      }
+    }
+    const isBundleLead = (item: Warranty): boolean => {
+      if (!item.bundle_id) return true;
+      const group = bundleMap.get(item.bundle_id);
+      if (!group || group.length <= 1) return true;
+      return item.id === getBundleLead(item.bundle_id, group);
+    };
+    const leadBase = base.filter(isBundleLead);
     const common = {
       query: '',
       account: filter.kind === 'account' ? filter.id : filter.kind === 'manual' ? 'manual' as const : 'all' as const,
@@ -205,12 +222,12 @@ export default function Home() {
     };
     const inCollection = filter.kind === 'collection' ? members.get(filter.id) ?? new Set<number>() : null;
     const pick = (list: Warranty[]) => sortWarranties(quickFilter(list.filter((w) => matches(w) && (!inCollection || inCollection.has(w.id))), quick, today), sort);
-    if (filter.kind === 'archived') return { pinned: [], soon: [], covered: [], expired: [], archived: pick(base) };
-    const active = pick(filterWarranties(base, { ...common, tab: 'active' }, today));
+    if (filter.kind === 'archived') return { pinned: [], soon: [], covered: [], expired: [], archived: pick(leadBase) };
+    const active = pick(filterWarranties(leadBase, { ...common, tab: 'active' }, today));
     const { pinned, rest } = splitPinned(active, today);
     const soon: Warranty[] = [], covered: Warranty[] = [];
     for (const w of rest) (daysUntil(w.end_date, today) <= 30 ? soon : covered).push(w);
-    return { pinned, soon, covered, expired: pick(filterWarranties(base, { ...common, tab: 'expired' }, today)), archived: [] as Warranty[] };
+    return { pinned, soon, covered, expired: pick(filterWarranties(leadBase, { ...common, tab: 'expired' }, today)), archived: [] as Warranty[] };
   }, [warranties, archived, filter, quick, sort, matches, members, today]);
   const expiredOpen = showExpired || searchQuery.trim() !== '' || quick === 'nodocs'; // search includes expired items
   const sections = useMemo(() => [
@@ -221,7 +238,22 @@ export default function Home() {
     { key: 'archived' as const, data: visible.archived },
   ].filter((s) => s.data.length > 0), [visible, expiredOpen]);
   const shownIds = useMemo(() => sections.flatMap((s) => s.data.map((w) => w.id)), [sections]);
-  const counts = useMemo(() => summary(warranties, today), [warranties, today]);
+  const counts = useMemo(() => {
+    const bundleMap = new Map<number, Warranty[]>();
+    for (const item of warranties) {
+      if (item.bundle_id) {
+        const arr = bundleMap.get(item.bundle_id) ?? [];
+        arr.push(item);
+        bundleMap.set(item.bundle_id, arr);
+      }
+    }
+    const leadWarranties = warranties.filter((item) => {
+      if (!item.bundle_id) return true;
+      const group = bundleMap.get(item.bundle_id);
+      return !group || group.length <= 1 || item.id === getBundleLead(item.bundle_id, group);
+    });
+    return summary(leadWarranties, today);
+  }, [warranties, today]);
   const total = useMemo(() => Object.entries(totalValue([...visible.pinned, ...visible.soon, ...visible.covered])).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + '), [visible, i18n.language]);
   const facets = useMemo(() => warrantyFacets(warranties), [warranties]);
   const docHits = useMemo(() => {
@@ -682,13 +714,13 @@ const useStyles = themed(() => StyleSheet.create({
   // One quiet filter strip; each option keeps a full touch target.
   summary: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: RADIUS, backgroundColor: colors.card },
   // Align the counts even when one translated label needs another line.
-  sumItem: { flex: 1, minHeight: 44, borderRadius: RADIUS - 4, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 4, paddingVertical: 8, paddingHorizontal: 6 },
+  sumItem: { flex: 1, minHeight: 44, borderRadius: RADIUS - 4, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'center', columnGap: 5, paddingVertical: 10, paddingHorizontal: 6 },
   sumOn: { backgroundColor: colors.select },
   sumPressed: { backgroundColor: colors.press },
-  sumStack: { flex: 0, width: '100%', justifyContent: 'flex-start', paddingHorizontal: 12 },
-  sumValue: { ...TYPE.headline, color: colors.ink, fontVariant: ['tabular-nums'] },
+  sumStack: { flex: 0, width: '100%', justifyContent: 'flex-start', alignItems: 'baseline', paddingHorizontal: 12 },
+  sumValue: { ...TYPE.headline, color: colors.ink, fontVariant: ['tabular-nums'], includeFontPadding: false },
   sumLabelOn: { color: colors.ink },
-  sumLabel: { ...TYPE.foot, color: colors.ink2, textAlign: 'center' },
+  sumLabel: { ...TYPE.foot, color: colors.ink2, textAlign: 'center', includeFontPadding: false },
   bulkBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row' },
   // Search: the reference's page search field (`input.quick-search`, ios.css line 943): the standard 44dp
   // field, 9/12 padding, 14 radius, on --card, no glyph. Clear sits inside it like the search input's own x.
@@ -696,7 +728,7 @@ const useStyles = themed(() => StyleSheet.create({
   searchInput: { flex: 1, minHeight: CONTROL_H, ...TYPE.body, color: colors.ink, paddingVertical: 9, paddingHorizontal: 0 },
   clear: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   filterChip: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 8, minHeight: CONTROL_H, paddingHorizontal: 16, paddingVertical: 8, borderRadius: 22, backgroundColor: colors.tintSoft, maxWidth: '100%' },
-  filterChipText: { flexShrink: 1, ...TYPE.sub, fontWeight: '600', color: colors.tintInk },
+  filterChipText: { flexShrink: 1, ...TYPE.sub, fontWeight: '600', color: colors.tintInk, includeFontPadding: false },
   syncLine: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 4 },
   syncText: { flex: 1, ...TYPE.foot, color: colors.ink2 },
   statusCard: { marginTop: 8 },

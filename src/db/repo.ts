@@ -450,7 +450,7 @@ export async function updateWarranty(db: Db, id: number, w: WarrantyInput, now =
   const previous = w.serial_numbers === undefined ? await db.getFirstAsync<{ serial_number: string | null; serial_numbers: string | null }>('SELECT serial_number, serial_numbers FROM warranties WHERE id = ?', [id]) : null;
   w = { ...w, ...serialFields(w, previous ?? undefined) };
   await db.runAsync(
-    `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, start_is_suggested = 0, length_is_suggested = 0,
+    `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, origin = 'manual', start_is_suggested = 0, length_is_suggested = 0,
        status = 'complete', missing_fields = '[]', updated_at = ? WHERE id = ?`,
     [...FIELDS.map((f) => w[f] ?? null), now, id],
   );

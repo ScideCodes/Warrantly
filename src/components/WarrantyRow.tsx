@@ -28,10 +28,11 @@ export function agoLabel(t: TFunction, ymd: string, today: string): string {
   return unit === 'days' && count === 0 ? t('warranty.today') : t(`warranty.ago_${unit}`, { count });
 }
 
-// Imported names get shortened for the list; names the user typed are shown as typed.
+// Imported names get shortened for the list; names the user typed or confirmed are shown as typed.
 export function displayName(t: TFunction, w: Warranty): string {
   if (!w.product_name) return t('warranty.unknownProduct');
-  return w.origin === 'manual' ? w.product_name : shortName(w.product_name);
+  if (w.origin === 'manual' || w.origin === 'scan' || w.status === 'complete') return w.product_name;
+  return shortName(w.product_name);
 }
 
 // Keep the existing public helper while sharing precision rules with the price editor.
@@ -39,7 +40,7 @@ export { formatMoney } from '@/money';
 
 export function formatDate(ymd: string, language: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' });
+  return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' }).replace(/\s+/g, '\u00A0');
 }
 
 // One row for a warranty everywhere (home, attention list, other covers on the detail screen), laid out like
@@ -147,7 +148,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
 });
 
 // Tile colours per category, from the reference's tile palette (which colour goes with which category is Warrantly's).
-const CATEGORY_TILE: Record<string, string> = {
+export const CATEGORY_TILE: Record<string, string> = {
   electronics: TILE.blue,
   computers: TILE.indigo,
   phones: TILE.green,
@@ -179,7 +180,7 @@ const useStyles = themed(() => StyleSheet.create({
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4 },
   meta: { ...TYPE.foot, color: colors.ink2, fontVariant: ['tabular-nums'] },
   store: { flexShrink: 1 },
-  badge: { flexShrink: 0, maxWidth: '65%', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
-  badgeText: { fontVariant: ['tabular-nums'], ...TYPE.foot, fontWeight: '600' },
+  badge: { flexShrink: 0, maxWidth: '65%', borderRadius: 6, paddingHorizontal: 7, paddingVertical: 2, marginTop: 1, justifyContent: 'center', alignItems: 'center' },
+  badgeText: { fontVariant: ['tabular-nums'], ...TYPE.foot, fontWeight: '600', includeFontPadding: false },
   quietBadge: { fontWeight: '400' },
 }));
