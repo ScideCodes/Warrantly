@@ -1,6 +1,6 @@
 import { Text, View, useThemeTransition } from '@/components/themeMotion';
 import { forwardRef, useState, type ComponentRef, type ReactNode } from 'react';
-import { Animated, KeyboardAvoidingView, ScrollView, StyleSheet, useWindowDimensions, type FlatListProps, type ScrollViewProps } from 'react-native';
+import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, type FlatListProps, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { goBack } from '@/nav';
@@ -101,6 +101,8 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
         ref={ref as never}
         onScroll={edge.onScroll}
         scrollEventThrottle={16}
+        overScrollMode="never"
+        removeClippedSubviews={Platform.OS === 'android'}
         keyboardShouldPersistTaps="handled"
         {...scroll}
         contentContainerStyle={[{ maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (footer ? 0 : insets.bottom) + 32 }, contentContainerStyle]}
@@ -142,6 +144,8 @@ export function ListPage<T>({ title, lead, header, contentContainerStyle, ...lis
       <Animated.FlatList
         onScroll={edge.onScroll}
         scrollEventThrottle={16}
+        overScrollMode="never"
+        removeClippedSubviews={Platform.OS === 'android'}
         keyboardShouldPersistTaps="handled"
         {...(list as object)}
         data={list.data as never}

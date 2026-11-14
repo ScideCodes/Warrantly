@@ -640,6 +640,8 @@ export default function Home() {
         keyboardDismissMode="on-drag"
         onScroll={edge.onScroll}
         scrollEventThrottle={16}
+        overScrollMode="never"
+        showsVerticalScrollIndicator={false}
         initialNumToRender={12}
         maxToRenderPerBatch={10}
         windowSize={5}
