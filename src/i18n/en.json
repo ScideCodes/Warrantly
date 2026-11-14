@@ -923,16 +923,5 @@
   "money": {
     "search": "Search name or code",
     "none": "No matching currency"
-  },
-  "accent": {
-    "title": "Accent colour",
-    "blue": "Blue",
-    "teal": "Teal",
-    "green": "Green",
-    "purple": "Purple",
-    "orange": "Orange",
-    "custom": "Custom colour",
-    "hex": "Hex colour, e.g. #8652CE",
-    "apply": "Apply colour"
   }
 }

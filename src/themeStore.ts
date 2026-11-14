@@ -1,4 +1,3 @@
-import { accentColors, validAccent } from './accent.ts';
 // The palette store (pure: no React Native, tested in Node). One mutable `colors` object keeps its identity
 // while the scheme changes; subscribers re-render and re-create their styles (src/theme.ts).
 
@@ -142,10 +141,8 @@ export interface ThemeState {
   version: number; // bumps on every scheme change: the key for re-created styles
 }
 
-export function createThemeStore(initialDark: boolean, initialAccent = 'blue') {
-  let accent = validAccent(initialAccent) ? initialAccent : 'blue';
+export function createThemeStore(initialDark: boolean) {
   const colors: Palette = { ...(initialDark ? dark : light) };
-  if (accent !== 'blue') Object.assign(colors, accentColors(accent, initialDark));
   // Days-left badge (not in the reference): its soft/strong colour pairs, quiet when nothing is urgent.
   const tone: Record<'ok' | 'warning' | 'soon' | 'expired', Tone> = { ok: { fg: '', bg: '' }, warning: { fg: '', bg: '' }, soon: { fg: '', bg: '' }, expired: { fg: '', bg: '' } };
   const fillTone = () => {
@@ -162,12 +159,9 @@ export function createThemeStore(initialDark: boolean, initialAccent = 'blue') {
     tone,
     get: (): ThemeState => state,
     // Switches the scheme in place. Returns false (and notifies nobody) when it is already showing.
-    set(nextDark: boolean, nextAccent = accent): boolean {
-      nextAccent = validAccent(nextAccent) ? nextAccent : 'blue';
-      if (nextDark === state.dark && nextAccent === accent) return false;
-      accent = nextAccent;
+    set(nextDark: boolean): boolean {
+      if (nextDark === state.dark) return false;
       Object.assign(colors, nextDark ? dark : light);
-      if (accent !== 'blue') Object.assign(colors, accentColors(accent, nextDark));
       fillTone();
       state = { dark: nextDark, version: state.version + 1 };
       listeners.forEach((l) => l());

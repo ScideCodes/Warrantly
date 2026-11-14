@@ -1,4 +1,3 @@
-import AccentPicker from '@/components/AccentPicker';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -440,7 +439,6 @@ export default function Settings() {
             theme,
             chooseTheme,
           )}
-          <AccentPicker onChange={() => { void getDb().then(updateWidget).catch(() => {}); }} />
           {choices(
             'list-outline',
             TILE.teal,
