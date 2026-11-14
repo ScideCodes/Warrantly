@@ -8,7 +8,7 @@
 
 An Android app that finds your purchase and warranty emails, keeps the receipts with each purchase and counts the days left.
 
-![Version](https://img.shields.io/badge/version-0.9.0-007aff)
+![Version](https://img.shields.io/badge/version-1.0.0-007aff)
 ![Android](https://img.shields.io/badge/Android-app-3ddc84?logo=android&logoColor=white)
 ![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-146%20passing-2ea44f)
@@ -21,7 +21,7 @@ An Android app that finds your purchase and warranty emails, keeps the receipts 
 
 ---
 
-Warrantly reads the purchase mails already in your Gmail, picks out the ones with a warranty, and keeps everything on your phone: the product, the store, the dates, the PDF. Open the app and see what is still covered, what ends soon and what has expired. No account, no server, no ads, no tracking.
+Warrantly keeps your warranties on your phone: the product, the store, the dates, the receipt. Add a purchase by hand, scan its receipt or share a PDF into the app. Open the app and see what is still covered, what ends soon and what has expired. No account, no server, no ads, no tracking.
 
 ---
 
@@ -49,7 +49,8 @@ Warrantly reads the purchase mails already in your Gmail, picks out the ones wit
 
 | | What Warrantly provides |
 | --- | --- |
-| 📧 **Finds warranties for you** | Reads Gmail (read-only, several accounts) and picks out purchase mails and warranty documents. |
+| ➕ **Quick to add** | Type it in, scan a paper receipt, scan a serial number, or share a PDF or photo into Warrantly. |
+| 📧 **Gmail import (coming)** | Reads Gmail read-only and picks out warranty mails. Built, but hidden in 1.0 until Google finishes its review of the Gmail permission. |
 | ⏳ **Days left at a glance** | Covered, ending soon and expired, with a plain badge. Filter by store, search, ignore what does not matter. |
 | 📄 **Documents first** | Mail PDFs, photos and scans open inside the app. Scan a paper receipt with on-device text recognition. |
 | 🔔 **Reminders** | Before a warranty ends and for the return window of online orders. You choose when. |
@@ -61,7 +62,7 @@ Warrantly reads the purchase mails already in your Gmail, picks out the ones wit
 
 ## Privacy
 
-Warrantly has no server and no account. Your warranties live in a database on the phone. Gmail access is read-only, only warranty-related mails are downloaded, and only the details a warranty needs are kept. Backups are encrypted on the phone (scrypt and AES-256-GCM) before they reach your Drive. Read the full [privacy policy](docs/privacy.md).
+Warrantly has no server and no account. Your warranties live in a database on the phone. Version 1.0 does not ask for Gmail access. Backups are encrypted on the phone (scrypt and AES-256-GCM) before they reach your Drive. Read the full [privacy policy](docs/privacy.md).
 
 ---
 

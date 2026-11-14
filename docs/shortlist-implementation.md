@@ -89,3 +89,5 @@ preview build, then the matching OTA and GitHub release with the APK attached.
 
 - 13 Nov 2026: `npm test` 136 pass, 0 fail (repo, features migration 12→13, old/new backup restore, shortlist,
   backup health, transfer privacy, serial, widget model). `npx tsc --noEmit` clean. `npx expo lint` 0 errors.
+- 14 Nov 2026 (1.0.0): Gmail import switched off, app ID `dev.warrantly.app`. `npm test` 146 pass, 0 fail.
+  `npx tsc --noEmit` clean. `npx expo lint` 0 errors (1 existing warning in `src/i18n/index.ts`).

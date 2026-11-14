@@ -1,4 +1,4 @@
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 # Reuse ui-polish's library. Font-scale changes can recreate the Android activity.
 # run.sh sets 360dp width and system font_scale=1.6 before launching this flow.

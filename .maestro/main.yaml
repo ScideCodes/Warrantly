@@ -1,4 +1,4 @@
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 # Onboarding: name, then "Later" for the PIN. A new install must not show "What's new".
 - launchApp:

@@ -14,4 +14,4 @@ export async function maybeAskReview(warranties: number): Promise<void> {
 }
 
 // "Rate Warrantly" in Settings: the store page.
-export const openStorePage = (): Promise<void> => Linking.openURL(StoreReview.storeUrl() ?? 'market://details?id=dev.warrantly.prototype');
+export const openStorePage = (): Promise<void> => Linking.openURL(StoreReview.storeUrl() ?? 'market://details?id=dev.warrantly.app');

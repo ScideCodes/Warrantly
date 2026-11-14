@@ -15,7 +15,7 @@
     "syncStarting": "Új garanciák keresése…",
     "resetFilters": "Keresés és szűrők törlése",
     "emptyTitle": "Még nincs garanciád",
-    "emptyBody": "Kapcsold össze a Gmailt, és a Warrantly magától megkeresi a számláidat és a garanciáidat.",
+    "emptyBody": "Adj hozzá egy vásárlást kézzel, vagy olvasd be a blokkját. A Warrantly szól, mielőtt lejár a garancia.",
     "connectGmail": "Gmail összekapcsolása",
     "syncing": "Számlák keresése itt: {{email}}…",
     "progress": "{{done}}/{{total}} levél beolvasva",
@@ -336,7 +336,7 @@
     "cancel": "Mégse",
     "needPassword": "Add meg a mentési jelszót.",
     "wrong": "Hibás mentési jelszó.",
-    "done": "Visszaállítva. Kapcsold össze újra a Gmailt a szinkronizáláshoz.",
+    "done": "Visszaállítva.",
     "working": "Visszaállítás…"
   },
   "accounts": {
@@ -482,6 +482,7 @@
       "## Röviden",
       "A Warrantly a telefonodon tárolja a garanciáidat. Nincs Warrantly szerver, fiók, hirdetés vagy követés. A fejlesztő nem látja az adataidat.",
       "## Gmail",
+      "Az 1.0-s verzióban nincs Gmail-importálás, és az app nem kér hozzáférést a Gmailhez. Az alábbi szöveg akkor érvényes, ha egy későbbi verzió bekapcsolja.",
       "Az engedélyeddel a Warrantly ezen a telefonon olvassa a Gmail fiókodat (csak olvasásra), hogy megtalálja a garanciajegyeket és a garanciát említő leveleket. Csak ezeket tölti le, és csak a garanciához szükséges adatokat tartja meg: bolt, termék, dátumok, rendelésszám, elérhetőségek és a csatolt PDF-ek. A leveleket nem küldi tovább, és soha nem küld, töröl vagy módosít levelet.",
       "A Warrantly a Google API-któl kapott adatokat a Google API Services User Data Policy szerint használja és továbbítja, a Limited Use követelményeket is beleértve.",
       "## Mentések",

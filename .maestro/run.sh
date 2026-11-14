@@ -2,7 +2,7 @@
 # Runs inside the emulator job. Each step prints PASS/FAIL; screenshots go to out/.
 set -u
 mkdir -p out
-APP=dev.warrantly.prototype
+APP=dev.warrantly.app
 result() { if [ "$1" = 0 ]; then echo "PASS $2"; else echo "FAIL $2"; FAILED=1; fi; }
 FAILED=0
 adb install -r -g app.apk

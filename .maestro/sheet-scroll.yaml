@@ -1,4 +1,4 @@
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 # A filter sheet with more stores than fit on screen: the last store starts below the fold, scrolls into
 # view and filters the list, while Close stays fixed and reachable. run.sh sets 360dp and font_scale=1.6

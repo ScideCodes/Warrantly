@@ -22,6 +22,15 @@ The first release of each app version also carries the installable APK:
 scripts/ota-release.sh "First beta" path/to/app.apk
 ```
 
+## 1.0.0
+
+- New application ID `dev.warrantly.app` (was `dev.warrantly.prototype`). It installs as a new app beside the beta;
+  testers restore from their Drive backup. It needs its own signing key and its own Android OAuth client
+  (package + SHA-1) in Google Cloud, or Drive sign-in fails.
+- Gmail import is off (`GMAIL_IMPORT` in `src/features.ts`) until Google verifies the `gmail.readonly` scope. With
+  it off, sign-in asks only for `drive.file`. See `docs/gmail-verification.md`.
+- 1.0.0 is a full release: create it with `gh release create` without `--prerelease`, APK attached.
+
 ## Before the repository goes public
 
 - No keys, tokens, keystores or real mail in the tree or in history (checked again for 0.9.0, 14 Nov 2026).
