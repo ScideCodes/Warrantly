@@ -12,6 +12,7 @@ import { mailToText, parseRfc822 } from '@/mail/rfc822.ts';
 import { imageMime } from '@/safeLinks';
 import { saveDocumentCopy } from './documentSave';
 import PdfPages from '../modules/pdf-pages';
+import { readPdfText } from './pdfText';
 
 // Documents kept with warranties (brainstorm section 18): scans become one PDF in the app's own folder.
 const folder = () => {
@@ -131,6 +132,15 @@ export async function copyStoredDocument(localPath: string): Promise<string> {
   return copy.name;
 }
 export const documentUri = (localPath: string): string => fileFor(localPath).uri;
+
+// Read an imported PDF before review, in small native batches. No network or document upload.
+export async function readImportDocument(localPath: string, cancelled: () => boolean): Promise<string> {
+  return readPdfText(async (first, count) => {
+    const batch = await PdfPages.renderForText(documentUri(localPath), 1400, first, count);
+    if (batch.pageCount > 20) throw new Error('Use a document with up to 20 pages for autofill');
+    return batch;
+  }, extractTextFromImage, cancelled);
+}
 
 export function deleteDocuments(localPaths: string[]): void {
   for (const p of localPaths) {

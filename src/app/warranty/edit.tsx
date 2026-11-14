@@ -143,6 +143,10 @@ export default function EditWarranty() {
 
   useEffect(() => {
     if (inbox) {
+      if (!id && !copyFrom) {
+        router.replace({ pathname: '/import-review', params: { inbox } });
+        return;
+      }
       void getDb().then((db) => getInboxItem(db, Number(inbox))).then((item) => {
         // The inbox keeps its file until this warranty is saved; the form works on its own copy.
         if (item) void runScan(async () => ({ text: item.text, localPath: await copyStoredDocument(item.local_path) }));
@@ -260,6 +264,17 @@ export default function EditWarranty() {
       const result = await current.capture(source);
       if (!mounted.current) return;
       if (!result) return setScan(previous);
+      if (!id && !copyFrom && !form.product_name.trim() && !form.store_name.trim() && !form.order_number.trim()) {
+        // Persist the capture before navigation: review can be cancelled or the app closed safely.
+        let reviewId = 0;
+        await current.save(async path => {
+          const db = await getDb();
+          reviewId = (await db.runAsync('INSERT INTO inbox (local_path, filename, text, source_key, received_at) VALUES (?, ?, ?, ?, ?)',
+            [path, 'receipt.pdf', result.text, `scan:${path}`, new Date().toISOString()])).lastInsertRowId;
+        });
+        if (mounted.current) router.replace({ pathname: '/import-review', params: { inbox: String(reviewId) } });
+        return;
+      }
       void saveKnownText(result.localPath, result.text).catch(() => {}); // search reads it without OCR again
       const found = parseScanText(result.text, todayYmd());
       setForm((f) => ({

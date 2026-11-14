@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, PixelRatio, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -81,6 +81,7 @@ export default function DocumentViewer() {
       {/* Zoom out, the level and zoom in share one capsule (the reference's `.pc-tools`). */}
       <View style={styles.tools}>
         <View style={styles.capsule}>
+          <ToolButton icon="shield-checkmark-outline" label={t('redact.title')} onPress={() => router.push({ pathname: '/redact', params: { path } })} disabled={!pages || busy} />
           <ToolButton icon="remove" label={t('viewer.zoomOut')} onPress={() => canvas.current?.zoomTo(Math.max(MIN_ZOOM, zoom - 1))} disabled={!pages || zoom <= MIN_ZOOM} />
           <Text style={styles.zoom}>{Math.round(zoom * 100)}%</Text>
           <ToolButton icon="add" label={t('viewer.zoomIn')} onPress={() => canvas.current?.zoomTo(Math.min(MAX_ZOOM, zoom + 1))} disabled={!pages || zoom >= MAX_ZOOM} />

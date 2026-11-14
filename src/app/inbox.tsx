@@ -56,7 +56,7 @@ export default function Inbox() {
 
   const sections: SheetSection[] = !step ? [] : step.step === 'menu' ? [{ options: [
     { key: 'view', icon: 'eye-outline', label: t('docs.open'), onPress: () => router.push({ pathname: '/document', params: { path: step.item.local_path, title: step.item.filename, name: step.item.filename } }) },
-    { key: 'new', icon: 'add-circle-outline', label: t('inbox.newWarranty'), onPress: () => router.push({ pathname: '/warranty/edit', params: { inbox: String(step.item.id) } }) },
+    { key: 'new', icon: 'add-circle-outline', label: t('importReview.title'), onPress: () => router.push({ pathname: '/import-review', params: { inbox: String(step.item.id) } }) },
     ...(all.length ? [{ key: 'attach', icon: 'attach-outline' as const, label: t('inbox.attachExisting'), onPress: () => next({ item: step.item, step: 'pick' }) }] : []),
     { key: 'discard', icon: 'trash-outline', label: t('inbox.discard'), destructive: true, onPress: () => discard(step.item) },
   ] }] : step.step === 'pick' ? [{ options: all.map((w) => ({ key: String(w.id), label: displayName(t, w), onPress: () => next({ item: step.item, step: 'label', warranty: w }) })) }]

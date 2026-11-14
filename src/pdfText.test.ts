@@ -23,3 +23,13 @@ test('cancelling OCR stops before recognizing another page', async () => {
 test('a missing native page batch fails instead of looping forever', async () => {
   await assert.rejects(readPdfText(async () => ({ pageCount: 5, pages: [] }), async () => [], () => false), /Missing PDF pages/);
 });
+
+test('simultaneous PDF readers cannot overwrite native images before OCR consumes them', async () => {
+  const events: string[] = [];
+  const read = (name: string) => readPdfText(async () => { events.push(`render ${name}`); return { pageCount: 1, pages: [name] }; }, async () => {
+    await new Promise(resolve => setTimeout(resolve, 5));
+    events.push(`read ${name}`); return [name];
+  }, () => false);
+  assert.deepEqual(await Promise.all([read('index'), read('import')]), ['index', 'import']);
+  assert.deepEqual(events, ['render index', 'read index', 'render import', 'read import']);
+});
