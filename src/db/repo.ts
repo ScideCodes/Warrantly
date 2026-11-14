@@ -1,5 +1,5 @@
 import type { ParseResult, StoreRules } from '../parser/types.ts';
-import { DEFAULT_WARRANTY_MONTHS } from '../parser/keywords.ts';
+import { DEFAULT_WARRANTY_MONTHS, IGNORED_SENDERS } from '../parser/keywords.ts';
 import { endDate } from '../warranty.ts';
 import { serialFields } from '../serialNumbers.ts';
 
@@ -793,6 +793,74 @@ export async function restoreIgnored(db: Db, id: number): Promise<void> {
   await db.runAsync(`UPDATE warranties SET status = ?, missing_fields = ?, updated_at = ? WHERE id = ?`, [
     missing.length ? 'needs_input' : 'complete', JSON.stringify(missing), new Date().toISOString(), id,
   ]);
+}
+
+export type IgnoredReason = 'sender' | 'no_warranty' | 'manual';
+
+export interface IgnoredDetail {
+  id: number;
+  product_name: string | null;
+  store_name: string;
+  store_domain: string | null;
+  purchase_date: string;
+  order_number: string | null;
+  serial_number: string | null;
+  notes: string | null;
+  origin: string;
+  account_email: string | null;
+  subject: string | null;
+  sender: string | null;
+  received_at: string | null;
+  reason: IgnoredReason;
+  attachments: { id: number; filename: string; local_path: string }[];
+}
+
+export async function getIgnoredDetail(db: Db, id: number): Promise<IgnoredDetail | null> {
+  const row = await db.getFirstAsync<{
+    id: number;
+    product_name: string | null;
+    store_name: string;
+    store_domain: string | null;
+    purchase_date: string;
+    order_number: string | null;
+    serial_number: string | null;
+    notes: string | null;
+    origin: string;
+    account_email: string | null;
+    subject: string | null;
+    sender: string | null;
+    received_at: string | null;
+  }>(
+    `SELECT w.id, w.product_name, w.store_name, w.store_domain, w.purchase_date, w.order_number, w.serial_number, w.notes, w.origin,
+            a.email AS account_email, min(s.subject) AS subject, min(s.sender) AS sender, min(s.received_at) AS received_at
+       FROM warranties w
+  LEFT JOIN accounts a ON a.id = w.account_id
+  LEFT JOIN sources s ON s.warranty_id = w.id
+      WHERE w.id = ? AND w.status = 'ignored' AND w.deleted_at IS NULL
+   GROUP BY w.id`,
+    [id],
+  );
+  if (!row) return null;
+
+  const attachments = await db.getAllAsync<{ id: number; filename: string; local_path: string }>(
+    `SELECT id, filename, local_path FROM attachments WHERE warranty_id = ?`,
+    [id],
+  );
+
+  let reason: IgnoredReason = 'no_warranty';
+  if (row.origin === 'manual') {
+    reason = 'manual';
+  } else if (
+    (row.store_domain && IGNORED_SENDERS.has(row.store_domain.toLowerCase())) ||
+    (row.sender && IGNORED_SENDERS.has(row.sender.toLowerCase())) ||
+    (row.sender && Array.from(IGNORED_SENDERS).some((d) => row.sender!.toLowerCase().includes(d)))
+  ) {
+    reason = 'sender';
+  } else {
+    reason = 'no_warranty';
+  }
+
+  return { ...row, reason, attachments };
 }
 
 // --- Returns and refunds (section 11) ---

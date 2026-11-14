@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { correctedChoices, reviewDraft, reviewValid, sourceExcerpt } from './importReview.ts';
+import { correctedChoices, formatSourceText, reviewDraft, reviewValid, sourceExcerpt } from './importReview.ts';
 import { nodeDb } from './db/testDb.ts';
 import { migrate, listWarranties, listAttachments } from './db/repo.ts';
 import { addInbox, listInbox } from './db/features.ts';
@@ -62,4 +62,46 @@ test('unselected products are never saved or bundled', async () => {
   assert.deepEqual(rows.map(r => r.product_name), ['Mouse']);
   assert.equal(rows[0].bundle_id, null);
   db.raw.close();
+});
+
+test('formatSourceText merges OCR vertical word fragments into clean readable text', () => {
+  const ocrVertical = `PHILIPS
+HD9350/90
+KETTLE
+BLACK
+Store:
+MediaMarkt
+Purchase Date:
+2024. 05. 12.
+Warranty:
+24 months`;
+  const formatted = formatSourceText(ocrVertical);
+  assert.equal(
+    formatted,
+    'PHILIPS HD9350/90 KETTLE BLACK\nStore: MediaMarkt\nPurchase Date: 2024. 05. 12.\nWarranty: 24 months',
+  );
+});
+
+test('formatSourceText unbreaks hyphenated line wraps and preserves lists', () => {
+  const textWithHyphen = `Official warran-
+ty certificate for the device.
+
+Included accessories:
+- 1x Power cable
+- 1x Charging dock`;
+  const formatted = formatSourceText(textWithHyphen);
+  assert.match(formatted, /warranty certificate/);
+  assert.match(formatted, /- 1x Power cable\n- 1x Charging dock/);
+});
+
+test('sourceExcerpt extracts clean contextual window without cutting mid-word', () => {
+  const doc = `Store: MediaMarkt
+Order: 1049281
+Item: Philips Series 5000 Electric Shaver
+Warranty duration: 24 months legal guarantee
+Thank you for your purchase!`;
+  const excerpt = sourceExcerpt(doc, 'Shaver');
+  assert.ok(excerpt);
+  assert.match(excerpt, /Item: Philips Series 5000 Electric Shaver/);
+  assert.doesNotMatch(excerpt, /\b(hilips|have)\b/); // no chopped partial words
 });

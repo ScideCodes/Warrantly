@@ -11,7 +11,7 @@ import AppIcon from '@/components/Icon';
 import { getDb } from '@/db/client';
 import { getInboxItem, type InboxItem } from '@/db/features';
 import { saveReviewedImport } from '@/db/importReview';
-import { correctedChoices, reviewDraft, reviewValid, sourceExcerpt, type ReviewDraft, type ReviewProduct } from '@/importReview';
+import { correctedChoices, formatSourceText, reviewDraft, reviewValid, sourceExcerpt, type ReviewDraft, type ReviewProduct } from '@/importReview';
 import { forgetChoices, readChoices, rememberChoices } from '@/importChoices';
 import { formatDate } from '@/components/WarrantyRow';
 import { todayYmd } from '@/warranty';
@@ -29,7 +29,7 @@ export default function ImportReview() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [evidence, setEvidence] = useState<string | null>(null);
+  const [sourceModal, setSourceModal] = useState<{ value: string; label: string; mode: 'excerpt' | 'full' } | null>(null);
   const saving = useRef(false);
   const { pickDate, datePicker } = useDatePicker();
   useEffect(() => {
@@ -53,8 +53,8 @@ export default function ImportReview() {
     return () => { active = false; };
   }, [inbox, attempt, i18n]);
   const update = (index: number, patch: Partial<ReviewProduct>) => setDraft(d => d && ({ ...d, products: d.products.map((p, i) => i === index ? { ...p, ...patch } : p) }));
-  function showSource(value: string) {
-    setEvidence(item?.text ? sourceExcerpt(item.text, value) ?? item.text : t('importReview.noText'));
+  function showSource(value: string, label: string) {
+    setSourceModal({ value, label, mode: 'excerpt' });
   }
   async function save() {
     if (!draft || !item || saving.current || !reviewValid(draft)) return;
@@ -70,7 +70,16 @@ export default function ImportReview() {
     }
   }
   const count = draft?.products.filter(p => p.selected).length ?? 0;
-  const sourceButton = (value: string, label: string) => <Pressable onPress={() => showSource(value)} accessibilityRole="button" accessibilityLabel={`${t('importReview.source')}: ${label}`} style={styles.source}><Text style={styles.link}>{t('importReview.source')}</Text></Pressable>;
+  const sourceButton = (value: string, label: string) => (
+    <Pressable
+      onPress={() => showSource(value, label)}
+      accessibilityRole="button"
+      accessibilityLabel={`${t('importReview.source')}: ${label}`}
+      style={styles.source}
+    >
+      <Text style={styles.link}>{t('importReview.source')}</Text>
+    </Pressable>
+  );
   return <>
     <Page title={t('importReview.title')} lead={t('importReview.lead')}
       footer={draft ? <Button title={t('importReview.save', { count })} onPress={() => void save()} busy={busy} disabled={!reviewValid(draft) || busy} /> : undefined}>
@@ -105,7 +114,59 @@ export default function ImportReview() {
         {error && <Text style={styles.error}>{error}</Text>}
       </>}
     </Page>
-    <SheetFrame open={evidence !== null} onClose={() => setEvidence(null)} title={t('importReview.source')}><SheetBody><Text selectable style={styles.evidence}>{evidence}</Text></SheetBody></SheetFrame>
+    <SheetFrame
+      open={sourceModal !== null}
+      onClose={() => setSourceModal(null)}
+      title={`${t('importReview.source')}${sourceModal?.label ? ` · ${sourceModal.label}` : ''}`}
+    >
+      <SheetBody>
+        {item?.text ? (
+          <View style={styles.sourceContainer}>
+            <View style={styles.segmented}>
+              <Pressable
+                onPress={() => setSourceModal(m => m && ({ ...m, mode: 'excerpt' }))}
+                style={[styles.segment, sourceModal?.mode === 'excerpt' && styles.segmentActive]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: sourceModal?.mode === 'excerpt' }}
+              >
+                <Text style={[styles.segmentText, sourceModal?.mode === 'excerpt' && styles.segmentTextActive]}>
+                  {t('importReview.excerpt')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => setSourceModal(m => m && ({ ...m, mode: 'full' }))}
+                style={[styles.segment, sourceModal?.mode === 'full' && styles.segmentActive]}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: sourceModal?.mode === 'full' }}
+              >
+                <Text style={[styles.segmentText, sourceModal?.mode === 'full' && styles.segmentTextActive]}>
+                  {t('importReview.fullText')}
+                </Text>
+              </Pressable>
+            </View>
+
+            {sourceModal?.mode === 'excerpt' && sourceModal.value.trim() ? (
+              <View style={styles.matchPill}>
+                <AppIcon name="search-outline" size={14} color={colors.tint} />
+                <Text style={styles.matchText} numberOfLines={1}>
+                  {sourceModal.value.trim()}
+                </Text>
+              </View>
+            ) : null}
+
+            <View style={styles.readerCard}>
+              <Text selectable style={styles.readerText}>
+                {sourceModal?.mode === 'excerpt'
+                  ? (sourceExcerpt(item.text, sourceModal.value) ?? formatSourceText(item.text))
+                  : formatSourceText(item.text)}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <Text style={styles.evidence}>{t('importReview.noText')}</Text>
+        )}
+      </SheetBody>
+    </SheetFrame>
     {datePicker}
   </>;
 }
@@ -115,4 +176,14 @@ const useStyles = themed(() => StyleSheet.create({
   source: { minHeight: 44, justifyContent: 'center' }, link: { ...TYPE.foot, color: colors.link }, product: { marginBottom: 12 },
   productFields: { paddingHorizontal: 16, paddingBottom: 16, gap: 8 }, remember: { marginTop: 20, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
   flex: { ...TYPE.body, color: colors.ink, flex: 1 }, evidence: { ...TYPE.body, color: colors.ink, padding: 8 }, error: { ...TYPE.sub, color: colors.bad, marginVertical: 12 }, status: { padding: 20, gap: 12 },
+  sourceContainer: { gap: 12, paddingBottom: 8 },
+  segmented: { flexDirection: 'row', backgroundColor: colors.card, borderRadius: 14, padding: 3, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line },
+  segment: { flex: 1, paddingVertical: 8, alignItems: 'center', justifyContent: 'center', borderRadius: 11 },
+  segmentActive: { backgroundColor: colors.tintSoft },
+  segmentText: { ...TYPE.foot, color: colors.ink2, fontWeight: '500' },
+  segmentTextActive: { color: colors.tint, fontWeight: '600' },
+  matchPill: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.tintSoft, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, alignSelf: 'flex-start' },
+  matchText: { ...TYPE.foot, color: colors.tint, fontWeight: '500' },
+  readerCard: { backgroundColor: colors.card, borderRadius: 20, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line, padding: 16, minHeight: 120 },
+  readerText: { ...TYPE.body, color: colors.ink, lineHeight: 22 },
 }));
