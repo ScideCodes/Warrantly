@@ -31,7 +31,7 @@ export interface ParseResult {
   status: Status;
   storeName: string;
   storeDomain: string;
-  purchaseDate: string; // YYYY-MM-DD, from the mail date
+  purchaseDate: string; // YYYY-MM-DD, explicit body date when available, otherwise the mail's local date
   deliveredDate: string | null; // set when the mail says the goods arrived or were picked up
   suggestedStartDate: string; // delivery date if known, else purchase date (section 8)
   orderNumber: string | null;

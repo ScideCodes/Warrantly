@@ -1,4 +1,6 @@
 import { findItems, findOrderNumber, findWarrantyMonths } from './parse.ts';
+import { findDate } from './dates.ts';
+export { findDate } from './dates.ts';
 
 // Scanned paper documents (brainstorm section 18): OCR text from a receipt, invoice or warranty card,
 // read with the same extractors as email. OCR is noisier, so everything found is only a suggestion
@@ -9,26 +11,6 @@ export interface ScanResult {
   purchaseDate: string | null; // YYYY-MM-DD
   warrantyMonths: number | null;
   orderNumber: string | null;
-}
-
-const MONTHS: Record<string, number> = {
-  jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12,
-  // Hungarian abbreviations ("jan.", "febr.", "márc.", "ápr.", "máj.", "jún.", "júl.", "aug.", "szept.", "okt.", "nov.", "dec.")
-  febr: 2, márc: 3, ápr: 4, máj: 5, jún: 6, júl: 7, szept: 9, okt: 10,
-};
-
-const ymd = (y: number, m: number, d: number) =>
-  m >= 1 && m <= 12 && d >= 1 && d <= 31 && y >= 2000 ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : null;
-
-// First plausible date not in the future: "2026.01.15", "2026. 01. 15.", "2026-01-15", "15/01/2026",
-// "15.01.2026", "Jan 15, 2026", "2026. jan. 15.".
-export function findDate(text: string, today: string): string | null {
-  const found: { date: string | null; at: number }[] = [];
-  for (const m of text.matchAll(/\b(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\b/g)) found.push({ date: ymd(+m[1], +m[2], +m[3]), at: m.index });
-  for (const m of text.matchAll(/\b(\d{1,2})\s*[./]\s*(\d{1,2})\s*[./]\s*(20\d{2})\b/g)) found.push({ date: ymd(+m[3], +m[2], +m[1]), at: m.index });
-  for (const m of text.matchAll(/\b([A-Za-zÁÉÍÓÖŐÚÜŰáéíóöőúüű]{3,5})\.?\s+(\d{1,2}),?\s+(20\d{2})\b/g)) found.push({ date: ymd(+m[3], MONTHS[m[1].toLowerCase()] ?? 0, +m[2]), at: m.index });
-  for (const m of text.matchAll(/\b(20\d{2})\.\s*([a-záéíóöőúüű]{3,5})\.?\s*(\d{1,2})\b/gi)) found.push({ date: ymd(+m[1], MONTHS[m[2].toLowerCase()] ?? 0, +m[3]), at: m.index });
-  return found.filter((f) => f.date && f.date <= today).sort((a, b) => a.at - b.at)[0]?.date ?? null;
 }
 
 // The shop's name is usually printed first; skip lines that are only numbers, dates or addresses.
@@ -43,7 +25,7 @@ export function parseScanText(text: string, today: string): ScanResult {
     storeName: findStore(lines),
     productName: items[0]?.name ?? null,
     purchaseDate: findDate(text, today),
-    warrantyMonths: items.find((i) => i.months)?.months ?? findWarrantyMonths(text),
+    warrantyMonths: items[0]?.months ?? (items.some(i => i.months !== null) ? null : findWarrantyMonths(text)),
     orderNumber: findOrderNumber(text),
   };
 }
