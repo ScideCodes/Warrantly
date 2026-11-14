@@ -24,6 +24,8 @@ jobs:
         run: |
           npm ci
           npm test
+          # Expo writes this git-ignored file on `expo start`; the style types for Reanimated transitions come from it.
+          echo '/// <reference types="expo/types" />' > expo-env.d.ts
           npm run typecheck
       - name: Build and sign
         # arm64-v8a and armeabi-v7a for phones; x86_64 so the same APK can be tested on an emulator.
