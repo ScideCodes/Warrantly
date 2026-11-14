@@ -28,3 +28,10 @@ Product: a purchase and warranty archive. Character: calm, exact, familiar. Worl
 - Only synthetic records used. Recent ReactNativeJS/AndroidRuntime error logs are empty. No actual mailbox or Drive backup changed.
 
 - Signed stable APK applied initial OTA 7 (group `c1c9a8ae-1061-4da1-a672-1e491a00d290`). Verified English light controls, selected 6 months and saved USD 1,234.50. The review also found the existing detail/total formatter capped fractional currencies at two decimals. It now shares the editor's ISO precision, with regression coverage for KWD, CLF, JPY and EUR. Whole-number summaries keep their previous compact appearance.
+
+## Final published update
+
+- App commit `8d1b033`, pushed to the working and default branches. [OTA 8](https://github.com/ScideCodes/Warrantly/releases/tag/v1.0.0-ota.8), Android preview runtime `1.0.0`, group `15163e23-42f1-40c0-b867-971d235b6a2e`.
+- Signed stable APK received and applied the final OTA; Settings reports `update 01a1d9d7`. Saved synthetic KWD 12.345 and confirmed the detail screen displays all three decimals, alongside the persisted 6-month warranty.
+- Visually checked English light and Hungarian dark, including 320dp/160% text on the developer emulator. Current logs contain no ReactNativeJS/AndroidRuntime errors. Restored display settings and stopped the temporary developer emulator/Metro; the signed-release emulator remains running.
+- 176 tests pass; typecheck passes; lint has no errors and one pre-existing i18next warning. Stable GitHub Latest remains the signed v1.0.0 APK; compatible installs receive this OTA without reinstalling.
