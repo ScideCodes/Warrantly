@@ -1,15 +1,15 @@
 import { serialEntries, serialSummary } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon, { ProductIcon } from '@/components/Icon';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
 import { mailUrl, telUrl, webUrl } from '@/safeLinks';
-import { ActivityIndicator, Image, Linking, StyleSheet } from 'react-native';
+import { ActivityIndicator, Animated, FlatList, Image, Linking, Platform, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
-import { Sheet, SheetBody, SheetFrame, type SheetSection } from '@/components/Sheet';
+import { Sheet, SheetFrame, type SheetSection } from '@/components/Sheet';
 import { agoLabel, CATEGORY_TILE, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import {
@@ -38,8 +38,8 @@ import { claimEmail } from '@/claim';
 import { rescheduleReminders, sendTestReminder } from '@/reminders';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
-import { Button, GlassButton, Group, Input, Row, TILE } from '@/components/ui';
-import { colors, pairWidth, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
+import { Button, GlassButton, Input, reduceMotion, Row, TILE } from '@/components/ui';
+import { colors, pairWidth, RADIUS, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
 
 type SheetKind = null | 'more' | 'add' | 'collections' | 'bundle' | { doc: Attachment } | { label: Attachment } | { claim: Claim };
 
@@ -70,6 +70,31 @@ export default function WarrantyDetail() {
   const [bundle, setBundle] = useState<Warranty[]>([]);
   const [candidates, setCandidates] = useState<Warranty[]>([]);
   const [selectedBundleIds, setSelectedBundleIds] = useState<Set<number>>(new Set());
+  const toggleCandidate = useCallback((cid: number) => {
+    setSelectedBundleIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(cid)) next.delete(cid);
+      else next.add(cid);
+      return next;
+    });
+  }, []);
+  const [floatAnim] = useState(() => new Animated.Value(0));
+  useEffect(() => {
+    const hasSelection = selectedBundleIds.size > 0;
+    if (reduceMotion()) {
+      floatAnim.setValue(hasSelection ? 1 : 0);
+      return;
+    }
+    Animated.spring(floatAnim, {
+      toValue: hasSelection ? 1 : 0,
+      stiffness: 450,
+      damping: 28,
+      mass: 0.8,
+      useNativeDriver: true,
+    }).start();
+  }, [selectedBundleIds.size, floatAnim]);
+  const floatY = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [50, 0] });
+  const floatOpacity = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   // From the row's document button with no document yet: the add sheet is open on arrival.
   const { pickDate, datePicker } = useDatePicker();
   const [sheet, setSheet] = useState<SheetKind>(attachParam ? 'add' : null);
@@ -350,6 +375,17 @@ export default function WarrantyDetail() {
     setCandidates(all.filter((o) => o.id !== w!.id && (!w!.bundle_id || o.bundle_id !== w!.bundle_id)));
     setSelectedBundleIds(new Set());
     setTimeout(() => setSheet('bundle'), 250);
+  }
+
+  async function onAddBundle() {
+    const ids = Array.from(selectedBundleIds);
+    if (!ids.length || !w) return;
+    setSheet(null);
+    setSelectedBundleIds(new Set());
+    const db = await getDb();
+    const bundleId = await bundleTogether(db, [w.id, ...ids]);
+    setBundleLead(bundleId, w.id);
+    await reloadExtras();
   }
   async function shareWithBundle(d: Attachment) {
     const n = await shareDocument(await getDb(), d.id, bundle.map((b) => b.id));
@@ -708,63 +744,88 @@ export default function WarrantyDetail() {
       {datePicker}
       <Sheet open={openSheet !== null} onClose={() => setSheet(null)} title={openSheet?.title ?? ''} sections={openSheet?.sections ?? []} />
       <SheetFrame open={sheet === 'bundle'} onClose={() => { setSheet(null); setSelectedBundleIds(new Set()); }} title={t('bundle.add')}>
-        <SheetBody>
+        <View style={styles.bundleSheetContainer}>
           {candidates.length === 0 ? (
             <Text style={styles.emptyCandidates}>{t('bundle.noCandidates')}</Text>
           ) : (
             <>
               <Text style={styles.sheetSub}>{t('bundle.selectHint')}</Text>
-              <Group inSheet>
-                {candidates.map((o, j) => {
-                  const isSelected = selectedBundleIds.has(o.id);
-                  return (
-                    <Row
-                      key={o.id}
-                      separator={j > 0}
-                      selected={isSelected}
-                      onPress={() => {
-                        setSelectedBundleIds((prev) => {
-                          const next = new Set(prev);
-                          if (next.has(o.id)) next.delete(o.id);
-                          else next.add(o.id);
-                          return next;
-                        });
-                      }}
-                    >
-                      <View style={[styles.bundleCheck, isSelected && styles.bundleCheckOn]}>
-                        {isSelected ? <AppIcon name="checkmark" size={14} color="#fff" /> : null}
-                      </View>
-                      <View style={styles.flex}>
-                        <Text style={[styles.bundleLabel, isSelected && styles.bundleLabelSelected]}>{displayName(t, o)}</Text>
-                        <Text style={styles.docType}>{o.store_name} · {formatDate(o.purchase_date, i18n.language)}</Text>
-                      </View>
-                    </Row>
-                  );
-                })}
-              </Group>
-              <View style={{ marginTop: 16 }}>
+              <FlatList
+                style={styles.bundleList}
+                data={candidates}
+                keyExtractor={(item) => String(item.id)}
+                extraData={selectedBundleIds}
+                initialNumToRender={12}
+                maxToRenderPerBatch={10}
+                windowSize={5}
+                removeClippedSubviews={Platform.OS === 'android'}
+                scrollEventThrottle={16}
+                overScrollMode="never"
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: selectedBundleIds.size > 0 ? 84 : 16 }}
+                renderItem={({ item, index }) => (
+                  <CandidateRow
+                    item={item}
+                    separator={index > 0}
+                    isSelected={selectedBundleIds.has(item.id)}
+                    name={displayName(t, item)}
+                    storeDate={`${item.store_name} · ${formatDate(item.purchase_date, i18n.language)}`}
+                    onToggle={toggleCandidate}
+                  />
+                )}
+              />
+              <Animated.View
+                pointerEvents={selectedBundleIds.size > 0 ? 'auto' : 'none'}
+                style={[styles.bundleFloatingBar, { transform: [{ translateY: floatY }], opacity: floatOpacity }]}
+              >
                 <Button
-                  title={selectedBundleIds.size > 0 ? t('bundle.addSelected', { count: selectedBundleIds.size }) : t('bundle.add')}
-                  disabled={selectedBundleIds.size === 0}
-                  onPress={async () => {
-                    const ids = Array.from(selectedBundleIds);
-                    if (!ids.length) return;
-                    setSheet(null);
-                    setSelectedBundleIds(new Set());
-                    const db = await getDb();
-                    const bundleId = await bundleTogether(db, [w.id, ...ids]);
-                    setBundleLead(bundleId, w.id);
-                    await reloadExtras();
-                  }}
+                  title={t('bundle.addSelected', { count: selectedBundleIds.size })}
+                  icon="checkmark-circle-outline"
+                  onPress={onAddBundle}
+                  style={styles.bundleFloatingBtn}
                 />
-              </View>
+              </Animated.View>
             </>
           )}
-        </SheetBody>
+        </View>
       </SheetFrame>
     </>
   );
 }
+
+const CandidateRow = memo(function CandidateRow({
+  item,
+  separator,
+  isSelected,
+  name,
+  storeDate,
+  onToggle,
+}: {
+  item: Warranty;
+  separator: boolean;
+  isSelected: boolean;
+  name: string;
+  storeDate: string;
+  onToggle: (id: number) => void;
+}) {
+  const styles = useStyles();
+  return (
+    <Row
+      separator={separator}
+      selected={isSelected}
+      onPress={() => onToggle(item.id)}
+    >
+      <View style={[styles.bundleCheck, isSelected && styles.bundleCheckOn]}>
+        {isSelected ? <AppIcon name="checkmark" size={14} color="#fff" /> : null}
+      </View>
+      <View style={styles.flex}>
+        <Text style={[styles.bundleLabel, isSelected && styles.bundleLabelSelected]}>{name}</Text>
+        <Text style={styles.docType}>{storeDate}</Text>
+      </View>
+    </Row>
+  );
+});
 
 const useStyles = themed(() => StyleSheet.create({
   flex: { flex: 1 },
@@ -805,6 +866,10 @@ const useStyles = themed(() => StyleSheet.create({
   bundleCheckOn: { backgroundColor: colors.tint, borderColor: colors.tint },
   bundleLabel: { ...TYPE.body, color: colors.ink },
   bundleLabelSelected: { color: colors.tintInk, fontWeight: '600' },
+  bundleSheetContainer: { paddingHorizontal: 16, paddingBottom: 8, flexShrink: 1, minHeight: 0, maxHeight: 520, position: 'relative' },
+  bundleList: { backgroundColor: colors.sheetGroup, borderRadius: RADIUS, overflow: 'hidden', flexGrow: 0, flexShrink: 1 },
+  bundleFloatingBar: { position: 'absolute', bottom: 12, left: 20, right: 20, zIndex: 20 },
+  bundleFloatingBtn: { height: 50, borderRadius: 25, boxShadow: colors.shadow },
   noteRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
   noteInput: { flex: 1, minWidth: 0 },
 }));

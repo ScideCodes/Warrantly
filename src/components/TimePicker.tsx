@@ -61,7 +61,7 @@ function Wheel({ label, count, value, onChange }: { label: string; count: number
       <View pointerEvents="none" style={[styles.selection, { top: inset, height: row }]} />
       <ScrollView ref={scroll} style={{ height: row * visibleRows }} contentContainerStyle={{ paddingVertical: inset }}
         contentOffset={{ x: 0, y: initial * row }} showsVerticalScrollIndicator={false}
-        snapToInterval={row} decelerationRate="fast" bounces={false} scrollEventThrottle={32}
+        snapToInterval={row} decelerationRate="fast" bounces={false} scrollEventThrottle={16} overScrollMode="never"
         importantForAccessibility="no-hide-descendants"
         onScroll={event => onChange(Math.max(0, Math.min(count - 1, Math.round(event.nativeEvent.contentOffset.y / row))))}>
         {Array.from({ length: count }, (_, i) => <View key={i} style={[styles.item, { height: row }]}>

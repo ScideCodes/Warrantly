@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import AppIcon from '@/components/Icon';
-import { Animated, Keyboard, Modal, PanResponder, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, Keyboard, Modal, PanResponder, Platform, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { colors, MAX_WIDTH, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
@@ -123,7 +123,20 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
 // Free content in a sheet, scrolling with the same insets as the option lists.
 export function SheetBody({ children }: { children: ReactNode }) {
   const styles = useStyles();
-  return <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">{children}</ScrollView>;
+  return (
+    <ScrollView
+      style={styles.scroll}
+      contentContainerStyle={styles.content}
+      keyboardShouldPersistTaps="handled"
+      scrollEventThrottle={16}
+      overScrollMode="never"
+      showsVerticalScrollIndicator={false}
+      removeClippedSubviews={Platform.OS === 'android'}
+      decelerationRate="normal"
+    >
+      {children}
+    </ScrollView>
+  );
 }
 
 // Choices and less-used actions (filter, add a document, more actions) as grouped rows in a sheet.
@@ -131,7 +144,16 @@ export function Sheet({ open, onClose, title, subtitle, sections }: { open: bool
   const styles = useStyles();
   return (
     <SheetFrame open={open} onClose={onClose} title={title}>
-      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.content}
+        keyboardShouldPersistTaps="handled"
+        scrollEventThrottle={16}
+        overScrollMode="never"
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={Platform.OS === 'android'}
+        decelerationRate="normal"
+      >
         {subtitle ? <Text style={styles.note}>{subtitle}</Text> : null}
         {sections.map((s, i) => (
           <View key={i}>
