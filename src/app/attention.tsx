@@ -1,6 +1,7 @@
+import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { formatDate, WarrantyRow } from '@/components/WarrantyRow';
 import { ListPage } from '@/components/Page';
@@ -8,10 +9,11 @@ import { Button, Group, SectionHeader } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { answerReturn, deleteWarranty, listReturnPrompts, listWarranties, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments } from '@/documents';
-import { colors, RADIUS, TYPE } from '@/theme';
+import { colors, RADIUS, TYPE, themed } from '@/theme';
 
 // "Needs your attention" (section 9): return/refund questions first (section 11), then incomplete items.
 export default function Attention() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<Warranty[]>([]);
   const [returns, setReturns] = useState<ReturnPrompt[]>([]);
@@ -70,7 +72,7 @@ export default function Attention() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 48 },
   card: { padding: 16, gap: 12 },
   cardBody: { ...TYPE.body, color: colors.ink },
@@ -81,4 +83,4 @@ const styles = StyleSheet.create({
   row: { backgroundColor: colors.card },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },
-});
+}));

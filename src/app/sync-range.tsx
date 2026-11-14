@@ -1,14 +1,15 @@
+import { Text } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { syncAllAccounts } from '@/accounts';
 import { getDb } from '@/db/client';
 import { listAccounts, setSyncRange } from '@/db/repo.ts';
 import { Page } from '@/components/Page';
 import { Button, Group, Row } from '@/components/ui';
-import { colors, TYPE } from '@/theme';
+import { colors, TYPE, themed } from '@/theme';
 
 // Section 7: how far back to look, asked after connecting an account (and from "Scan older emails").
 const OPTIONS = [
@@ -23,6 +24,7 @@ const OPTIONS = [
 ];
 
 export default function SyncRange() {
+  const styles = useStyles();
   const { email } = useLocalSearchParams<{ email: string }>();
   const { t } = useTranslation();
   const [days, setDays] = useState(730);
@@ -91,9 +93,9 @@ export default function SyncRange() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   group: { marginTop: 16 },
   option: { ...TYPE.body, flex: 1, color: colors.ink },
   selected: { color: colors.tintInk, fontWeight: '600' },
   status: { ...TYPE.foot, color: colors.ink2, marginBottom: 8, paddingHorizontal: 4 },
-});
+}));

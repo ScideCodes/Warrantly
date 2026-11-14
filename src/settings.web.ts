@@ -44,3 +44,25 @@ export const settingsSnapshot = (): Record<string, string | null> => ({ username
 export function applySnapshot(s: Record<string, string | null>): void {
   for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders'].includes(k) && v !== null) localStorage.setItem(k, v);
 }
+
+// List density (shortlist): compact rows use less padding and one meta line; text size is never reduced.
+export type Density = 'comfortable' | 'compact';
+export const getDensity = (): Density => (localStorage.getItem('density') === 'compact' ? 'compact' : 'comfortable');
+export const setDensity = (d: Density): void => localStorage.setItem('density', d);
+
+// Home list order (src/listView.ts).
+export const getListSort = (): string => localStorage.getItem('list_sort') ?? 'expiry';
+export const setListSort = (key: string): void => localStorage.setItem('list_sort', key);
+
+// Recently opened (src/recent.ts): this phone only, never backed up.
+export const getRecentText = (): string | null => localStorage.getItem('recent');
+export const setRecentText = (text: string): void => localStorage.setItem('recent', text);
+export const clearRecent = (): void => localStorage.removeItem('recent');
+
+// Per placed widget (src/widgetConfig.ts), keyed by Android's widget id.
+export const getWidgetConfigText = (id: number): string | null => localStorage.getItem(`widget:${id}`);
+export const setWidgetConfigText = (id: number, text: string): void => localStorage.setItem(`widget:${id}`, text);
+export const removeWidgetConfig = (id: number): void => localStorage.removeItem(`widget:${id}`);
+
+export const getUpdateLater = (): string | null => localStorage.getItem('update_later');
+export const setUpdateLater = (day: string): void => localStorage.setItem('update_later', day);

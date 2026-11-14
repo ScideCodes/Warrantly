@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState, type ComponentRef } from 'react';
-import { router, useLocalSearchParams } from 'expo-router';
+import { Pressable, Text, View } from '@/components/themeMotion';
+import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, Pressable, ScrollView, StyleSheet, Text, View, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
 import { useTranslation } from 'react-i18next';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { getDb } from '@/db/client';
 import {
   addManualWithDocument, applyLengthToStore, getWarranty, ignoreWarranty, listAccounts, nextNeedsInput, saveStoreRule, sourceOf,
@@ -15,12 +17,14 @@ import { gmailProvider } from '@/mail/gmail.ts';
 import { NavBar, Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, Group, Input, inputStyle, SectionHeader, Switch } from '@/components/ui';
-import { colors, FIELD_RADIUS, ROW_X, TYPE } from '@/theme';
+import { colors, FIELD_RADIUS, pairWidth, ROW_X, TYPE, themed, useRoom } from '@/theme';
 import { formatDate } from '@/components/WarrantyRow';
-import { deleteDocuments, fileToDocument, importDocument, scanDocument } from '@/documents';
+import { copyStoredDocument, deleteDocuments, importDocument, scanDocument } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
 import { SourceLoader, sourceKey, type SourceState } from '@/formSource';
-import { takeSharedFile } from '@/shareInbox';
+import { discardInbox, getInboxItem } from '@/db/features.ts';
+import { saveKnownText } from '@/docIndex';
+import { whenUnlocked } from '@/lock/gate';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
 import { CATEGORIES, formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
@@ -50,10 +54,12 @@ const fromWarranty = (w: Warranty | null): Form => ({
 // Manual add, and edit of any warranty (section 9 resolve view, section 18 manual add).
 // Dates open the system calendar on Android; elsewhere (web previews, iOS for now) they are typed as YYYY-MM-DD.
 export default function EditWarranty() {
+  const styles = useStyles();
+  const room = useRoom();
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
-  // shared: a file sent from another app is waiting in the share inbox.
+  // inbox: a file waiting in the document inbox becomes this warranty's document.
   // scan: opened from the app icon's "Scan receipt" shortcut.
-  const { id, copyFrom, shared, scan: scanNow } = useLocalSearchParams<{ id?: string; copyFrom?: string; shared?: string; scan?: string }>();
+  const { id, copyFrom, inbox, scan: scanNow, more: moreParam } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
@@ -91,7 +97,12 @@ export default function EditWarranty() {
   const resolving = existing?.status === 'needs_input'; // section 9 resolve view
   // A new warranty asks only for the essentials; the rest opens on request, or by itself when there is
   // something in it to see (editing, a copied purchase, a scan, an error in the start date).
-  const [more, setMore] = useState(false);
+  const [more, setMore] = useState(!!moreParam);
+  // A serial number read by the scanner screen (shortlist 11) comes back here.
+  useFocusEffect(useCallback(() => {
+    const serial = takeScannedSerial();
+    if (serial) setForm((f) => ({ ...f, serial_number: serial }));
+  }, []));
   const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date');
 
   useEffect(() => {
@@ -130,10 +141,13 @@ export default function EditWarranty() {
   }, [key, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    const file = shared ? takeSharedFile() : null;
-    if (file) void runScan(() => fileToDocument(file.uri, file.name, file.mimeType));
-    else if (scanNow && !id) void runScan(scanDocument);
-  }, [shared, scanNow]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (inbox) {
+      void getDb().then((db) => getInboxItem(db, Number(inbox))).then((item) => {
+        // The inbox keeps its file until this warranty is saved; the form works on its own copy.
+        if (item) void runScan(async () => ({ text: item.text, localPath: await copyStoredDocument(item.local_path) }));
+      });
+    } else if (scanNow && !id) void whenUnlocked().then(() => runScan(scanDocument)); // shortcut under the lock
+  }, [inbox, scanNow]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -185,6 +199,10 @@ export default function EditWarranty() {
       if (savedId.current) await updateWarranty(db, savedId.current, input);
       else savedId.current = await addManualWithDocument(db, input, localPath);
     });
+    if (saved && inbox) {
+      const gone = await discardInbox(db, Number(inbox)); // its copy now belongs to this warranty
+      if (gone) deleteDocuments([gone]);
+    }
     if (!saved || !mounted.current) return;
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
     if (!resolving) return goBack();
@@ -241,6 +259,7 @@ export default function EditWarranty() {
       const result = await current.capture(source);
       if (!mounted.current) return;
       if (!result) return setScan(previous);
+      void saveKnownText(result.localPath, result.text).catch(() => {}); // search reads it without OCR again
       const found = parseScanText(result.text, todayYmd());
       setForm((f) => ({
         ...f,
@@ -268,17 +287,22 @@ export default function EditWarranty() {
     });
   };
 
-  // Fields as in the reference's form panels: a Footnote label above a filled 44dp field.
+  // Fields as in the reference's form panels: a label and a filled 44dp field, side by side when the column
+  // has room (300 text-size-adjusted dp), otherwise the label above. Notes (multi-line) always take the width.
+  const side = room(300);
+  // Scan and Photo or PDF side by side while their words fit (the panel's padding is 2 × ROW_X)
+  const stackMethods = !room(pairWidth(t('form.scanShort'), t('form.importShort'), 2 * ROW_X));
   const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
     if (opts.date && Platform.OS === 'android' && !pickerError) {
       const value = form[key];
       return (
-        <View style={styles.field}>
-          <Text style={styles.label}>{label}</Text>
+        <View style={[styles.field, side && styles.fieldSide]}>
+          <Text style={[styles.label, side && styles.labelSide]}>{label}</Text>
+          <View style={side ? styles.controlSide : styles.control}>
           <Pressable
             testID={key}
-            style={[inputStyle, styles.dateInput, invalid && styles.inputError]}
+            style={[inputStyle(), styles.dateInput, invalid && styles.inputError]}
             onPress={() => pickDate(key as 'purchase_date' | 'warranty_start_date')}
             accessibilityRole="button"
             accessibilityLabel={`${label}: ${value ? formatDate(value, i18n.language) : ''}`}
@@ -288,14 +312,17 @@ export default function EditWarranty() {
             </Text>
           </Pressable>
           {invalid && opts.error ? <Text style={styles.error}>{opts.error}</Text> : key === 'warranty_start_date' && <Text style={styles.hint}>{opts.hint}</Text>}
+          </View>
         </View>
       );
     }
+    const beside = side && !opts.multiline;
     return (
-      <View style={styles.field}>
-        <Text style={styles.label} nativeID={`${key}-label`}>
+      <View style={[styles.field, beside && styles.fieldSide]}>
+        <Text style={[styles.label, beside && styles.labelSide]} nativeID={`${key}-label`}>
           {label}
         </Text>
+        <View style={beside ? styles.controlSide : styles.control}>
         <Input
           testID={key} // a stable handle for UI tests (Maestro)
           style={[opts.multiline && styles.multiline, invalid && styles.inputError]}
@@ -315,6 +342,7 @@ export default function EditWarranty() {
         ) : (
           opts.hint && <Text style={styles.hint}>{opts.hint}</Text>
         )}
+        </View>
       </View>
     );
   };
@@ -348,7 +376,7 @@ export default function EditWarranty() {
           </>
         ) : (
           <>
-            <Ionicons name={failed ? 'alert-circle-outline' : 'document-outline'} size={40} color={colors.ink2} />
+            <AppIcon name={failed ? 'alert-circle-outline' : 'document-outline'} size={40} color={colors.ink2} />
             <Text style={styles.sourceTitle} accessibilityRole="header">
               {t(failed ? 'form.loadFailedTitle' : 'form.missingTitle')}
             </Text>
@@ -398,14 +426,14 @@ export default function EditWarranty() {
           <>
             <SectionHeader title={t('form.fromDocument')} first />
             <Group style={styles.panel}>
-              <View style={styles.methods}>
-                <Button title={t('form.scanShort')} icon="camera-outline" onPress={() => runScan(scanDocument)} disabled={busy && scan.state !== 'busy'} busy={scan.state === 'busy'} accessibilityLabel={t('form.scan')} style={styles.flex} />
-                <Button kind="glass" title={t('form.importShort')} icon="folder-open-outline" onPress={() => runScan(importDocument)} disabled={busy} accessibilityLabel={t('form.import')} style={styles.flex} />
+              <View style={[styles.methods, stackMethods && styles.methodsStacked]}>
+                <Button title={t('form.scanShort')} icon="camera-outline" onPress={() => runScan(scanDocument)} disabled={busy && scan.state !== 'busy'} busy={scan.state === 'busy'} accessibilityLabel={t('form.scan')} style={!stackMethods && styles.flex} />
+                <Button kind="glass" title={t('form.importShort')} icon="folder-open-outline" onPress={() => runScan(importDocument)} disabled={busy} accessibilityLabel={t('form.import')} style={!stackMethods && styles.flex} />
               </View>
               {scan.state === 'done' || scan.state === 'attached' ? (
                 // Review before save: say plainly that the form was filled from the document.
                 <View style={styles.review} accessibilityLiveRegion="polite">
-                  <Ionicons name="checkmark-circle" size={20} color={colors.ok} />
+                  <AppIcon name="checkmark-circle" size={20} color={colors.ok} />
                   <Text style={styles.reviewText}>{t(scan.state === 'done' ? 'form.scanned' : 'form.imported')}</Text>
                 </View>
               ) : (
@@ -482,6 +510,7 @@ export default function EditWarranty() {
               </View>
               {field('order_number', t('form.orderNumber'))}
               {field('serial_number', t('form.serial'))}
+              <Button kind="glass" icon="barcode-outline" title={t('serial.scan')} onPress={() => router.push('/scan-serial')} disabled={busy} />
               {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
               {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
               {field('website_url', t('form.website'), { keyboard: 'url' })}
@@ -501,7 +530,7 @@ export default function EditWarranty() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   flex: { flex: 1 },
   sourceState: { alignItems: 'center', justifyContent: 'center', gap: 12, padding: 20 },
@@ -509,15 +538,19 @@ const styles = StyleSheet.create({
   sourceText: { ...TYPE.body, color: colors.ink2, textAlign: 'center' },
   sourceButton: { alignSelf: 'stretch' },
   panel: { paddingTop: 4, paddingBottom: 16, paddingHorizontal: ROW_X, gap: 4 },
-  field: { gap: 8, paddingTop: 10 },
+  field: { gap: 6, paddingTop: 8 },
+  fieldSide: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   label: { ...TYPE.foot, color: colors.ink2 },
+  labelSide: { ...TYPE.sub, color: colors.ink, width: '32%', paddingTop: 12 }, // centred on the 44dp field's first line
+  control: { gap: 6 },
+  controlSide: { flex: 1, minWidth: 0, gap: 6 },
   multiline: { minHeight: 96, textAlignVertical: 'top' },
   inputError: { outlineWidth: 2, outlineColor: colors.bad, outlineStyle: 'solid' },
   hint: { ...TYPE.foot, color: colors.ink2 },
   error: { ...TYPE.foot, color: colors.bad },
   chips: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: { minHeight: 44, minWidth: 52, paddingHorizontal: 16, borderRadius: 22, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
+  chip: { minHeight: 44, minWidth: 48, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
   chipWide: { maxWidth: '100%' },
   chipSelected: { backgroundColor: colors.tintSoft },
   chipPressed: { backgroundColor: colors.press },
@@ -529,15 +562,16 @@ const styles = StyleSheet.create({
   datePlaceholder: { color: colors.ink2 },
   priceRow: { flexDirection: 'row', gap: 12 },
   currency: { width: 96 },
-  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 52, paddingTop: 10 },
+  switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 46, paddingTop: 8 },
   switchLabel: { ...TYPE.body, flex: 1, color: colors.ink },
   more: { marginTop: 16 },
   mail: { gap: 12, marginTop: 8 },
   mailBox: { maxHeight: 280, borderRadius: FIELD_RADIUS, padding: 12, backgroundColor: colors.card },
   mailText: { ...TYPE.foot, color: colors.ink },
   methods: { flexDirection: 'row', gap: 8, paddingTop: 12, paddingBottom: 8 },
+  methodsStacked: { flexDirection: 'column' },
   review: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, padding: 12, borderRadius: FIELD_RADIUS, backgroundColor: colors.okSoft },
   reviewText: { ...TYPE.sub, flex: 1, color: colors.ok },
   resolveRow: { flexDirection: 'row', gap: 8, marginTop: 20 },
   saveError: { ...TYPE.foot, color: colors.bad, paddingBottom: 8 },
-});
+}));

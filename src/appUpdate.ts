@@ -22,7 +22,8 @@ export function useUpdateReady(): boolean {
   return isUpdatePending;
 }
 
-// Restarts the app (new update, new theme). The user is inside the unlocked app, so no PIN on the way back.
+// Restarts the app into a downloaded update, or fresh after "delete everything" (a theme change never
+// restarts). The user is inside the unlocked app, so no PIN on the way back.
 export function restartIntoUpdate(): Promise<void> {
   allowRelaunchWithoutLock();
   return Updates.reloadAsync();

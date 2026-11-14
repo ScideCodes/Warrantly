@@ -26,7 +26,7 @@ test('migrate is idempotent', async () => {
   const db = nodeDb();
   await migrate(db);
   await migrate(db);
-  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 11);
+  assert.equal((db.raw.prepare('PRAGMA user_version').get() as { user_version: number }).user_version, 13);
 });
 
 test('new warranty and PDF roll back together; retry creates exactly one complete warranty', async () => {
@@ -353,7 +353,9 @@ test('wipeDb empties every table', async () => {
   await saveStoreRule(db, 'pcx.hu', 24);
   await wipeDb(db);
   const tables = (db.raw.prepare(`SELECT name FROM sqlite_master WHERE type = 'table'`).all() as { name: string }[]).map((r) => r.name);
-  for (const t of tables) assert.equal((db.raw.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as { n: number }).n, 0, t);
+  // meta keeps its two counters (reset): a wiped phone has no backup and nothing pending.
+  for (const t of tables.filter((n) => n !== 'meta')) assert.equal((db.raw.prepare(`SELECT COUNT(*) n FROM ${t}`).get() as { n: number }).n, 0, t);
+  assert.deepEqual(db.raw.prepare('SELECT key, value FROM meta ORDER BY key').all().map((r) => ({ ...(r as object) })), [{ key: 'backup_changes', value: 0 }, { key: 'changes', value: 0 }]);
 });
 
 test('sharing: warranties with notes and documents move to another phone once', async () => {

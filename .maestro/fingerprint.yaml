@@ -1,6 +1,6 @@
 # User report: on opening the app the fingerprint prompt showed, closed by itself, and left the PIN pad.
 # run.sh enrols a fingerprint and touches the emulator's sensor every 1.5 s during this flow.
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 - launchApp
 - extendedWaitUntil: { visible: "Enter your PIN", timeout: 60000 }

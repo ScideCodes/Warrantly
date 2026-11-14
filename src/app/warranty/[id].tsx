@@ -1,45 +1,80 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { ActivityIndicator, Image, Linking, Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { mailUrl, telUrl, webUrl } from '@/safeLinks';
+import { ActivityIndicator, Image, Linking, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
 import { Sheet, type SheetSection } from '@/components/Sheet';
 import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import {
-  addAttachment, addHistory, deleteAttachment, setPhoto, deleteHistory, deleteWarranty, getWarranty, ignoreWarranty, listAttachments, listHistory, otherCovers,
-  type Attachment, type HistoryEntry, type Warranty,
+  addAttachment, addHistory, DOC_LABELS, setAttachmentLabel, setPhoto, deleteHistory, getWarranty, ignoreWarranty, listAttachments, listHistory, listWarranties, otherCovers,
+  type Attachment, type DocLabel, type HistoryEntry, type Warranty,
 } from '@/db/repo.ts';
+import {
+  addClaim, addCustomReminder, bundleMembers, bundleTogether, CLAIM_STATUSES, collectionsOf, deleteClaim, deleteCustomReminder, leaveBundle, listClaims, listCollections,
+  listCustomReminders, setArchived, setFavorite, setMembership, shareDocument, softDeleteAttachment, softDeleteWarranties, undoDeleteAttachment, undoDeleteWarranties, updateClaim,
+  type Claim, type ClaimStatus, type Collection, type CustomReminder,
+} from '@/db/features.ts';
+import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { DocThumb } from '@/components/DocThumb';
+import { completeness } from '@/completeness';
+import { saveKnownText } from '@/docIndex';
+import { recordWarranty } from '@/recentStore';
+import { purgeBefore, showUndo } from '@/undo';
 import { shareWarranties } from '@/dataTools';
-import { deleteDocuments, documentExists, documentUriOrNull, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
+import { useProductPhoto } from '@/components/useProductPhoto';
 import { claimEmail } from '@/claim';
-import { sendTestReminder } from '@/reminders';
+import { rescheduleReminders, sendTestReminder } from '@/reminders';
 import { getUsername } from '@/settings';
-import { NavBar, Page } from '@/components/Page';
+import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
-import { Button, GlassButton, IconTile, Input, Row, TILE } from '@/components/ui';
-import { colors, ROW_X, TONE, TYPE } from '@/theme';
+import { Button, GlassButton, Input, Row } from '@/components/ui';
+import { colors, pairWidth, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
 import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
-type SheetKind = null | 'more' | 'add' | { doc: Attachment };
+type SheetKind = null | 'more' | 'add' | 'collections' | 'bundle' | { doc: Attachment } | { label: Attachment } | { claim: Claim };
+const ymdOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+// The system calendar, from tomorrow on (a reminder is for later).
+function pickDate(onPick: (ymd: string) => void, onError: (e: unknown) => void) {
+  const tomorrow = new Date(Date.now() + 86_400_000);
+  DateTimePickerAndroid.open({ value: tomorrow, minimumDate: tomorrow, mode: 'date', onValueChange: (_e, d) => onPick(ymdOf(d)), onError });
+}
 
 // Warranty detail (section 13). Order: what it is and how long it is covered, then its documents (the
 // main reason to open it), then the purchase details, support and claims, and the history. Actions used
 // rarely (share the record, another cover, test reminder, delete) live in the More sheet.
+const NO_PHOTO = { photo_path: null };
+
 export default function WarrantyDetail() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const styles = useStyles();
+  const { id, attach: attachParam } = useLocalSearchParams<{ id: string; attach?: string }>();
   const { t, i18n } = useTranslation();
   const [w, setW] = useState<Warranty | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [docs, setDocs] = useState<Attachment[]>([]);
   const [others, setOthers] = useState<Warranty[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [note, setNote] = useState('');
-  const [sheet, setSheet] = useState<SheetKind>(null);
-  const { width, fontScale } = useWindowDimensions();
-  const stackActions = Math.min(width, 720) / fontScale < 360;
+  const [claims, setClaims] = useState<Claim[]>([]);
+  const [claimTitle, setClaimTitle] = useState('');
+  const [reminders, setReminders] = useState<CustomReminder[]>([]);
+  const [reminderNote, setReminderNote] = useState('');
+  const [allCollections, setAllCollections] = useState<Collection[]>([]);
+  const [mine, setMine] = useState<number[]>([]);
+  const [bundle, setBundle] = useState<Warranty[]>([]);
+  const [candidates, setCandidates] = useState<Warranty[]>([]);
+  // From the row's document button with no document yet: the add sheet is open on arrival.
+  const [sheet, setSheet] = useState<SheetKind>(attachParam ? 'add' : null);
+  // View and Save side by side while their words fit (the document card's padding is 2 × 10)
+  const stackActions = !useRoom()(pairWidth(t('detail.view'), t('detail.save'), 20));
   const operation = useRef(false);
   const mounted = useRef(false);
   const draft = useRef(new DocumentDraft(deleteDocuments));
@@ -53,21 +88,51 @@ export default function WarrantyDetail() {
   // Reload on focus so changes made in the edit screen show up.
   useFocusEffect(
     useCallback(() => {
+      let active = true;
       void getDb().then(async (db) => {
-        const found = await getWarranty(db, Number(id));
+        const n = Number(id);
+        const [found, attachments, entries, cl, rem, cols, inCols] = await Promise.all([
+          getWarranty(db, n), listAttachments(db, n), listHistory(db, n), listClaims(db, n), listCustomReminders(db, n), listCollections(db), collectionsOf(db, n),
+        ]);
+        if (!active) return;
         setW(found);
-        setDocs(await listAttachments(db, Number(id)));
-        setOthers(found ? await otherCovers(db, found) : []);
-        setHistory(await listHistory(db, Number(id)));
+        setDocs(attachments);
+        setHistory(entries);
+        setClaims(cl);
+        setReminders(rem);
+        setAllCollections(cols);
+        setMine(inCols);
+        if (found) recordWarranty(found.id); // shortlist 22
+        const members = found?.bundle_id ? (await bundleMembers(db, found.bundle_id)).filter((m) => m.id !== found.id) : [];
+        if (active) setBundle(members);
+        setLoadError(null);
+        setLoading(false);
+        // Related covers must not hold up the documents the user came to open.
+        const related = found ? await otherCovers(db, found) : [];
+        if (active) setOthers(related);
+      }).catch((e) => {
+        if (active) { setLoadError(e instanceof Error ? e.message : String(e)); setLoading(false); }
       });
-    }, [id]),
+      return () => { active = false; };
+    // loadAttempt deliberately restarts the focused loader when Retry is tapped.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [id, loadAttempt]),
   );
+
+  // Hooks run before the loading return: the photo falls back to the camera tile.
+  const photo = useProductPhoto(w ?? NO_PHOTO);
 
   if (!w)
     return (
-      <View style={{ flex: 1, backgroundColor: colors.bg }}>
-        <NavBar />
-      </View>
+      <Page title={t(loading ? 'form.loading' : loadError ? 'form.loadFailedTitle' : 'form.missingTitle')}>
+        {loading ? <ActivityIndicator color={colors.tint} /> : (
+          <View style={{ gap: 16 }}>
+            <Text style={{ ...TYPE.body, color: colors.ink2 }}>{t(loadError ? 'form.loadFailedBody' : 'form.missingBody', { detail: loadError })}</Text>
+            {loadError && <Button title={t('home.retry')} onPress={() => { setLoading(true); setLoadAttempt((n) => n + 1); }} />}
+            <Button title={t('form.backToList')} kind="glass" onPress={() => router.replace('/')} />
+          </View>
+        )}
+      </Page>
     );
 
   const today = todayYmd();
@@ -76,22 +141,33 @@ export default function WarrantyDetail() {
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const suggested = (value: string, isSuggested: number) => (isSuggested ? t('warranty.suggested', { value }) : value);
   const product = displayName(t, w);
-  const photo = documentUriOrNull(w.photo_path);
 
-  function confirmRemoveDocument(d: Attachment) {
-    showAlert(t('detail.removeDocumentTitle'), t('detail.deleteBody'), [
-      { text: t('detail.cancel'), style: 'cancel' },
-      {
-        text: t('detail.removeDocument'),
-        style: 'destructive',
-        onPress: async () => {
-          const db = await getDb();
-          const file = await deleteAttachment(db, d.id);
-          if (file) deleteDocuments([file]);
-          setDocs(await listAttachments(db, w!.id));
-        },
-      },
-    ]);
+  // Shortlist 9: removed at once, with Undo for a few seconds; the file goes only when nothing else uses it.
+  async function removeDocument(d: Attachment) {
+    const db = await getDb();
+    await softDeleteAttachment(db, d.id);
+    setDocs(await listAttachments(db, w!.id));
+    showUndo({
+      message: t('undo.documentRemoved'),
+      undo: async () => { await undoDeleteAttachment(db, d.id); if (mounted.current) setDocs(await listAttachments(db, w!.id)); },
+      commit: () => purgeBefore(new Date(Date.now() + 1000).toISOString()),
+    });
+  }
+  async function relabel(d: Attachment, label: DocLabel) {
+    const db = await getDb();
+    await setAttachmentLabel(db, d.id, label);
+    setDocs(await listAttachments(db, w!.id));
+  }
+  async function reloadExtras() {
+    const db = await getDb();
+    const n = w!.id;
+    const found = await getWarranty(db, n);
+    if (!mounted.current) return;
+    setW(found);
+    setClaims(await listClaims(db, n));
+    setReminders(await listCustomReminders(db, n));
+    setMine(await collectionsOf(db, n));
+    setBundle(found?.bundle_id ? (await bundleMembers(db, found.bundle_id)).filter((m) => m.id !== n) : []);
   }
 
   const viewDocument = (d: Attachment) =>
@@ -139,8 +215,9 @@ export default function WarrantyDetail() {
       const result = await current.capture(source);
       if (!result) return;
       const db = await getDb();
+      void saveKnownText(result.localPath, result.text).catch(() => {});
       const saved = await current.save(async (path) => {
-        await addAttachment(db, w!.id, docs.length ? `${product} (${docs.length + 1}).pdf` : `${product}.pdf`, path!);
+        await addAttachment(db, w!.id, docs.length ? `${product} (${docs.length + 1}).pdf` : `${product}.pdf`, path!, docs.length ? 'other' : 'receipt');
       });
       if (saved && mounted.current) setDocs(await listAttachments(db, w!.id));
     } catch (e) {
@@ -208,18 +285,72 @@ export default function WarrantyDetail() {
     goBack();
   }
 
-  function confirmDelete() {
-    showAlert(t('detail.deleteTitle', { product }), t('detail.deleteBody'), [
-      { text: t('detail.cancel'), style: 'cancel' },
-      {
-        text: t('detail.deleteConfirm'),
-        style: 'destructive',
-        onPress: async () => {
-          deleteDocuments(await deleteWarranty(await getDb(), w!.id)); // stored PDFs go too (section 10)
-          goBack();
-        },
-      },
-    ]);
+  // Deleted at once with Undo (shortlist 9); the rows and unused files go when the window ends.
+  async function deleteNow() {
+    const db = await getDb();
+    const ids = [w!.id];
+    await softDeleteWarranties(db, ids);
+    showUndo({
+      message: t('undo.deleted', { name: product }),
+      undo: async () => { await undoDeleteWarranties(db, ids); await rescheduleReminders(db).catch(() => {}); },
+      commit: () => purgeBefore(new Date(Date.now() + 1000).toISOString()),
+    });
+    void rescheduleReminders(db).catch(() => {});
+    goBack();
+  }
+
+  async function archiveToggle() {
+    const db = await getDb();
+    const on = !w!.archived_at;
+    await setArchived(db, [w!.id], on);
+    if (!on) return reloadExtras();
+    showUndo({ message: t('bulk.archived', { count: 1 }), undo: async () => { await setArchived(db, [w!.id], false); } });
+    goBack();
+  }
+
+  async function toggleFavorite() {
+    await setFavorite(await getDb(), w!.id, !w!.favorite);
+    await reloadExtras();
+  }
+
+  // Claims (shortlist 6): one per repair or return case, with its status.
+  async function startClaim() {
+    if (!claimTitle.trim()) return;
+    await addClaim(await getDb(), w!.id, { title: claimTitle.trim(), submitted_on: today });
+    setClaimTitle('');
+    await reloadExtras();
+  }
+  async function setClaimStatus(c: Claim, status: ClaimStatus) {
+    await updateClaim(await getDb(), c.id, { status, notes: c.notes }, today);
+    await reloadExtras();
+  }
+
+  // Own reminders (shortlist 12): a date and a few words; sent even with the automatic ones off.
+  function addReminder() {
+    pickDate((ymd) => void (async () => {
+      const db = await getDb();
+      if (!(await addCustomReminder(db, w!.id, ymd, reminderNote.trim() || null))) showAlert(t('reminder.duplicate'));
+      setReminderNote('');
+      await reloadExtras();
+      void rescheduleReminders(db).catch(() => {});
+    })(), (e) => showAlert(e instanceof Error ? e.message : String(e)));
+  }
+  async function removeReminder(r: CustomReminder) {
+    const db = await getDb();
+    await deleteCustomReminder(db, r.id);
+    await reloadExtras();
+    void rescheduleReminders(db).catch(() => {});
+  }
+
+  async function openBundlePicker() {
+    const db = await getDb();
+    const all = [...(await listWarranties(db, 'complete')), ...(await listWarranties(db, 'needs_input'))];
+    setCandidates(all.filter((o) => o.id !== w!.id && (!w!.bundle_id || o.bundle_id !== w!.bundle_id)));
+    setTimeout(() => setSheet('bundle'), 250);
+  }
+  async function shareWithBundle(d: Attachment) {
+    const n = await shareDocument(await getDb(), d.id, bundle.map((b) => b.id));
+    showAlert(t('bundle.shared', { count: n }));
   }
 
   function claim() {
@@ -258,6 +389,10 @@ export default function WarrantyDetail() {
               onPress: () => void getDb().then((db) => shareWarranties(db, [w.id], `warrantly-${product.replace(/[^\w-]+/g, '-')}.json`)).catch((e) => showAlert(String(e))),
             },
             { key: 'cover', icon: 'add-circle-outline', label: t('detail.addCover'), onPress: () => router.push({ pathname: '/warranty/edit', params: { copyFrom: String(w.id) } }) },
+            { key: 'bundle', icon: 'cube-outline', label: t('bundle.add'), onPress: () => void openBundlePicker() },
+            { key: 'collections', icon: 'albums-outline', label: t('collections.title'), onPress: () => setTimeout(() => setSheet('collections'), 250) },
+            { key: 'transfer', icon: 'swap-horizontal-outline', label: t('transfer.title'), onPress: () => router.push({ pathname: '/transfer', params: { id: String(w.id) } }) },
+            { key: 'archive', icon: 'archive-outline', label: t(w.archived_at ? 'bulk.unarchive' : 'bulk.archive'), onPress: () => void archiveToggle() },
             {
               key: 'test',
               icon: 'notifications-outline',
@@ -269,25 +404,47 @@ export default function WarrantyDetail() {
             ...(w.status === 'needs_input' ? [{ key: 'ignore', icon: 'eye-off-outline' as const, label: t('detail.notWarranty'), onPress: () => void notWarranty() }] : []),
             // Any warranty can be deleted (owner's choice, wider than section 10); a deleted mail warranty
             // keeps its source marker, so sync never brings it back.
-            { key: 'delete', icon: 'trash-outline', label: t('detail.delete'), destructive: true, onPress: confirmDelete },
+            { key: 'delete', icon: 'trash-outline', label: t('detail.delete'), destructive: true, onPress: () => void deleteNow() },
           ],
         },
       ],
     },
   };
-  const selectedDoc = typeof sheet === 'object' && sheet ? sheet.doc : null;
+  const selectedDoc = typeof sheet === 'object' && sheet && 'doc' in sheet ? sheet.doc : null;
   const docSheet: { title: string; sections: SheetSection[] } | null = selectedDoc ? {
     title: selectedDoc.filename,
     sections: [
       {
         options: [
           { key: 'share', icon: 'share-social-outline', label: t('detail.shareFile'), onPress: () => { void share(selectedDoc); } },
-          { key: 'remove', icon: 'trash-outline', label: t('detail.removeDocument'), destructive: true, onPress: () => confirmRemoveDocument(selectedDoc) },
+          { key: 'label', icon: 'pricetag-outline', label: t('docs.changeLabel'), onPress: () => setTimeout(() => setSheet({ label: selectedDoc }), 250) },
+          ...(bundle.length ? [{ key: 'bundle', icon: 'copy-outline' as const, label: t('bundle.shareDoc', { count: bundle.length }), onPress: () => void shareWithBundle(selectedDoc) }] : []),
+          { key: 'remove', icon: 'trash-outline', label: t('detail.removeDocument'), destructive: true, onPress: () => void removeDocument(selectedDoc) },
         ],
       },
     ],
   } : null;
-  const openSheet = sheet === null ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet;
+  const labelFor = typeof sheet === 'object' && sheet && 'label' in sheet ? sheet.label : null;
+  const claimFor = typeof sheet === 'object' && sheet && 'claim' in sheet ? sheet.claim : null;
+  const extraSheet: { title: string; sections: SheetSection[] } | null =
+    labelFor ? { title: t('docs.changeLabel'), sections: [{ options: DOC_LABELS.map((l) => ({ key: l, label: t(`docLabel.${l}`), selected: labelFor.label === l, onPress: () => void relabel(labelFor, l) })) }] }
+      : claimFor ? { title: claimFor.title, sections: [
+        { title: t('claims.status'), options: CLAIM_STATUSES.map((s) => ({ key: s, label: t(`claims.status_${s}`), selected: claimFor.status === s, onPress: () => void setClaimStatus(claimFor, s) })) },
+        { options: [{ key: 'del', icon: 'trash-outline', label: t('claims.delete'), destructive: true, onPress: () => void getDb().then((db) => deleteClaim(db, claimFor.id)).then(reloadExtras) }] },
+      ] }
+        : sheet === 'collections' ? { title: t('collections.title'), sections: [{ options: [
+          ...allCollections.map((c) => ({ key: String(c.id), label: c.name, selected: mine.includes(c.id), onPress: () => void getDb().then((db) => setMembership(db, c.id, [w.id], !mine.includes(c.id))).then(reloadExtras) })),
+          { key: 'manage', icon: 'albums-outline' as const, label: t('collections.manage'), onPress: () => router.push('/collections') },
+        ] }] }
+          : sheet === 'bundle' ? { title: t('bundle.add'), sections: [{ options: candidates.map((o) => ({ key: String(o.id), label: `${displayName(t, o)} · ${o.store_name}`, onPress: () => void getDb().then((db) => bundleTogether(db, [w.id, o.id])).then(reloadExtras) })) }] }
+            : null;
+  const openSheet = sheet === null ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet ?? extraSheet;
+  const issues = completeness(w, docs);
+  const fixIssue = (fix: 'attach' | 'label' | 'edit' | 'serial') => {
+    if (fix === 'attach') return setSheet('add');
+    if (fix === 'label') return setSheet({ label: docs[0] });
+    router.push({ pathname: '/warranty/edit', params: { id: String(w.id), more: '1' } });
+  };
   const returnBy = returnDeadline(w);
   const details = [
     { label: t('warranty.purchaseDate'), value: `${date(w.purchase_date)} (${agoLabel(t, w.purchase_date, today)})` },
@@ -303,10 +460,10 @@ export default function WarrantyDetail() {
     w.notes && { label: t('detail.notes'), value: w.notes },
   ].filter((f): f is { label: string; value: string } => !!f);
   const contacts = [
-    w.contact_email && { label: t('warranty.contact'), value: w.contact_email, url: `mailto:${w.contact_email}` },
-    w.contact_phone && { label: t('warranty.contact'), value: w.contact_phone, url: `tel:${w.contact_phone.replace(/[^\d+]/g, '')}` },
-    w.website_url && { label: t('warranty.website'), value: w.website_url.replace(/^https:\/\//, ''), url: w.website_url },
-  ].filter((f): f is { label: string; value: string; url: string } => !!f);
+    w.contact_email && { label: t('warranty.contact'), value: w.contact_email, url: mailUrl(w.contact_email) },
+    w.contact_phone && { label: t('warranty.contact'), value: w.contact_phone, url: telUrl(w.contact_phone) },
+    w.website_url && { label: t('warranty.website'), value: w.website_url.replace(/^https:\/\//, ''), url: webUrl(w.website_url) },
+  ].filter((f): f is { label: string; value: string; url: string } => !!f && !!f.url); // an unsafe link is not offered
 
   return (
     <>
@@ -314,6 +471,7 @@ export default function WarrantyDetail() {
         title={w.product_name ?? product}
         trailing={
           <>
+            <GlassButton icon={w.favorite ? 'star' : 'star-outline'} label={t(w.favorite ? 'detail.unpin' : 'detail.pin')} color={w.favorite ? colors.warn : colors.ink} selected={!!w.favorite} onPress={() => void toggleFavorite()} />
             <GlassButton icon="create-outline" label={t('detail.edit')} onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })} />
             <GlassButton icon="ellipsis-horizontal" label={t('detail.more')} onPress={() => setSheet('more')} />
           </>
@@ -324,10 +482,10 @@ export default function WarrantyDetail() {
             <View style={styles.heroTop}>
               <Pressable onPress={choosePhoto} accessibilityRole="button" accessibilityLabel={t('detail.photo')}>
                 {photo ? (
-                  <Image source={{ uri: photo }} style={styles.photo} />
+                  <Image source={{ uri: photo.uri }} onError={photo.onError} style={styles.photo} accessibilityIgnoresInvertColors />
                 ) : (
                   <View style={[styles.photo, styles.photoEmpty]}>
-                    <Ionicons name="camera-outline" size={28} color={colors.tint} />
+                    <AppIcon name="camera-outline" size={28} color={colors.tint} />
                   </View>
                 )}
               </Pressable>
@@ -357,13 +515,15 @@ export default function WarrantyDetail() {
               <View key={d.id} style={styles.doc}>
                 {i > 0 && <View style={styles.line} />}
                 <View style={styles.docTop}>
-                  <IconTile name={missing ? 'alert-circle-outline' : 'document-text-outline'} color={missing ? TILE.grey : TILE.red} />
+                  <DocThumb localPath={d.local_path} size={36} />
                   <View style={styles.flex}>
                     <Text style={styles.docName}>{d.filename}</Text>
-                    <Text style={[styles.docType, missing && styles.docMissing]}>{missing ? t('detail.fileMissing') : t('detail.pdf')}</Text>
+                    <Pressable onPress={() => setSheet({ label: d })} accessibilityRole="button" accessibilityLabel={t('docs.labelIs', { label: t(`docLabel.${d.label}`) })} hitSlop={8}>
+                      <Text style={[styles.docType, missing && styles.docMissing]}>{missing ? t('detail.fileMissing') : `${t(`docLabel.${d.label}`)} · ${t('docs.changeShort')}`}</Text>
+                    </Pressable>
                   </View>
                   <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => setSheet({ doc: d })} accessibilityRole="button" accessibilityLabel={t('detail.documentOptions', { name: d.filename })}>
-                    <Ionicons name="ellipsis-horizontal" size={20} color={colors.ink} />
+                    <AppIcon name="ellipsis-horizontal" size={20} color={colors.ink} />
                   </Pressable>
                 </View>
                 {!missing && (
@@ -385,10 +545,25 @@ export default function WarrantyDetail() {
             );
           })}
           <Row separator={docs.length > 0} iconInset onPress={() => setSheet('add')} disabled={documentBusy !== null} accessibilityState={{ busy: documentBusy === 'attach' }}>
-            <View style={styles.glyph}>{documentBusy === 'attach' ? <ActivityIndicator color={colors.tint} /> : <Ionicons name="add-circle-outline" size={22} color={colors.tint} />}</View>
+            <View style={styles.glyph}>{documentBusy === 'attach' ? <ActivityIndicator color={colors.tint} /> : <AppIcon name="add-circle-outline" size={22} color={colors.tint} />}</View>
             <Text style={styles.addText}>{t(documentBusy === 'attach' ? 'form.scanning' : 'detail.addDocument')}</Text>
           </Row>
         </Section>
+
+        {/* Shortlist 15: what is missing for a smooth claim, each with its fix. */}
+        {issues.length > 0 && (
+          <Section title={t('complete.title')}>
+            {issues.map((iss, i) => (
+              <Row key={iss.key} separator={i > 0} iconInset onPress={() => fixIssue(iss.fix)} chevron>
+                <View style={styles.glyph}><AppIcon name={iss.level === 'needed' ? 'alert-circle-outline' : 'bulb-outline'} size={22} color={iss.level === 'needed' ? colors.warn : colors.ink2} /></View>
+                <View style={styles.flex}>
+                  <Text style={styles.noteText}>{t(`complete.${iss.key}`)}</Text>
+                  <Text style={styles.docType}>{t(`complete.fix_${iss.fix}`)}</Text>
+                </View>
+              </Row>
+            ))}
+          </Section>
+        )}
 
         {/* 3. Purchase and coverage details. */}
         <Section title={t('detail.details')}>
@@ -404,6 +579,58 @@ export default function WarrantyDetail() {
             ))}
           </Section>
         )}
+
+        {/* Shortlist 17: products bought together; documents can be shared between them. */}
+        {bundle.length > 0 && (
+          <Section title={t('bundle.title')}>
+            {bundle.map((o, i) => <WarrantyRow key={o.id} warranty={o} separator={i > 0} />)}
+            <Row separator iconInset onPress={() => void getDb().then((db) => leaveBundle(db, w.id)).then(reloadExtras)}>
+              <View style={styles.glyph}><AppIcon name="remove-circle-outline" size={22} color={colors.tint} /></View>
+              <Text style={styles.addText}>{t('bundle.leave')}</Text>
+            </Row>
+          </Section>
+        )}
+
+        {mine.length > 0 && (
+          <Section title={t('collections.title')}>
+            <Row iconInset onPress={() => setSheet('collections')} chevron>
+              <View style={styles.glyph}><AppIcon name="albums-outline" size={22} color={colors.tint} /></View>
+              <Text style={[styles.noteText, styles.flex]}>{allCollections.filter((c) => mine.includes(c.id)).map((c) => c.name).join(', ')}</Text>
+            </Row>
+          </Section>
+        )}
+
+        {/* Shortlist 6: claim cases with their status. */}
+        <Section title={t('claims.title')}>
+          {claims.map((c, i) => (
+            <Row key={c.id} separator={i > 0} onPress={() => setSheet({ claim: c })} chevron accessibilityLabel={`${c.title}, ${t(`claims.status_${c.status}`)}`}>
+              <View style={styles.flex}>
+                <Text style={styles.noteText}>{c.title}</Text>
+                <Text style={styles.docType}>{`${t(`claims.status_${c.status}`)} · ${date(c.submitted_on)}${c.resolved_on ? ` – ${date(c.resolved_on)}` : ''}`}</Text>
+              </View>
+            </Row>
+          ))}
+          <View style={[styles.noteRow, claims.length > 0 && styles.noteRowLine]}>
+            <Input style={styles.noteInput} value={claimTitle} onChangeText={setClaimTitle} placeholder={t('claims.placeholder')} accessibilityLabel={t('claims.title')} onSubmitEditing={startClaim} />
+            <Button kind="glass" title={t('claims.start')} onPress={startClaim} disabled={!claimTitle.trim()} />
+          </View>
+        </Section>
+
+        {/* Shortlist 12: the person's own reminders for this item. */}
+        <Section title={t('reminder.title')}>
+          {reminders.map((r, i) => (
+            <Row key={r.id} separator={i > 0} style={styles.noteItem}>
+              <Text style={[styles.noteText, styles.flex]}>{date(r.date)}{r.note ? `: ${r.note}` : ''}</Text>
+              <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => void removeReminder(r)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${date(r.date)}`}>
+                <AppIcon name="trash-outline" size={20} color={colors.bad} />
+              </Pressable>
+            </Row>
+          ))}
+          <View style={[styles.noteRow, reminders.length > 0 && styles.noteRowLine]}>
+            <Input style={styles.noteInput} value={reminderNote} onChangeText={setReminderNote} placeholder={t('reminder.placeholder')} accessibilityLabel={t('reminder.title')} />
+            <Button kind="glass" title={t('reminder.pickDate')} icon="calendar-outline" onPress={addReminder} />
+          </View>
+        </Section>
 
         {/* 4. Support and claims. */}
         <Section title={t('detail.support')}>
@@ -438,7 +665,7 @@ export default function WarrantyDetail() {
               </Text>
               {/* A visible button, not a long-press: hidden gestures are hard to discover. */}
               <Pressable style={({ pressed }) => [styles.round, pressed && styles.roundPressed]} onPress={() => confirmDeleteNote(h)} accessibilityRole="button" accessibilityLabel={`${t('detail.delete')}: ${h.note}`}>
-                <Ionicons name="trash-outline" size={20} color={colors.bad} />
+                <AppIcon name="trash-outline" size={20} color={colors.bad} />
               </Pressable>
             </Row>
           ))}
@@ -453,11 +680,11 @@ export default function WarrantyDetail() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   flex: { flex: 1 },
-  hero: { gap: 12, paddingTop: 8, paddingHorizontal: 4 },
-  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  photo: { width: 56, height: 56, borderRadius: 14 },
+  hero: { gap: 10, paddingTop: 4, paddingHorizontal: 4 },
+  heroTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  photo: { width: 52, height: 52, borderRadius: 13 },
   photoEmpty: { backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPE.title2, color: colors.ink },
   store: { ...TYPE.sub, color: colors.ink2 },
@@ -465,10 +692,10 @@ const styles = StyleSheet.create({
   badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
   badgeText: { ...TYPE.foot, fontWeight: '600' },
   note: { ...TYPE.sub, color: colors.warn },
-  empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 15, paddingHorizontal: ROW_X },
-  doc: { paddingVertical: 12, paddingHorizontal: ROW_X, gap: 12 },
-  line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: 1, backgroundColor: colors.line },
-  docTop: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 12, paddingHorizontal: ROW_X },
+  doc: { paddingVertical: 10, paddingHorizontal: ROW_X, gap: 10 },
+  line: { position: 'absolute', top: 0, left: ROW_X, right: ROW_X, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
+  docTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   docName: { ...TYPE.body, color: colors.ink },
   docType: { ...TYPE.foot, color: colors.ink2 },
   docMissing: { color: colors.bad },
@@ -483,6 +710,6 @@ const styles = StyleSheet.create({
   noteItem: { paddingVertical: 4 },
   noteText: { ...TYPE.body, color: colors.ink },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: ROW_X },
-  noteRowLine: { borderTopWidth: 1, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
+  noteRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
   noteInput: { flex: 1, minWidth: 0 },
-});
+}));

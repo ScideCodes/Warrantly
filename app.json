@@ -3,23 +3,27 @@
     "name": "Warrantly",
     "slug": "warrantly",
     "scheme": "warrantly",
-    "version": "0.8.1",
+    "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "dev.warrantly.prototype"
+      "bundleIdentifier": "dev.warrantly.app"
     },
     "android": {
-      "package": "dev.warrantly.prototype",
+      "package": "dev.warrantly.app",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
         "backgroundImage": "./assets/android-icon-background.png",
         "monochromeImage": "./assets/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "allowBackup": false,
+      "blockedPermissions": [
+        "android.permission.SYSTEM_ALERT_WINDOW"
+      ]
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -49,14 +53,15 @@
             {
               "name": "NextExpiry",
               "label": "Warrantly",
-              "description": "The next warranty to expire",
+              "description": "Warranties ending soon, return deadlines and quick actions",
               "minWidth": "180dp",
               "minHeight": "80dp",
               "targetCellWidth": 3,
               "targetCellHeight": 1,
               "resizeMode": "horizontal|vertical",
               "previewImage": "./assets/widget-preview.png",
-              "updatePeriodMillis": 10800000
+              "updatePeriodMillis": 10800000,
+              "widgetFeatures": "reconfigurable|configuration_optional"
             }
           ]
         }
@@ -67,7 +72,9 @@
         {
           "androidIntentFilters": [
             "image/*",
-            "application/pdf"
+            "application/pdf",
+            "message/rfc822",
+            "text/plain"
           ],
           "disableIOS": true
         }
@@ -80,6 +87,13 @@
           "microphonePermission": false
         }
       ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Warrantly uses the camera to read a serial number or barcode.",
+          "recordAudioAndroid": false
+        }
+      ],
       "./plugins/withShortcuts"
     ],
     "experiments": {
@@ -90,7 +104,10 @@
       "policy": "appVersion"
     },
     "updates": {
-      "url": "https://u.expo.dev/9e085868-1858-4d15-bfab-c596c6a222ab"
+      "url": "https://u.expo.dev/9e085868-1858-4d15-bfab-c596c6a222ab",
+      "requestHeaders": {
+        "expo-channel-name": "preview"
+      }
     },
     "extra": {
       "eas": {

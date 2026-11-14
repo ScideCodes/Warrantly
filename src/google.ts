@@ -1,5 +1,6 @@
 import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse } from 'react-native-nitro-google-signin';
 import GoogleAccountToken from '../modules/google-account-token';
+import { GMAIL_IMPORT } from '@/features';
 import { getSetting, setSetting } from '@/settings';
 
 // Public identifier of the "Warrantly Web" OAuth client (not a secret). Credential Manager needs
@@ -9,21 +10,20 @@ const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
 const DRIVE_FILE = 'https://www.googleapis.com/auth/drive.file'; // backups: only files this app creates
 
 // Gmail scope here too, so getTokens() returns a token that can read mail.
-GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, scopes: [GMAIL_READONLY] });
-
-const hasGmailScope = () => GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(GMAIL_READONLY) ?? false;
+GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, scopes: GMAIL_IMPORT ? [GMAIL_READONLY] : [] });
 
 // iOS (later): add the "react-native-nitro-google-signin" plugin to app.json with iosUrlScheme from an
 // iOS OAuth client. Android needs no plugin: autolinking plus webClientId below is enough.
 
 // Connect a Gmail account (section 15: several are allowed). Google's account picker is always shown,
-// so a second account can be chosen; read-only Gmail access is asked once per account.
-// Returns the email, or null if cancelled.
+// so a second account can be chosen. Read-only Gmail access is always requested from Google: it shows the
+// consent screen only when access is missing. (The saved session's scope list is what was asked for, not
+// what was granted, so it cannot tell a revoked grant apart.) Returns the email, or null if cancelled.
 export async function connectGmail(): Promise<string | null> {
   await GoogleOneTapSignIn.checkPlayServices();
   const res = await GoogleOneTapSignIn.presentExplicitSignIn();
   if (!isSuccessResponse(res)) return null;
-  if (!hasGmailScope()) await GoogleOneTapSignIn.requestScopes([GMAIL_READONLY]);
+  await GoogleOneTapSignIn.requestScopes([GMAIL_READONLY]);
   return res.data!.user.email;
 }
 
@@ -50,7 +50,8 @@ let cached: { token: string; at: number } | null = null;
 // Gmail account is connected, and backups must keep going to the same Drive.
 export async function ensureDriveAccess(interactive: boolean): Promise<boolean> {
   if (getSetting('backup_account')) return true;
-  if (!GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) {
+  // With the person present, ask Google directly (the saved scope list can be stale; see connectGmail).
+  if (interactive || !GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) {
     if (!interactive) return false;
     if (!GoogleOneTapSignIn.getCurrentUser()) {
       await GoogleOneTapSignIn.checkPlayServices();
@@ -85,7 +86,7 @@ export async function chooseBackupAccount(): Promise<string | null> {
   await GoogleOneTapSignIn.checkPlayServices();
   const res = await GoogleOneTapSignIn.presentExplicitSignIn();
   if (!isSuccessResponse(res)) return null;
-  if (!GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
+  await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]); // shows consent only if missing (see connectGmail)
   const email = res.data!.user.email;
   if (!email) return null;
   setSetting('backup_account', email);

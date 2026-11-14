@@ -1,6 +1,7 @@
+import { Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { latestBackup, PasswordNeededError, restoreBackup } from '@/backup';
 import { WrongPasswordError } from '@/backup/format.ts';
@@ -8,10 +9,11 @@ import { getDb } from '@/db/client';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, Group, Input } from '@/components/ui';
-import { colors, TYPE } from '@/theme';
+import { colors, TYPE, themed } from '@/theme';
 
 // Restore the newest backup from Google Drive (section 17). Replaces everything on this phone.
 export default function Restore() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const [backup, setBackup] = useState<{ id: string; createdTime: string } | null | undefined>(undefined);
   const [password, setPassword] = useState('');
@@ -81,7 +83,7 @@ export default function Restore() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   content: { gap: 16 },
   row: { flexDirection: 'row', gap: 12, alignItems: 'center', paddingHorizontal: 4 },
   title: { ...TYPE.headline, color: colors.ink, paddingHorizontal: 4 },
@@ -90,4 +92,4 @@ const styles = StyleSheet.create({
   label: { ...TYPE.foot, color: colors.ink2 },
   hint: { ...TYPE.foot, color: colors.ink2 },
   error: { ...TYPE.foot, color: colors.bad, paddingHorizontal: 4 },
-});
+}));

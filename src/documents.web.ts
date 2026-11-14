@@ -5,8 +5,9 @@ import { mailtoUrl } from '@/claim';
 export const scanDocument = async (): Promise<{ text: string; localPath: string } | null> => null;
 export const importDocument = async (): Promise<{ text: string; localPath: string } | null> => null;
 export const fileToDocument = async (_uri: string, _name: string, _mimeType: string | null): Promise<{ text: string; localPath: string }> => ({ text: '', localPath: '' });
+export const emailToDocument = async (_uri: string, _name: string): Promise<{ text: string; localPath: string; filename: string }> => ({ text: '', localPath: '', filename: '' });
+export const textToDocument = async (text: string, _title: string): Promise<{ text: string; localPath: string; filename: string }> => ({ text, localPath: '', filename: '' });
 export const pickPhoto = async (_source: 'camera' | 'library'): Promise<string | null> => null;
-export const documentUriOrNull = (_localPath: string | null): string | null => null;
 export const mailDocuments = { save: async (_bytes: Uint8Array, _filename: string): Promise<string> => '' };
 export const readDocument = async (_localPath: string): Promise<Uint8Array> => new Uint8Array();
 export const writeDocument = async (_localPath: string, _bytes: Uint8Array): Promise<void> => {};
@@ -18,3 +19,6 @@ export const saveDocument = async (_localPath: string, _name: string): Promise<b
 export const sendClaim = async (to: string, subject: string, body: string, _localPaths: string[]): Promise<void> => {
   await Linking.openURL(mailtoUrl(to, subject, body));
 };
+export const exportDocuments = async (_items: { local_path: string; name: string }[]): Promise<{ written: number; missing: number } | null> => null;
+export const documentThumbnail = async (_localPath: string, _width: number): Promise<string | null> => null;
+export const photoForWidget = async (_localPath: string, _size: number): Promise<string | null> => null;

@@ -1,4 +1,4 @@
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 - extendedWaitUntil: { visible: "USE THIS FOLDER|Use this folder", timeout: 20000 }
 - runFlow:

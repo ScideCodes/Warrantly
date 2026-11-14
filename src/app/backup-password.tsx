@@ -1,20 +1,22 @@
+import { Text, View } from '@/components/themeMotion';
 import { useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { runBackup, setBackupPassword } from '@/backup';
 import { getDb } from '@/db/client';
 import { setSetting } from '@/settings';
 import { Page } from '@/components/Page';
 import { Button, Group, Input } from '@/components/ui';
-import { colors, TYPE } from '@/theme';
+import { colors, TYPE, themed } from '@/theme';
 
 const MIN_PASSWORD = 8;
 
 // Choose the password backups are encrypted with (section 17). With purpose=disconnect it only sets the
 // password (needed before disconnecting an account, section 15) and leaves automatic backup as it is.
 export default function BackupPassword() {
+  const styles = useStyles();
   const { t } = useTranslation();
   const { purpose } = useLocalSearchParams<{ purpose?: string }>();
   const [password, setPassword] = useState('');
@@ -70,7 +72,7 @@ export default function BackupPassword() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   warning: { marginTop: 8, padding: 16, borderRadius: 26, backgroundColor: colors.warnSoft },
   warningText: { ...TYPE.sub, color: colors.warn },
   panel: { marginTop: 22, paddingVertical: 12, paddingHorizontal: 16 },
@@ -78,4 +80,4 @@ const styles = StyleSheet.create({
   label: { ...TYPE.foot, color: colors.ink2, marginTop: 6 },
   error: { ...TYPE.foot, color: colors.bad, marginTop: 8 },
   hint: { ...TYPE.foot, color: colors.ink2, textAlign: 'center', marginBottom: 8 },
-});
+}));

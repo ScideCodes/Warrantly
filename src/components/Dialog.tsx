@@ -1,7 +1,8 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
-import { Animated, BackHandler, Easing, Modal, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View, type AlertButton } from 'react-native';
+import { Animated, BackHandler, Easing, Modal, ScrollView, StyleSheet, useWindowDimensions, type AlertButton } from 'react-native';
 import i18n from '@/i18n';
-import { colors, EASE, TYPE } from '@/theme';
+import { colors, EASE, TYPE, themed, wordWidth } from '@/theme';
 import { reduceMotion } from '@/components/ui';
 
 // The reference's alert (`.link-alert`, ios.css lines 567-583): centred title and message, capsule actions,
@@ -17,8 +18,9 @@ export function showAlert(title: string, message?: string, buttons?: AlertButton
 }
 
 export function DialogHost() {
+  const styles = useStyles();
   const [current, setCurrent] = useState<Request | null>(() => queue[0] ?? null);
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const anim = useState(() => new Animated.Value(0))[0];
   useEffect(() => {
     notify = () => setCurrent((c) => c ?? queue[0] ?? null);
@@ -79,6 +81,8 @@ export function DialogHost() {
                     onPress={() => finish(b)}
                     style={({ pressed }) => [
                       styles.action,
+                      // two to a row only while the longest word fits; otherwise the button takes its own row
+                      { flexBasis: Math.max(96, wordWidth(b.text ?? '', 17) * fontScale + 24) },
                       { backgroundColor: primary ? colors.accent : colors.fill },
                       pressed && !reduceMotion() && { transform: [{ scale: 0.97 }] },
                     ]}
@@ -96,7 +100,7 @@ export function DialogHost() {
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.dim },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
   // --material-solid: the reference's own fallback where its 24px backdrop blur is unavailable
@@ -107,5 +111,5 @@ const styles = StyleSheet.create({
   message: { ...TYPE.foot, color: colors.ink, textAlign: 'center', marginTop: 6 },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   action: { flexGrow: 1, flexShrink: 1, flexBasis: 96, minWidth: 0, minHeight: 48, paddingVertical: 10, paddingHorizontal: 12, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  actionText: { fontSize: 17, lineHeight: 22, fontWeight: '600', textAlign: 'center' },
-});
+  actionText: { ...TYPE.button, textAlign: 'center' },
+}));
