@@ -23,6 +23,7 @@ import {
 import { useDatePicker } from '@/components/DatePicker';
 import { DocThumb } from '@/components/DocThumb';
 import { completeness } from '@/completeness';
+import { WarrantyDetailSkeleton } from '@/components/Skeleton';
 import { saveKnownText } from '@/docIndex';
 import { recordWarranty } from '@/recentStore';
 import { purgeBefore, showUndo } from '@/undo';
@@ -121,8 +122,8 @@ export default function WarrantyDetail() {
 
   if (!w)
     return (
-      <Page title={t(loading ? 'form.loading' : loadError ? 'form.loadFailedTitle' : 'form.missingTitle')}>
-        {loading ? <ActivityIndicator color={colors.tint} /> : (
+      <Page title={loading ? '' : t(loadError ? 'form.loadFailedTitle' : 'form.missingTitle')}>
+        {loading ? <WarrantyDetailSkeleton /> : (
           <View style={{ gap: 16 }}>
             <Text style={{ ...TYPE.body, color: colors.ink2 }}>{t(loadError ? 'form.loadFailedBody' : 'form.missingBody', { detail: loadError })}</Text>
             {loadError && <Button title={t('home.retry')} onPress={() => { setLoading(true); setLoadAttempt((n) => n + 1); }} />}
@@ -687,7 +688,7 @@ const useStyles = themed(() => StyleSheet.create({
   photo: { width: 52, height: 52, borderRadius: 13 },
   photoEmpty: { backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
   title: { ...TYPE.title2, color: colors.ink },
-  store: { ...TYPE.sub, color: colors.ink2 },
+  store: { ...TYPE.sub, color: colors.ink2, fontVariant: ['tabular-nums'] },
   status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 },
   badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
   badgeText: { fontVariant: ['tabular-nums'], ...TYPE.foot, fontWeight: '600' },

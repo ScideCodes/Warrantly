@@ -1,7 +1,7 @@
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
 import { Page } from '@/components/Page';
@@ -11,6 +11,7 @@ import type { BackupHealth } from '@/backupHealth';
 import { readBackupHealth } from '@/backupStatus';
 import { getDb } from '@/db/client';
 import { colors, TYPE, themed } from '@/theme';
+import { BackupStatusSkeleton } from '@/components/Skeleton';
 
 // Backup health (shortlist 20): whether the latest data and documents are on Drive, in plain words, with
 // the one thing to do about it.
@@ -40,10 +41,14 @@ export default function BackupStatus() {
   }
 
   if (!health) return <Page title={t('health.title')}>
-    <View style={styles.card}>
-      {readError ? <><Text style={styles.detail}>{t('health.readFailed')}</Text><Button kind="glass" title={t('home.retry')} onPress={reload} /></>
-        : <View style={styles.loading}><ActivityIndicator color={colors.ink2} /><Text style={styles.detail}>{t('health.loading')}</Text></View>}
-    </View>
+    {readError ? (
+      <View style={styles.card}>
+        <Text style={styles.detail}>{t('health.readFailed')}</Text>
+        <Button kind="glass" title={t('home.retry')} onPress={reload} />
+      </View>
+    ) : (
+      <BackupStatusSkeleton />
+    )}
   </Page>;
   const good = health.state === 'ok';
   const bad = health.state === 'failed' || health.state === 'overdue';

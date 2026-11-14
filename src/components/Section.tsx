@@ -46,7 +46,7 @@ const useStyles = themed(() => StyleSheet.create({
   fieldSide: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   label: { ...TYPE.foot, color: colors.ink2 },
   labelSide: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%' },
-  value: { ...TYPE.body, color: colors.ink },
+  value: { ...TYPE.body, color: colors.ink, fontVariant: ['tabular-nums'] },
   valueSide: { flex: 1, textAlign: 'right' },
   link: { color: colors.link },
   line: { position: 'absolute', left: ROW_X, right: ROW_X, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },

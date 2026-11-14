@@ -2,7 +2,7 @@ import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, StyleSheet } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
 import { Page } from '@/components/Page';
@@ -14,6 +14,7 @@ import { getDb } from '@/db/client';
 import { getWarranty, sharedWarranties, type SharedWarranty, type Warranty } from '@/db/repo.ts';
 import { DEFAULT_FIELDS, TRANSFER_FIELDS, transferHtml, transferItem, type TransferField } from '@/transfer';
 import { colors, TYPE, themed } from '@/theme';
+import { TransferSkeleton } from '@/components/Skeleton';
 
 // Transfer to a new owner (shortlist 18): selling or giving away an item with its warranty. The person ticks
 // what goes; private details start unticked. A summary PDF or a Warrantly file is made from the ticked parts
@@ -39,7 +40,7 @@ export default function Transfer() {
   }, [id]);
   const toggle = <K,>(set: Set<K>, k: K) => { const n = new Set(set); if (n.has(k)) n.delete(k); else n.add(k); return n; };
 
-  if (!loaded) return <Page title={t('transfer.title')}><View style={styles.loading}><ActivityIndicator color={colors.ink2} /><Text style={styles.hint}>{t('transfer.loading')}</Text></View></Page>;
+  if (!loaded) return <Page title={t('transfer.title')}><TransferSkeleton /></Page>;
   if (!w || !item) return <Page title={t('transfer.title')}><EmptyState icon="shield-checkmark-outline" message={t('transfer.unavailable')} /></Page>;
   const name = displayName(t, w);
   const chosen = () => transferItem(item, fields, docs);
