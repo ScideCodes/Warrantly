@@ -154,6 +154,7 @@ const CATEGORY_TILE: Record<string, string> = {
   appliances: TILE.orange,
   home: TILE.teal,
   tools: TILE.grey,
+  vehicles: TILE.purple,
   other: TILE.cyan,
 };
 
