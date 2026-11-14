@@ -18,7 +18,8 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount, configureGoogleSignIn } from '@/google';
 import { appLanguage, resources } from '@/i18n';
-import { getDensity, setDensity, setUsername, type Density } from '@/settings';
+import { currencyName } from '@/money';
+import { CURRENCIES, getDefaultCurrency, setDefaultCurrency, getDensity, setDensity, setUsername, type Density } from '@/settings';
 import { forgetRecent } from '@/recentStore';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
@@ -44,6 +45,8 @@ export default function Settings() {
   const [reminderMenu, setReminderMenu] = useState(false);
   const [intervalMenu, setIntervalMenu] = useState(false);
   const [language, setLanguage] = useState(getLanguageSetting);
+  const [defaultCurrency, setDefaultCurrencyState] = useState(getDefaultCurrency);
+  const [currencyMenu, setCurrencyMenu] = useState(false);
   const [theme, setTheme] = useState(getThemeSetting);
   const [density, setDensityState] = useState<Density>(getDensity);
   const [groups, setGroups] = useState(getReminderGroups);
@@ -129,6 +132,11 @@ export default function Settings() {
     setLanguage(code);
     await i18n.changeLanguage(appLanguage());
     await rescheduleReminders(await getDb()); // reminder texts are written in the app language
+  }
+
+  function chooseCurrency(code: string) {
+    setDefaultCurrency(code);
+    setDefaultCurrencyState(code);
   }
 
   // Applies at once: the palette is live, so Settings stays open where it was (no restart, no update).
@@ -455,6 +463,7 @@ export default function Settings() {
             (d: string) => { setDensity(d as Density); setDensityState(d as Density); },
           )}
           {choices('globe-outline', TILE.blue, t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, label: t(`settings.lang_${key}`) })), language, chooseLanguage)}
+          {link('cash-outline', TILE.green, t('settings.currency'), () => setCurrencyMenu(true), { value: defaultCurrency })}
         </>,
       )}
 
@@ -561,6 +570,31 @@ export default function Settings() {
                   </View>
                 </View>
                 <Text style={[styles.label, styles.rowText]}>{t(`backup.${i}`)}</Text>
+              </Row>
+            ))}
+          </Group>
+        </SheetBody>
+      </SheetFrame>
+      <SheetFrame open={currencyMenu} onClose={() => setCurrencyMenu(false)} title={t('settings.currency')}>
+        <SheetBody>
+          <Group inSheet>
+            {CURRENCIES.map((code, index) => (
+              <Row
+                key={code}
+                separator={index > 0}
+                onPress={() => {
+                  chooseCurrency(code);
+                  setCurrencyMenu(false);
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: defaultCurrency === code }}
+              >
+                <View style={styles.tileSpace}>
+                  <View style={[styles.check, defaultCurrency === code && styles.checkOn]}>
+                    {defaultCurrency === code && <AppIcon name="checkmark" size={15} color="#fff" />}
+                  </View>
+                </View>
+                <Text style={[styles.label, styles.rowText]}>{code} · {currencyName(code, i18n.language)}</Text>
               </Row>
             ))}
           </Group>

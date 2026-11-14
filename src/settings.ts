@@ -48,10 +48,15 @@ export const setWidgetNames = (on: boolean | null): void => void (on === null ? 
 type SettingKey = 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'last_backup_error_at' | 'backup_account' | 'gmail_import_enabled';
 export const getSetting = (key: SettingKey): string | null => Storage.getItemSync(key);
 export const setSetting = (key: SettingKey, value: string): void => Storage.setItemSync(key, value);
+export const CURRENCIES = ['HUF', 'EUR', 'USD', 'GBP', 'CHF', 'PLN', 'CZK', 'RON'] as const;
+export type CurrencyCode = typeof CURRENCIES[number] | string;
+export const getDefaultCurrency = (): string => Storage.getItemSync('default_currency') ?? 'HUF';
+export const setDefaultCurrency = (code: string): void => Storage.setItemSync('default_currency', code);
+
 // What a backup carries besides the database.
-export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), theme: Storage.getItemSync('theme'), language: Storage.getItemSync('language'), reminder_time: Storage.getItemSync('reminder_time'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled'), density: Storage.getItemSync('density'), list_sort: Storage.getItemSync('list_sort') });
+export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), theme: Storage.getItemSync('theme'), language: Storage.getItemSync('language'), default_currency: Storage.getItemSync('default_currency'), reminder_time: Storage.getItemSync('reminder_time'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled'), density: Storage.getItemSync('density'), list_sort: Storage.getItemSync('list_sort') });
 export function applySnapshot(s: Record<string, string | null>): void {
-  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders', 'density', 'list_sort'].includes(k) && typeof v === 'string' && v.length <= 200) Storage.setItemSync(k, v);
+  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'default_currency', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders', 'density', 'list_sort'].includes(k) && typeof v === 'string' && v.length <= 200) Storage.setItemSync(k, v);
 }
 
 // List density (shortlist): compact rows use less padding and one meta line; text size is never reduced.
@@ -74,6 +79,7 @@ export const setWidgetConfigText = (id: number, text: string): void => Storage.s
 export const removeWidgetConfig = (id: number): void => void Storage.removeItemSync(`widget:${id}`);
 
 // Products bought together: which warranty is the primary entry on the home list.
+export const hasBundleLead = (bundleId: number): boolean => Storage.getItemSync(`bundle_lead_${bundleId}`) !== null;
 export function getBundleLead(bundleId: number, members: { id: number }[]): number {
   const stored = Storage.getItemSync(`bundle_lead_${bundleId}`);
   if (stored) {

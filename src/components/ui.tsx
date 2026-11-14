@@ -32,6 +32,8 @@ export function glass(sheen = true): ViewStyle {
   return {
     backgroundColor: colors.material,
     boxShadow: colors.glassEdge,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.materialEdge,
     ...(sheen ? { backgroundImage: SHEEN.replace('0.5)', `${0.5 * colors.glassSheen})`) } : null),
   };
 }
@@ -70,7 +72,15 @@ export function Button({
       onPress={onPress}
       disabled={disabled || busy}
       hitSlop={4}
-      style={({ pressed }) => [styles.button, prominent ? { backgroundColor: pressed ? colors.accentDown : colors.accent } : glass(), (disabled || kind === 'destructive') && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined }, busy && styles.disabled, style]}
+      style={({ pressed }) => [
+        styles.button,
+        prominent
+          ? { backgroundColor: pressed ? colors.accentDown : colors.accent, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' }
+          : glass(),
+        (disabled || kind === 'destructive') && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line },
+        busy && styles.disabled,
+        style,
+      ]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}

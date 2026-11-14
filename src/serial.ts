@@ -1,7 +1,7 @@
 // Serial number reading (shortlist 11): candidates from a barcode or from text read off a label. The user
 // always confirms or edits the value before it is saved. Pure, tested in Node.
 
-const LABEL = /\b(?:s\/?n|serial(?:\s*(?:no|number|nr))?|ser\.?\s*no|sorozatsz[aá]m|gy[aá]ri\s*sz[aá]m)\b\.?\s*[:#-]?\s*([A-Z0-9][A-Z0-9-]{3,29})/i;
+const LABEL = /\b(?:s\/?n|sn\b|serial(?:\s*(?:no|number|nr|id|#))?|ser\.?\s*no|sorozatsz[aá]m|gy[aá]ri\s*(?:sz[aá]m|sz\.)|gy\.?\s*sz\.?|gsz\.?|imei)\b\.?\s*[:#=\s-]?\s*([A-Z0-9][A-Z0-9-]{3,29})/i;
 const TOKEN = /\b(?=[A-Z0-9-]*\d)(?=[A-Z0-9-]*[A-Z])[A-Z0-9][A-Z0-9-]{5,29}\b/g;
 
 // A labelled value ("S/N: ABC123") first, then code-like words with both letters and digits; longest first.

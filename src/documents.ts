@@ -49,7 +49,17 @@ export async function fileToDocument(uri: string, name: string, mimeType: string
   if (mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) {
     const pdf = new File(folder(), `import-${Date.now()}.pdf`);
     await new File(uri).copy(pdf);
-    return { text: '', localPath: pdf.name };
+    let text = '';
+    try {
+      text = await readPdfText(
+        (first, count) => PdfPages.renderForText(documentUri(pdf.name), 1400, first, Math.min(count, 4)),
+        extractTextFromImage,
+        () => false,
+      );
+    } catch (e) {
+      console.warn('PDF text extraction error', e);
+    }
+    return { text, localPath: pdf.name };
   }
   return imagesToPdf([{ uri, mimeType: imageMime(mimeType) }]); // the type comes from the sending app
 }
