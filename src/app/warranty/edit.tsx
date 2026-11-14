@@ -3,8 +3,8 @@ import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'rea
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { ActivityIndicator, KeyboardAvoidingView, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
+import { useDatePicker } from '@/components/DatePicker';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
 import { getDb } from '@/db/client';
@@ -27,7 +27,7 @@ import { saveKnownText } from '@/docIndex';
 import { whenUnlocked } from '@/lock/gate';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
-import { CATEGORIES, formErrors, isValidYmd, todayYmd, type FormField } from '@/warranty';
+import { CATEGORIES, formErrors, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [12, 24, 36];
 type Form = Record<FormField | 'order_number' | 'serial_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
@@ -92,7 +92,8 @@ export default function EditWarranty() {
     };
   }, []);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const [pickerError, setPickerError] = useState<string | null>(null); // the calendar failed: fall back to typing
+  const { pickDate: openDate, datePicker } = useDatePicker();
+  const [customMonths, setCustomMonths] = useState(false);
   const [mail, setMail] = useState<{ state: 'hidden' | 'loading' | 'shown'; text?: string }>({ state: 'hidden' });
   const resolving = existing?.status === 'needs_input'; // section 9 resolve view
   // A new warranty asks only for the essentials; the rest opens on request, or by itself when there is
@@ -277,14 +278,7 @@ export default function EditWarranty() {
 
   const pickDate = (key: 'purchase_date' | 'warranty_start_date') => {
     const current = form[key] || form.purchase_date;
-    const [y, m, d] = (isValidYmd(current) ? current : todayYmd()).split('-').map(Number);
-    DateTimePickerAndroid.open({
-      value: new Date(y, m - 1, d),
-      mode: 'date',
-      onValueChange: (_event, date) => set(key)(todayYmd(date)),
-      // The library swallows native errors unless asked; show it and let the user type the date instead.
-      onError: (e) => setPickerError(e instanceof Error ? e.message : String(e)),
-    });
+    openDate({ title: t(key === 'purchase_date' ? 'form.purchaseDate' : 'form.startDate'), value: current, onPick: set(key) });
   };
 
   // Fields as in the reference's form panels: a label and a filled 44dp field, side by side when the column
@@ -294,12 +288,13 @@ export default function EditWarranty() {
   const stackMethods = !room(pairWidth(t('form.scanShort'), t('form.importShort'), 2 * ROW_X));
   const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
-    if (opts.date && Platform.OS === 'android' && !pickerError) {
+    const inline = side && room(label.length * 14 * 0.6 / 0.32 + 2 * ROW_X);
+    if (opts.date) {
       const value = form[key];
       return (
-        <View style={[styles.field, side && styles.fieldSide]}>
-          <Text style={[styles.label, side && styles.labelSide]}>{label}</Text>
-          <View style={side ? styles.controlSide : styles.control}>
+        <View style={[styles.field, inline && styles.fieldSide]}>
+          <Text style={[styles.label, inline && styles.labelSide]}>{label}</Text>
+          <View style={inline ? styles.controlSide : styles.control}>
           <Pressable
             testID={key}
             style={[inputStyle(), styles.dateInput, invalid && styles.inputError]}
@@ -316,7 +311,7 @@ export default function EditWarranty() {
         </View>
       );
     }
-    const beside = side && !opts.multiline;
+    const beside = inline && !opts.multiline;
     return (
       <View style={[styles.field, beside && styles.fieldSide]}>
         <Text style={[styles.label, beside && styles.labelSide]} nativeID={`${key}-label`}>
@@ -334,7 +329,6 @@ export default function EditWarranty() {
           accessibilityLabelledBy={`${key}-label`}
           accessibilityHint={opts.hint}
         />
-        {opts.date && pickerError && <Text style={styles.hint}>{t('form.pickerFailed', { detail: pickerError })}</Text>}
         {invalid && opts.error ? (
           <Text style={styles.error} accessibilityLiveRegion="polite">
             {opts.error}
@@ -455,15 +449,18 @@ export default function EditWarranty() {
 
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.length')}</Text>
-            <View style={styles.chips} accessibilityRole="radiogroup">
-              {LENGTH_CHOICES.map((m) => chip(String(m), String(m), form.warranty_months === String(m), () => set('warranty_months')(String(m))))}
+            <View style={[styles.chips, !room(310) && { flexWrap: 'wrap' }]} accessibilityRole="radiogroup">
+              {LENGTH_CHOICES.map((m) => chip(String(m), String(m), !customMonths && form.warranty_months === String(m), () => { setCustomMonths(false); set('warranty_months')(String(m)); }))}
               <Input
-                style={[styles.monthsInput, errors.includes('warranty_months') && styles.inputError]}
-                value={form.warranty_months}
+                style={[styles.monthsInput, !room(310) && { flexBasis: '100%' }, errors.includes('warranty_months') && styles.inputError]}
+                testID="custom-months"
+                placeholder={t('form.custom')}
+                value={customMonths || !LENGTH_CHOICES.includes(Number(form.warranty_months)) ? form.warranty_months : ''}
+                onFocus={() => { if (!customMonths && LENGTH_CHOICES.includes(Number(form.warranty_months))) set('warranty_months')(''); setCustomMonths(true); }}
                 onChangeText={set('warranty_months')}
                 keyboardType="number-pad"
                 maxLength={3}
-                accessibilityLabel={t('form.length')}
+                accessibilityLabel={t('form.customMonths')}
               />
             </View>
             {errors.includes('warranty_months') && <Text style={styles.error}>{t('form.errMonths')}</Text>}
@@ -526,6 +523,7 @@ export default function EditWarranty() {
           </View>
         )}
       </Page>
+      {datePicker}
     </KeyboardAvoidingView>
   );
 }

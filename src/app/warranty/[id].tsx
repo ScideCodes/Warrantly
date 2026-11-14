@@ -19,7 +19,7 @@ import {
   listCustomReminders, setArchived, setFavorite, setMembership, shareDocument, softDeleteAttachment, softDeleteWarranties, undoDeleteAttachment, undoDeleteWarranties, updateClaim,
   type Claim, type ClaimStatus, type Collection, type CustomReminder,
 } from '@/db/features.ts';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { useDatePicker } from '@/components/DatePicker';
 import { DocThumb } from '@/components/DocThumb';
 import { completeness } from '@/completeness';
 import { saveKnownText } from '@/docIndex';
@@ -39,12 +39,7 @@ import { colors, pairWidth, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
 import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
 type SheetKind = null | 'more' | 'add' | 'collections' | 'bundle' | { doc: Attachment } | { label: Attachment } | { claim: Claim };
-const ymdOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-// The system calendar, from tomorrow on (a reminder is for later).
-function pickDate(onPick: (ymd: string) => void, onError: (e: unknown) => void) {
-  const tomorrow = new Date(Date.now() + 86_400_000);
-  DateTimePickerAndroid.open({ value: tomorrow, minimumDate: tomorrow, mode: 'date', onValueChange: (_e, d) => onPick(ymdOf(d)), onError });
-}
+
 
 // Warranty detail (section 13). Order: what it is and how long it is covered, then its documents (the
 // main reason to open it), then the purchase details, support and claims, and the history. Actions used
@@ -72,6 +67,7 @@ export default function WarrantyDetail() {
   const [bundle, setBundle] = useState<Warranty[]>([]);
   const [candidates, setCandidates] = useState<Warranty[]>([]);
   // From the row's document button with no document yet: the add sheet is open on arrival.
+  const { pickDate, datePicker } = useDatePicker();
   const [sheet, setSheet] = useState<SheetKind>(attachParam ? 'add' : null);
   // View and Save side by side while their words fit (the document card's padding is 2 × 10)
   const stackActions = !useRoom()(pairWidth(t('detail.view'), t('detail.save'), 20));
@@ -327,13 +323,15 @@ export default function WarrantyDetail() {
 
   // Own reminders (shortlist 12): a date and a few words; sent even with the automatic ones off.
   function addReminder() {
-    pickDate((ymd) => void (async () => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    pickDate({ title: t('reminder.pickDate'), value: todayYmd(tomorrow), minimum: todayYmd(tomorrow), onPick: (ymd) => void (async () => {
       const db = await getDb();
       if (!(await addCustomReminder(db, w!.id, ymd, reminderNote.trim() || null))) showAlert(t('reminder.duplicate'));
       setReminderNote('');
       await reloadExtras();
       void rescheduleReminders(db).catch(() => {});
-    })(), (e) => showAlert(e instanceof Error ? e.message : String(e)));
+    })().catch((e) => showAlert(e instanceof Error ? e.message : String(e))) });
   }
   async function removeReminder(r: CustomReminder) {
     const db = await getDb();
@@ -675,6 +673,7 @@ export default function WarrantyDetail() {
           </View>
         </Section>
       </Page>
+      {datePicker}
       <Sheet open={openSheet !== null} onClose={() => setSheet(null)} title={openSheet?.title ?? ''} sections={openSheet?.sections ?? []} />
     </>
   );

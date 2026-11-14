@@ -92,8 +92,8 @@ export function useRoom(): (needed: number) => boolean {
 export const wordWidth = (label: string, size = 16): number => Math.max(0, ...label.split(/\s+/).map((w) => w.length)) * size * 0.6;
 
 // Text-adjusted dp two icon Buttons need side by side (padding 2 × 12, icon 20, gap 6, 8 between them), plus the
-// inset of the box they sit in. Never below 240, the narrowest a pair still looks calm. For useRoom().
-export const pairWidth = (a: string, b: string, inset = 0): number => Math.max(240, 2 * (50 + wordWidth(`${a} ${b}`)) + 8) + inset;
+// inset of the box they sit in. Measure the entire label so multiword buttons stay on one line. For useRoom().
+export const pairWidth = (a: string, b: string, inset = 0): number => Math.max(240, 2 * (50 + Math.max(a.length, b.length) * 16 * 0.6) + 8) + inset;
 
 // A touch lights a row, option or button only once it has rested this long (ms). A finger that lands to scroll
 // moves before that, so lists never flash under it; a quick tap still shows its highlight on release. UIKit's
