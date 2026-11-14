@@ -1,15 +1,16 @@
 import { serialEntries, serialSummary } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AppIcon from '@/components/Icon';
+import AppIcon, { ProductIcon } from '@/components/Icon';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
 import { mailUrl, telUrl, webUrl } from '@/safeLinks';
 import { ActivityIndicator, Image, Linking, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Field, Section } from '@/components/Section';
-import { Sheet, type SheetSection } from '@/components/Sheet';
-import { agoLabel, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
+import { Sheet, SheetBody, SheetFrame, type SheetSection } from '@/components/Sheet';
+import { agoLabel, CATEGORY_TILE, daysLabel, displayName, formatDate, formatMoney, lengthLabel, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
 import {
   addAttachment, addHistory, DOC_LABELS, setAttachmentLabel, setPhoto, deleteHistory, getWarranty, ignoreWarranty, listAttachments, listHistory, listWarranties, otherCovers,
@@ -22,7 +23,9 @@ import {
 } from '@/db/features.ts';
 import { useDatePicker } from '@/components/DatePicker';
 import { DocThumb } from '@/components/DocThumb';
-import { completeness } from '@/completeness';
+import { completeness, type Issue } from '@/completeness';
+import { daysUntil, productIcon, returnDeadline, todayYmd, urgency } from '@/warranty';
+import { getUsername, setBundleLead } from '@/settings';
 import { WarrantyDetailSkeleton } from '@/components/Skeleton';
 import { saveKnownText } from '@/docIndex';
 import { recordWarranty } from '@/recentStore';
@@ -33,12 +36,10 @@ import { DocumentDraft } from '@/documentDraft';
 import { useProductPhoto } from '@/components/useProductPhoto';
 import { claimEmail } from '@/claim';
 import { rescheduleReminders, sendTestReminder } from '@/reminders';
-import { getUsername } from '@/settings';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
-import { Button, GlassButton, Input, Row } from '@/components/ui';
+import { Button, GlassButton, Group, Input, Row, TILE } from '@/components/ui';
 import { colors, pairWidth, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
-import { daysUntil, returnDeadline, todayYmd, urgency } from '@/warranty';
 
 type SheetKind = null | 'more' | 'add' | 'collections' | 'bundle' | { doc: Attachment } | { label: Attachment } | { claim: Claim };
 
@@ -68,6 +69,7 @@ export default function WarrantyDetail() {
   const [mine, setMine] = useState<number[]>([]);
   const [bundle, setBundle] = useState<Warranty[]>([]);
   const [candidates, setCandidates] = useState<Warranty[]>([]);
+  const [selectedBundleIds, setSelectedBundleIds] = useState<Set<number>>(new Set());
   // From the row's document button with no document yet: the add sheet is open on arrival.
   const { pickDate, datePicker } = useDatePicker();
   const [sheet, setSheet] = useState<SheetKind>(attachParam ? 'add' : null);
@@ -346,6 +348,7 @@ export default function WarrantyDetail() {
     const db = await getDb();
     const all = [...(await listWarranties(db, 'complete')), ...(await listWarranties(db, 'needs_input'))];
     setCandidates(all.filter((o) => o.id !== w!.id && (!w!.bundle_id || o.bundle_id !== w!.bundle_id)));
+    setSelectedBundleIds(new Set());
     setTimeout(() => setSheet('bundle'), 250);
   }
   async function shareWithBundle(d: Attachment) {
@@ -437,14 +440,13 @@ export default function WarrantyDetail() {
           ...allCollections.map((c) => ({ key: String(c.id), label: c.name, selected: mine.includes(c.id), onPress: () => void getDb().then((db) => setMembership(db, c.id, [w.id], !mine.includes(c.id))).then(reloadExtras) })),
           { key: 'manage', icon: 'albums-outline' as const, label: t('collections.manage'), onPress: () => router.push('/collections') },
         ] }] }
-          : sheet === 'bundle' ? { title: t('bundle.add'), sections: [{ options: candidates.map((o) => ({ key: String(o.id), label: `${displayName(t, o)} · ${o.store_name}`, onPress: () => void getDb().then((db) => bundleTogether(db, [w.id, o.id])).then(reloadExtras) })) }] }
-            : null;
-  const openSheet = sheet === null ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet ?? extraSheet;
+        : null;
+  const openSheet = sheet === null || sheet === 'bundle' ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet ?? extraSheet;
   const issues = completeness(w, docs);
-  const fixIssue = (fix: 'attach' | 'label' | 'edit' | 'serial') => {
-    if (fix === 'attach') return setSheet('add');
-    if (fix === 'label') return setSheet({ label: docs[0] });
-    router.push({ pathname: '/warranty/edit', params: { id: String(w.id), more: '1' } });
+  const fixIssue = (iss: Issue) => {
+    if (iss.fix === 'attach') return setSheet('add');
+    if (iss.fix === 'label') return setSheet({ label: docs[0] });
+    router.push({ pathname: '/warranty/edit', params: { id: String(w.id), more: '1', focus: iss.key } });
   };
   const returnBy = returnDeadline(w);
   const details = [
@@ -554,7 +556,7 @@ export default function WarrantyDetail() {
         {issues.length > 0 && (
           <Section title={t('complete.title')}>
             {issues.map((iss, i) => (
-              <Row key={iss.key} separator={i > 0} iconInset onPress={() => fixIssue(iss.fix)} chevron>
+              <Row key={iss.key} separator={i > 0} iconInset onPress={() => fixIssue(iss)} chevron>
                 <View style={styles.glyph}><AppIcon name={iss.level === 'needed' ? 'alert-circle-outline' : 'bulb-outline'} size={22} color={iss.level === 'needed' ? colors.warn : colors.ink2} /></View>
                 <View style={styles.flex}>
                   <Text style={styles.noteText}>{t(`complete.${iss.key}`)}</Text>
@@ -583,10 +585,38 @@ export default function WarrantyDetail() {
         {/* Shortlist 17: products bought together; documents can be shared between them. */}
         {bundle.length > 0 && (
           <Section title={t('bundle.title')}>
-            {bundle.map((o, i) => <WarrantyRow key={o.id} warranty={o} separator={i > 0} />)}
+            {bundle.map((o, i) => (
+              <Row
+                key={o.id}
+                separator={i > 0}
+                iconInset
+                onPress={() => router.push(`/warranty/${o.id}`)}
+                accessibilityLabel={`${displayName(t, o)}, ${o.store_name}`}
+              >
+                <View style={[styles.tileSmall, { backgroundColor: CATEGORY_TILE[o.category ?? ''] ?? TILE.blue }]}>
+                  <ProductIcon name={productIcon(o.product_name, o.category) as keyof typeof MaterialCommunityIcons.glyphMap} size={15} color="#fff" />
+                </View>
+                <View style={styles.flex}>
+                  <Text style={styles.bundleTitle} numberOfLines={1}>{displayName(t, o)}</Text>
+                  <Text style={styles.docType}>{o.store_name} · {formatDate(o.end_date, i18n.language)}</Text>
+                </View>
+                <Pressable
+                  onPress={(e) => {
+                    e.stopPropagation();
+                    void getDb().then((db) => leaveBundle(db, o.id)).then(reloadExtras);
+                  }}
+                  style={styles.removeBundleBtn}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('bundle.removeOne', { name: displayName(t, o) })}
+                  hitSlop={10}
+                >
+                  <AppIcon name="close-circle-outline" size={20} color={colors.ink2} />
+                </Pressable>
+              </Row>
+            ))}
             <Row separator iconInset onPress={() => void getDb().then((db) => leaveBundle(db, w.id)).then(reloadExtras)}>
-              <View style={styles.glyph}><AppIcon name="remove-circle-outline" size={22} color={colors.tint} /></View>
-              <Text style={styles.addText}>{t('bundle.leave')}</Text>
+              <View style={styles.glyph}><AppIcon name="remove-circle-outline" size={22} color={colors.warn} /></View>
+              <Text style={[styles.addText, { color: colors.warn }]}>{t('bundle.leave')}</Text>
             </Row>
           </Section>
         )}
@@ -677,6 +707,61 @@ export default function WarrantyDetail() {
       </Page>
       {datePicker}
       <Sheet open={openSheet !== null} onClose={() => setSheet(null)} title={openSheet?.title ?? ''} sections={openSheet?.sections ?? []} />
+      <SheetFrame open={sheet === 'bundle'} onClose={() => { setSheet(null); setSelectedBundleIds(new Set()); }} title={t('bundle.add')}>
+        <SheetBody>
+          {candidates.length === 0 ? (
+            <Text style={styles.emptyCandidates}>{t('bundle.noCandidates')}</Text>
+          ) : (
+            <>
+              <Text style={styles.sheetSub}>{t('bundle.selectHint')}</Text>
+              <Group inSheet>
+                {candidates.map((o, j) => {
+                  const isSelected = selectedBundleIds.has(o.id);
+                  return (
+                    <Row
+                      key={o.id}
+                      separator={j > 0}
+                      selected={isSelected}
+                      onPress={() => {
+                        setSelectedBundleIds((prev) => {
+                          const next = new Set(prev);
+                          if (next.has(o.id)) next.delete(o.id);
+                          else next.add(o.id);
+                          return next;
+                        });
+                      }}
+                    >
+                      <View style={[styles.bundleCheck, isSelected && styles.bundleCheckOn]}>
+                        {isSelected ? <AppIcon name="checkmark" size={14} color="#fff" /> : null}
+                      </View>
+                      <View style={styles.flex}>
+                        <Text style={[styles.bundleLabel, isSelected && styles.bundleLabelSelected]}>{displayName(t, o)}</Text>
+                        <Text style={styles.docType}>{o.store_name} · {formatDate(o.purchase_date, i18n.language)}</Text>
+                      </View>
+                    </Row>
+                  );
+                })}
+              </Group>
+              <View style={{ marginTop: 16 }}>
+                <Button
+                  title={selectedBundleIds.size > 0 ? t('bundle.addSelected', { count: selectedBundleIds.size }) : t('bundle.add')}
+                  disabled={selectedBundleIds.size === 0}
+                  onPress={async () => {
+                    const ids = Array.from(selectedBundleIds);
+                    if (!ids.length) return;
+                    setSheet(null);
+                    setSelectedBundleIds(new Set());
+                    const db = await getDb();
+                    const bundleId = await bundleTogether(db, [w.id, ...ids]);
+                    setBundleLead(bundleId, w.id);
+                    await reloadExtras();
+                  }}
+                />
+              </View>
+            </>
+          )}
+        </SheetBody>
+      </SheetFrame>
     </>
   );
 }
@@ -711,6 +796,15 @@ const useStyles = themed(() => StyleSheet.create({
   noteItem: { paddingVertical: 4 },
   noteText: { ...TYPE.body, color: colors.ink },
   noteRow: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 12, paddingHorizontal: ROW_X },
+  tileSmall: { width: 28, height: 28, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
+  bundleTitle: { ...TYPE.body, color: colors.ink, fontWeight: '500' },
+  removeBundleBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  emptyCandidates: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', paddingVertical: 20 },
+  sheetSub: { ...TYPE.foot, color: colors.ink2, paddingHorizontal: 4, paddingBottom: 10 },
+  bundleCheck: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink2, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  bundleCheckOn: { backgroundColor: colors.tint, borderColor: colors.tint },
+  bundleLabel: { ...TYPE.body, color: colors.ink },
+  bundleLabelSelected: { color: colors.tintInk, fontWeight: '600' },
   noteRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
   noteInput: { flex: 1, minWidth: 0 },
 }));

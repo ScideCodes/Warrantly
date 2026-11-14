@@ -754,7 +754,12 @@
   "bundle": {
     "title": "Együtt vásárolva",
     "add": "Együtt vásárolva ezzel…",
-    "leave": "Nem együtt vásárolva",
+    "leave": "Összes eltávolítása a csomagból",
+    "removeOne": "{{name}} eltávolítása a csomagból",
+    "selectHint": "Válaszd ki az együtt vásárolt termékeket:",
+    "addSelected_one": "{{count}} hozzáadása a csomaghoz",
+    "addSelected_other": "{{count}} hozzáadása a csomaghoz",
+    "noCandidates": "Nincs más hozzáadható termék.",
     "shareDoc_one": "Hozzáadás a másik termékhez is",
     "shareDoc_other": "Hozzáadás a másik {{count}} termékhez is",
     "shared_one": "Hozzáadva {{count}} termékhez.",

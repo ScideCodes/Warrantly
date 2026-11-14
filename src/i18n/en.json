@@ -754,7 +754,12 @@
   "bundle": {
     "title": "Bought together",
     "add": "Bought together with…",
-    "leave": "Not bought together",
+    "leave": "Remove all from bundle",
+    "removeOne": "Remove {{name}} from bundle",
+    "selectHint": "Select items purchased together with this product:",
+    "addSelected_one": "Add {{count}} to bundle",
+    "addSelected_other": "Add {{count}} to bundle",
+    "noCandidates": "No other warranties available to bundle.",
     "shareDoc_one": "Add to the other product too",
     "shareDoc_other": "Add to the {{count}} other products too",
     "shared_one": "Added to {{count}} product.",
