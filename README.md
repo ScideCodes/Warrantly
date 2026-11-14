@@ -186,4 +186,4 @@ Full mobile testing requires a development build due to native Kotlin modules (`
 
 Released under the [MIT License](LICENSE).
 
-Developer: Bence Pc · Support: [scide.business@gmail.com](mailto:scide.business@gmail.com) · [Website](https://bencepc.hu/warrantly/)
+Developer: Bence · Support: [scide.business@gmail.com](mailto:scide.business@gmail.com) · [Website](https://bencepc.hu/warrantly/)
