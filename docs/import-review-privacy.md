@@ -29,3 +29,11 @@ Implemented using the debugging/code-review skills and Impeccable's existing mob
 - Drew a redaction on a synthetic two-page PDF, generated and inspected the actual PDF preview, visited page two, confirmed and opened the share chooser, then cancelled without sending. Creation took about 10 seconds on the test emulator.
 - Independent PDF inspection found two image-only output pages and no original selectable text. The original receipt hash remained identical; pixel tests establish that masked regions are overwritten, not just covered.
 - No private mailbox, real receipt, real backup, external message recipient or iPhone was used in these checks. iOS distribution/porting requirements are documented separately in [ios-distribution.md](ios-distribution.md).
+
+## Published update
+
+- App commit `458afc16c01c2e8b8b85fe79bae6860be4bf73a7`, pushed to working and default branches.
+- [v1.0.0-ota.4](https://github.com/ScideCodes/Warrantly/releases/tag/v1.0.0-ota.4), preview Android runtime `1.0.0`.
+- EAS group `ad8ec961-f8a8-4ebf-8d65-0cde11175ebd`; update `01a1d9ad-d045-7fdf-bbdc-a592b9f27e4d`.
+- Verified on the signed stable APK: the update card appeared, Restart now applied it, the PDF shield action opened the new screen, and a private PDF was generated and previewed successfully. Settings reports `update 01a1d9ad`. Recent AndroidRuntime/ReactNativeJS error logs were empty.
+- GitHub Latest remains the signed `v1.0.0` APK. No APK reinstall is required for this OTA.
