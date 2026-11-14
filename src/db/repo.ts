@@ -523,7 +523,9 @@ export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWar
 export async function importShared(db: Db, items: SharedWarranty[], saveDocument: (doc: SharedWarranty['documents'][number]) => Promise<string | null>, now = new Date().toISOString()): Promise<number> {
   let added = 0;
   for (const { warranty: src, history, documents } of items) {
-    const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, (src[c] ?? null) as Param]));
+    if (typeof src !== 'object' || src === null) continue;
+    // Only plain text and numbers from another person's file; anything else is left empty.
+    const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, typeof src[c] === 'string' || typeof src[c] === 'number' ? (src[c] as Param) : null]));
     if (typeof w.store_name !== 'string' || typeof w.purchase_date !== 'string' || typeof w.warranty_start_date !== 'string' || typeof w.warranty_months !== 'number') continue;
     const dup = await db.getFirstAsync(
       `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored' AND deleted_at IS NULL`,

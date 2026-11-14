@@ -24,7 +24,10 @@ scripts/ota-release.sh "First beta" path/to/app.apk
 
 ## Before the repository goes public
 
-- No keys, tokens, keystores or real mail in the tree or in history (checked for 0.8.1).
+- No keys, tokens, keystores or real mail in the tree or in history (checked again for 0.9.0, 14 Nov 2026).
+- Security review for 0.9.0: links from stored data open only web, mail and phone addresses; Android app backup is
+  off; reminder text is hidden on a locked screen; imported files and backups are size- and type-checked.
+- Known, not shipped in the app: a moderate `minimatch` advisory in Expo's build-time fingerprint tool.
 - The Google web client ID in `src/google.ts` is a public identifier that ships inside the app.
 - Fixtures use placeholders (`user@example.com`, "Teszt Elek", "Minta utca").
 - Pick a licence.

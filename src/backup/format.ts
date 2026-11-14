@@ -65,8 +65,19 @@ export interface KdfParams {
 // scrypt cost: about 1-3 s on a phone, run only when setting the password or restoring on a new phone.
 export const KDF = { N: 2 ** 15, r: 8, p: 1 };
 
-export const deriveKey = (password: string, kdf: KdfParams): Promise<Uint8Array> =>
-  scryptAsync(password, fromBase64(kdf.salt), { N: kdf.N, r: kdf.r, p: kdf.p, dkLen: 32 });
+// The parameters are read from the backup file, so they are bounded: a crafted file must not make the phone
+// spend minutes or gigabytes of memory before the password is even checked.
+export function checkKdf(kdf: KdfParams): KdfParams {
+  const pow2 = Number.isInteger(kdf?.N) && kdf.N >= 2 ** 10 && kdf.N <= 2 ** 18 && (kdf.N & (kdf.N - 1)) === 0;
+  if (!pow2 || !Number.isInteger(kdf.r) || kdf.r < 1 || kdf.r > 16 || !Number.isInteger(kdf.p) || kdf.p < 1 || kdf.p > 4 || typeof kdf.salt !== 'string') {
+    throw new Error('Damaged backup');
+  }
+  return kdf;
+}
+export const deriveKey = (password: string, kdf: KdfParams): Promise<Uint8Array> => {
+  const k = checkKdf(kdf);
+  return scryptAsync(password, fromBase64(k.salt), { N: k.N, r: k.r, p: k.p, dkLen: 32 });
+};
 
 export class WrongPasswordError extends Error {}
 

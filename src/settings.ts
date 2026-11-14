@@ -52,7 +52,7 @@ export const setSetting = (key: SettingKey, value: string): void => Storage.setI
 // What a backup carries besides the database.
 export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), theme: Storage.getItemSync('theme'), language: Storage.getItemSync('language'), reminder_time: Storage.getItemSync('reminder_time'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled'), density: Storage.getItemSync('density'), list_sort: Storage.getItemSync('list_sort') });
 export function applySnapshot(s: Record<string, string | null>): void {
-  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders', 'density', 'list_sort'].includes(k) && v !== null) Storage.setItemSync(k, v);
+  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders', 'density', 'list_sort'].includes(k) && typeof v === 'string' && v.length <= 200) Storage.setItemSync(k, v);
 }
 
 // List density (shortlist): compact rows use less padding and one meta line; text size is never reduced.

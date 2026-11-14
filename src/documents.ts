@@ -8,6 +8,7 @@ import { extractTextFromImage } from 'expo-text-extractor';
 import { Linking } from 'react-native';
 import DocumentScanner, { ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
 import { mailtoUrl } from '@/claim';
+import { imageMime } from '@/safeLinks';
 import { saveDocumentCopy } from './documentSave';
 import PdfPages from '../modules/pdf-pages';
 
@@ -48,7 +49,7 @@ export async function fileToDocument(uri: string, name: string, mimeType: string
     await new File(uri).copy(pdf);
     return { text: '', localPath: pdf.name };
   }
-  return imagesToPdf([{ uri, mimeType: mimeType ?? 'image/jpeg' }]);
+  return imagesToPdf([{ uri, mimeType: imageMime(mimeType) }]); // the type comes from the sending app
 }
 
 async function imagesToPdf(images: { uri: string; mimeType: string }[]): Promise<{ text: string; localPath: string }> {

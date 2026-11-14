@@ -8,10 +8,10 @@
 
 An Android app that finds your purchase and warranty emails, keeps the receipts with each purchase and counts the days left.
 
-![Version](https://img.shields.io/badge/version-0.8.1-007aff)
+![Version](https://img.shields.io/badge/version-0.9.0-007aff)
 ![Android](https://img.shields.io/badge/Android-app-3ddc84?logo=android&logoColor=white)
 ![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020?logo=expo&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-93%20passing-2ea44f)
+![Tests](https://img.shields.io/badge/tests-146%20passing-2ea44f)
 ![Languages](https://img.shields.io/badge/languages-English%20%7C%20Hungarian-8e8e93)
 
 [Screenshots](#screenshots) · [Features](#features) · [Privacy](#privacy) · [Install](#install) · [Design](#design) · [Under the hood](#under-the-hood) · [Docs](#docs)
