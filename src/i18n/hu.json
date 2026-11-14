@@ -292,7 +292,10 @@
     "density": "Lista sűrűsége",
     "density_comfortable": "Kényelmes",
     "density_compact": "Tömör",
-    "reminderFailed": "Nem sikerült frissíteni az emlékeztetőket"
+    "reminderFailed": "Nem sikerült frissíteni az emlékeztetőket",
+    "reminderSchedule": "Emlékeztetők időpontjai",
+    "noReminderDates": "Nincs kiválasztva",
+    "group_daily": "Naponta az utolsó hónapban"
   },
   "backup": {
     "section": "Mentés",

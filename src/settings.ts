@@ -29,8 +29,7 @@ export const setThemeSetting = (theme: string): void => Storage.setItemSync('the
 
 // Reminder time of day (hour) and which reminders (groups from warranty.ts), section 16.
 // Minutes after midnight (9:00 = 540). Older installs saved only the hour.
-export const getReminderTime = (): number => Number(Storage.getItemSync('reminder_time') ?? Number(Storage.getItemSync('reminder_hour') ?? 9) * 60);
-export const setReminderTime = (minutes: number): void => Storage.setItemSync('reminder_time', String(minutes));
+export const getReminderTime = (): number => 30; // Fixed local 00:30, including installs with an old saved time.
 export const getReminderGroups = (): ReminderGroup[] => JSON.parse(Storage.getItemSync('reminder_groups') ?? 'null') ?? ALL_GROUPS;
 export const setReminderGroups = (groups: ReminderGroup[]): void => Storage.setItemSync('reminder_groups', JSON.stringify(groups));
 
