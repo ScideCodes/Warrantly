@@ -30,4 +30,4 @@ scripts/ota-release.sh "First beta" path/to/app.apk
 - Known, not shipped in the app: a moderate `minimatch` advisory in Expo's build-time fingerprint tool.
 - The Google web client ID in `src/google.ts` is a public identifier that ships inside the app.
 - Fixtures use placeholders (`user@example.com`, "Teszt Elek", "Minta utca").
-- Pick a licence.
+- Licence: MIT (`LICENSE`).
