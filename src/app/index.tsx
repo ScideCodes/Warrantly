@@ -454,11 +454,11 @@ export default function Home() {
   );
 
   const footer =
-    visible.expired.length > 0 && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' ? (
+    visible.expired.length > 0 && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' && !showExpired ? (
       <Group style={styles.expiredToggle}>
-        <Row onPress={() => setShowExpired((v) => !v)} accessibilityState={{ expanded: showExpired }}>
-          <Text style={styles.expiredToggleText}>{showExpired ? t('home.hideExpired') : t('home.showExpired', { count: visible.expired.length })}</Text>
-          <AppIcon name={showExpired ? 'chevron-up' : 'chevron-down'} size={16} color={colors.chevron} />
+        <Row onPress={() => setShowExpired(true)} accessibilityState={{ expanded: false }}>
+          <Text style={styles.expiredToggleText}>{t('home.showExpired', { count: visible.expired.length })}</Text>
+          <AppIcon name="chevron-down" size={16} color={colors.chevron} />
         </Row>
       </Group>
     ) : undefined;
@@ -528,7 +528,19 @@ export default function Home() {
         sections={sections}
         keyExtractor={(w: Warranty) => String(w.id)}
         renderItem={renderWarranty}
-        renderSectionHeader={({ section }: { section: { key: GroupKey; data: readonly Warranty[] } }) => <SectionHeader title={t(groupTitle[section.key], { count: section.data.length })} />}
+        renderSectionHeader={({ section }: { section: { key: GroupKey; data: readonly Warranty[] } }) => {
+          if (section.key === 'expired' && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived') {
+            return (
+              <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
+                <Row onPress={() => setShowExpired(false)} accessibilityState={{ expanded: true }}>
+                  <Text style={styles.expiredToggleText}>{t('home.hideExpired')}</Text>
+                  <AppIcon name="chevron-up" size={16} color={colors.chevron} />
+                </Row>
+              </Group>
+            );
+          }
+          return <SectionHeader title={t(groupTitle[section.key], { count: section.data.length })} />;
+        }}
         stickySectionHeadersEnabled={false}
         ListHeaderComponent={header}
         ListEmptyComponent={empty}
