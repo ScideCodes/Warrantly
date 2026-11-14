@@ -1,5 +1,5 @@
 # Run against synthetic emulator data with app lock initially disabled, language English.
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 - launchApp: { stopApp: true }
 - extendedWaitUntil: { visible: { id: "tab-settings" }, timeout: 60000 }

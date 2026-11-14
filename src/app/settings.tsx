@@ -27,6 +27,7 @@ import { showAlert } from '@/components/Dialog';
 import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
+import { GMAIL_IMPORT } from '@/features';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 type Icon = IconName;
@@ -360,7 +361,7 @@ export default function Settings() {
         )}
       </View>
 
-      {section(
+      {GMAIL_IMPORT && section(
         t('accounts.section'),
         <>
           {accounts.map((a) => (

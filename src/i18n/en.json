@@ -15,7 +15,7 @@
     "syncStarting": "Checking for new warranties…",
     "resetFilters": "Clear search and filters",
     "emptyTitle": "No warranties yet",
-    "emptyBody": "Connect Gmail, and Warrantly will find your receipts and warranties for you.",
+    "emptyBody": "Add a purchase by hand or scan its receipt. Warrantly reminds you before the warranty ends.",
     "connectGmail": "Connect Gmail",
     "syncing": "Looking for receipts in {{email}}…",
     "progress": "{{done}} of {{total}} emails read",
@@ -336,7 +336,7 @@
     "cancel": "Cancel",
     "needPassword": "Enter the backup password.",
     "wrong": "Wrong backup password.",
-    "done": "Restored. Connect Gmail again to keep syncing.",
+    "done": "Restored.",
     "working": "Restoring…"
   },
   "accounts": {
@@ -482,6 +482,7 @@
       "## In short",
       "Warrantly keeps your warranties on your phone. There is no Warrantly server, no account, no ads and no tracking. The developer cannot see your data.",
       "## Gmail",
+      "Version 1.0 does not offer Gmail import and never asks for Gmail access. The text below applies once it is switched on in a later version.",
       "With your permission, Warrantly reads your Gmail (read-only) on this phone to find warranty documents and mails that state a warranty. Only those mails are downloaded, and only the details needed for a warranty are kept: store, product, dates, order number, contact details and attached PDFs. Mail is never sent anywhere else, and Warrantly never sends, deletes or changes mail.",
       "Warrantly's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.",
       "## Backups",

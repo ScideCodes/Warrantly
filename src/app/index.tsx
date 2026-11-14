@@ -39,6 +39,7 @@ import { showAlert } from '@/components/Dialog';
 import { finishPendingDeletes, showUndo } from '@/undo';
 import { CATEGORIES, daysUntil, filterWarranties, plain, todayYmd, totalValue, warrantyFacets } from '@/warranty';
 import { updateWidget } from '@/widget';
+import { GMAIL_IMPORT } from '@/features';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
 // What the filter sheet narrows the list to; one at a time, so it is always clear what is shown.
@@ -151,7 +152,7 @@ export default function Home() {
     }, [load]),
   );
   useEffect(() => {
-    if (name) void Promise.resolve().then(runSync);
+    if (name && GMAIL_IMPORT) void Promise.resolve().then(runSync);
     if (name && shouldShowWhatsNew()) router.push('/whats-new');
     else if (name) void getDb().then((db) => listWarranties(db, 'complete')).then((l) => maybeAskReview(l.length)).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -445,7 +446,7 @@ export default function Home() {
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
       <Text style={styles.connectBody}>{t('home.emptyBody')}</Text>
       <Button title={t('home.addLong')} onPress={() => router.push('/warranty/edit')} />
-      <Button title={t('home.connectGmail')} onPress={connect} kind="glass" />
+      {GMAIL_IMPORT && <Button title={t('home.connectGmail')} onPress={connect} kind="glass" />}
     </View>
   );
 
@@ -541,7 +542,7 @@ export default function Home() {
             onRefresh={() => {
               void runSync();
             }}
-            enabled={!!accounts?.length && !selecting}
+            enabled={GMAIL_IMPORT && !!accounts?.length && !selecting}
             colors={[colors.tint]}
             progressViewOffset={insets.top + BAR_H}
           />

@@ -1,5 +1,5 @@
 # #3: a PDF shared from the Files app opens Warrantly's add form with the file attached.
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 - extendedWaitUntil: { visible: ".*(Recent|Downloads|Files|fixture).*", timeout: 30000 }
 - runFlow:

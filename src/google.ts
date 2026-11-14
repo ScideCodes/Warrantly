@@ -1,5 +1,6 @@
 import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse } from 'react-native-nitro-google-signin';
 import GoogleAccountToken from '../modules/google-account-token';
+import { GMAIL_IMPORT } from '@/features';
 import { getSetting, setSetting } from '@/settings';
 
 // Public identifier of the "Warrantly Web" OAuth client (not a secret). Credential Manager needs
@@ -9,7 +10,7 @@ const GMAIL_READONLY = 'https://www.googleapis.com/auth/gmail.readonly';
 const DRIVE_FILE = 'https://www.googleapis.com/auth/drive.file'; // backups: only files this app creates
 
 // Gmail scope here too, so getTokens() returns a token that can read mail.
-GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, scopes: [GMAIL_READONLY] });
+GoogleOneTapSignIn.configure({ webClientId: WEB_CLIENT_ID, scopes: GMAIL_IMPORT ? [GMAIL_READONLY] : [] });
 
 const hasGmailScope = () => GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(GMAIL_READONLY) ?? false;
 

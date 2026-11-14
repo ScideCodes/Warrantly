@@ -6,6 +6,8 @@ Warrantly keeps your warranties on your phone. There is no Warrantly server, no 
 
 ## Gmail
 
+Version 1.0 does not offer Gmail import and never asks for Gmail access. The section below applies once it is switched on in a later version.
+
 With your permission, Warrantly reads your Gmail (read-only) on this phone to find warranty documents and mails that state a warranty. Only those mails are downloaded, and only the details needed for a warranty are kept: store, product, dates, order number, contact details and attached PDFs. Mail is never sent anywhere else, and Warrantly never sends, deletes or changes mail.
 
 Warrantly's use and transfer of information received from Google APIs adheres to the Google API Services User Data Policy, including the Limited Use requirements.

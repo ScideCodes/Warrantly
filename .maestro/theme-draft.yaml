@@ -1,4 +1,4 @@
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 # After the phone switched themes under the open form: same screen, text kept, no lock prompt.
 - assertVisible: "Unsaved draft 42"
