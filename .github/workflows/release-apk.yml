@@ -1,0 +1,50 @@
+# Release APK: builds the installable APK on GitHub instead of EAS (no build quota), signed with the release key
+# for dev.warrantly.app from the repository secrets. Over-the-air updates stay on (channel "preview", runtime =
+# app version). Gmail import stays off: EXPO_PUBLIC_GMAIL_IMPORT is never set here.
+# The APK is uploaded as a workflow artifact; attach it to the GitHub release by hand after testing.
+name: Release APK
+on:
+  push:
+    paths: ['.github/workflows/release-apk.yml']
+  workflow_dispatch:
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17' }
+      - uses: actions/setup-node@v4
+        with: { node-version: '22', cache: npm }
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Checks
+        run: |
+          npm ci
+          npm test
+          npm run typecheck
+      - name: Build and sign
+        # arm64-v8a and armeabi-v7a for phones; x86_64 so the same APK can be tested on an emulator.
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          echo "$KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/release.jks"
+          npx expo prebuild --platform android --no-install
+          cd android && ./gradlew assembleRelease --no-daemon \
+            -PreactNativeArchitectures=arm64-v8a,armeabi-v7a,x86_64 \
+            -Pandroid.injected.signing.store.file="$RUNNER_TEMP/release.jks" \
+            -Pandroid.injected.signing.store.password="$KEYSTORE_PASSWORD" \
+            -Pandroid.injected.signing.key.alias="$KEY_ALIAS" \
+            -Pandroid.injected.signing.key.password="$KEYSTORE_PASSWORD"
+          rm "$RUNNER_TEMP/release.jks"
+          version=$(node -p "require('../app.json').expo.version")
+          cp app/build/outputs/apk/release/app-release.apk "../Warrantly-$version.apk"
+          keytool -printcert -jarfile "../Warrantly-$version.apk" | grep -E "SHA1|SHA256"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: warrantly-apk
+          path: Warrantly-*.apk
