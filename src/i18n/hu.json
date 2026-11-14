@@ -923,16 +923,5 @@
   "money": {
     "search": "Keresés név vagy kód alapján",
     "none": "Nincs ilyen pénznem"
-  },
-  "accent": {
-    "title": "Kiemelőszín",
-    "blue": "Kék",
-    "teal": "Türkiz",
-    "green": "Zöld",
-    "purple": "Lila",
-    "orange": "Narancs",
-    "custom": "Egyéni szín",
-    "hex": "Hex színkód, pl. #8652CE",
-    "apply": "Szín alkalmazása"
   }
 }
