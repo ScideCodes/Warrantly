@@ -29,4 +29,12 @@ Applied the installed Impeccable and Unslop skills. Unslop is by Damir Sokolovsk
 - Impeccable detector reported 44 findings, all in commercial-email HTML parser fixtures; none in app UI files. That detector is primarily HTML-oriented, so native screenshots and interaction checks provide the visual evidence.
 - Maestro onboarding selectors were updated for the revised copy; the full Maestro suite was not rerun. Camera, destructive actions and real network/backup flows were not exhaustively retested in this visual pass.
 
-Release verification is recorded below after publication.
+## Published release
+
+- App commit: `ee110d1c12111de9e627d1e3cec1f83b2dc17e66`, pushed to the working and default branches.
+- GitHub OTA prerelease: [v1.0.0-ota.2](https://github.com/ScideCodes/Warrantly/releases/tag/v1.0.0-ota.2).
+- EAS preview Android group: `6bd9bdcf-44fd-42bb-b533-760bb9743bc8`.
+- Update ID: `01a1d985-787c-72b3-8523-679374fabe2d`, runtime `1.0.0`.
+- Verified on the signed stable v1.0.0 APK: the update-ready card appeared, Restart now applied the update, the compact filters appeared, and the themed time sheet opened correctly. Cancelling retained 9:00 AM. The existing synthetic warranty/document remained present. Settings reported `update 01a1d985`; recent AndroidRuntime/ReactNativeJS error logs were empty.
+- Stable GitHub Latest remains `v1.0.0`, so the installation download still points to the signed APK. No native rebuild is needed for this update.
+- GitHub Actions is unavailable due to the account billing/spend restriction; checks above ran locally. Full physical-device and iOS coverage remains outside this pass.
