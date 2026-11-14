@@ -87,7 +87,7 @@ const useStyles = themed(() => StyleSheet.create({
   week: { flexDirection: 'row' },
   cell: { flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   wide: { flex: undefined, width: '25%', minHeight: 54 },
-  day: { minWidth: 36, minHeight: 40, paddingHorizontal: 3, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  day: { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
   dayText: { fontVariant: ['tabular-nums'], ...TYPE.body, color: colors.ink },
   selected: { backgroundColor: colors.accent },
   selectedText: { color: colors.onAccent, fontWeight: '600' },
