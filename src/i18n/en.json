@@ -265,6 +265,7 @@
     "biometric": "Fingerprint or face",
     "reminders": "Expiry reminders",
     "remindersHint": "Choose when to get expiry reminders.",
+    "currency": "Default currency",
     "general": "App",
     "widgetNames": "Names on the widget",
     "widgetNamesHint": "Names are visible on your home screen, even when the app is locked.",
