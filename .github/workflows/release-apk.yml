@@ -45,7 +45,8 @@ jobs:
           rm "$RUNNER_TEMP/release.jks"
           version=$(node -p "require('../app.json').expo.version")
           cp app/build/outputs/apk/release/app-release.apk "../Warrantly-$version.apk"
-          keytool -printcert -jarfile "../Warrantly-$version.apk" | grep -E "SHA1|SHA256"
+          # keytool cannot read APK signature scheme v2; apksigner can.
+          "$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)/apksigner" verify --print-certs "../Warrantly-$version.apk" | grep -i "SHA-1"
       - uses: actions/upload-artifact@v4
         with:
           name: warrantly-apk
