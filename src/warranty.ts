@@ -77,10 +77,10 @@ export function shortName(name: string): string {
 
 // Expiry reminders (section 16): 90, 60 and 30 days before, then weekly until expiry, and on the day.
 // Each group can be switched off in Settings.
-export const REMINDER_GROUPS = { '90': [90], '60': [60], '30': [30], weekly: [23, 16, 9, 2], '0': [0] } as const;
+export const REMINDER_GROUPS = { '90': [90], '60': [60], '30': [30], weekly: [23, 16, 9, 2], daily: Array.from({ length: 30 }, (_, i) => i), '0': [0] } as const;
 export type ReminderGroup = keyof typeof REMINDER_GROUPS;
 export const ALL_GROUPS: ReminderGroup[] = ['90', '60', '30', 'weekly', '0']; // listed, not Object.keys: number-like keys sort first
-export const reminderDays = (groups: readonly ReminderGroup[]): number[] => groups.flatMap((g) => REMINDER_GROUPS[g]);
+export const reminderDays = (groups: readonly ReminderGroup[]): number[] => [...new Set(groups.flatMap((g) => REMINDER_GROUPS[g]))];
 const REMINDER_DAYS = reminderDays(ALL_GROUPS);
 
 export interface Reminder {

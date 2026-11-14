@@ -2,7 +2,7 @@ import { Pressable, Text, View } from '@/components/themeMotion';
 import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
-import { useTimePicker } from '@/components/TimePicker';
+import { SheetFrame, SheetBody } from '@/components/Sheet';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -20,7 +20,7 @@ import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
 import { getDensity, setDensity, setUsername, type Density } from '@/settings';
 import { forgetRecent } from '@/recentStore';
-import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
+import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
@@ -41,7 +41,7 @@ export default function Settings() {
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
-  const [time, setTime] = useState(getReminderTime);
+  const [reminderMenu, setReminderMenu] = useState(false);
   const [language, setLanguage] = useState(getLanguageSetting);
   const [theme, setTheme] = useState(getThemeSetting);
   const [density, setDensityState] = useState<Density>(getDensity);
@@ -118,18 +118,8 @@ export default function Settings() {
     void getDb().then(updateWidget).catch(() => {}); // the widget follows the app's appearance
   }
 
-  const { pickTime: openTime, timePicker } = useTimePicker();
-  function pickTime() {
-    openTime({ value: time, onPick: (minutes) => {
-      setReminderTime(minutes);
-      setTime(minutes);
-      void getDb().then(rescheduleReminders).catch((error) => showAlert(t('settings.reminderFailed'), error instanceof Error ? error.message : String(error)));
-    } });
-  }
-  const timeLabel = new Date(2026, 0, 1, Math.floor(time / 60), time % 60).toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' });
-
   async function toggleGroup(g: ReminderGroup) {
-    const next = groups.includes(g) ? groups.filter((x) => x !== g) : ALL_GROUPS.filter((x) => x === g || groups.includes(x));
+    const next = groups.includes(g) ? groups.filter((x) => x !== g) : [...ALL_GROUPS, 'daily' as ReminderGroup].filter((x) => x === g || groups.includes(x));
     setReminderGroups(next);
     setGroups(next);
     await rescheduleReminders(await getDb());
@@ -409,17 +399,7 @@ export default function Settings() {
         t('settings.remindersSection'),
         <>
           {row('notifications-outline', TILE.red, t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
-          {reminders &&
-            ALL_GROUPS.map((g) => (
-              // The reference's to-do circles: 22dp, --ink-3 ring, filled with the tint when on.
-              <Row key={g} iconInset style={styles.row} onPress={() => toggleGroup(g)} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>
-                <View style={styles.tileSpace}>
-                  <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <AppIcon name="checkmark" size={15} color="#fff" />}</View>
-                </View>
-                <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
-              </Row>
-            ))}
-          {reminders && link('time-outline', TILE.orange, t('settings.reminderTime'), pickTime, { value: timeLabel })}
+          {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => setReminderMenu(true), { hint: groups.map(g => t(`settings.group_${g}`)).join(' · ') || t('settings.noReminderDates') })}
           {reminders && row('return-down-back-outline', TILE.purple, t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
         </>,
       )}
@@ -532,7 +512,14 @@ export default function Settings() {
       <Text style={styles.version} selectable>
         {t('settings.version', { version: versionLine(i18n.language) })}
       </Text>
-      {timePicker}
+      <SheetFrame open={reminderMenu} onClose={() => setReminderMenu(false)} title={t('settings.reminderSchedule')}>
+        <SheetBody><Group inSheet>{[...ALL_GROUPS, 'daily' as ReminderGroup].map((g, index) => (
+          <Row key={g} separator={index > 0} onPress={() => { void toggleGroup(g).catch(error => showAlert(t('settings.reminderFailed'), String(error))); }} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>
+            <View style={styles.tileSpace}><View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <AppIcon name="checkmark" size={15} color="#fff" />}</View></View>
+            <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
+          </Row>
+        ))}</Group></SheetBody>
+      </SheetFrame>
     </Page>
   );
 }

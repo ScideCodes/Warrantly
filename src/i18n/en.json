@@ -292,7 +292,10 @@
     "density": "List density",
     "density_comfortable": "Comfortable",
     "density_compact": "Compact",
-    "reminderFailed": "Could not update reminders"
+    "reminderFailed": "Could not update reminders",
+    "reminderSchedule": "Reminder dates",
+    "noReminderDates": "None selected",
+    "group_daily": "Daily in the last month"
   },
   "backup": {
     "section": "Backup",
