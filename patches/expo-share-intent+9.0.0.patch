@@ -1,9 +1,13 @@
 diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-index ff5b100..73c0ef5 100644
+index ff5b100..eb595e0 100644
 --- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
 +++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-@@ -66,13 +66,19 @@ class ExpoShareIntentModule : Module() {
-                     "filePath" to instance?.getAbsolutePath(uri),
+@@ -63,16 +63,22 @@ class ExpoShareIntentModule : Module() {
+                 notifyError("Cannot get resolver (getFileInfo)")
+                 return mapOf(
+                     "contentUri" to uri.toString(),
+-                    "filePath" to instance?.getAbsolutePath(uri),
++                    "filePath" to null, // patched (Warrantly): a raw path is unreadable under scoped storage; JS uses the granted contentUri
                  )
              }
 -            val queryResult: Cursor = resolver.query(uri, null, null, null, null)!!
@@ -28,6 +32,15 @@ index ff5b100..73c0ef5 100644
  
              var mediaWidth: String? = null;
              var mediaHeight: String? = null;
+@@ -101,7 +107,7 @@ class ExpoShareIntentModule : Module() {
+ 
+             return mapOf(
+                     "contentUri" to uri.toString(),
+-                    "filePath" to instance?.getAbsolutePath(uri),
++                    "filePath" to null, // patched (Warrantly): a raw path is unreadable under scoped storage; JS uses the granted contentUri
+                     "fileName" to fileName,
+                     "fileSize" to fileSize,
+                     "mimeType" to mimeType,
 @@ -142,14 +148,22 @@ class ExpoShareIntentModule : Module() {
                  if (intent.action == Intent.ACTION_SEND) {
                      val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
