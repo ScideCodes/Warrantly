@@ -52,7 +52,7 @@ function Calendar({ request, open, close }: { request: Request; open: boolean; c
     </Pressable>
   );
   return <SheetFrame open={open} onClose={close} title={request.title}>
-    <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
+    <ScrollView style={styles.scroll} contentContainerStyle={styles.content} scrollEventThrottle={16} overScrollMode="never" showsVerticalScrollIndicator={false}>
       <View style={styles.heading}>
         <GlassButton icon="chevron-back" label={t(mode === 'years' ? 'calendar.previousYears' : mode === 'months' ? 'calendar.previousYear' : 'calendar.previousMonth')} onPress={() => navigate(-1)} />
         <View style={styles.headingText}>
