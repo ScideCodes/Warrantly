@@ -14,6 +14,20 @@ test('findDate reads common receipt formats and ignores future dates', () => {
   assert.equal(findDate('Kelt: 15.01.2026  Fizetési határidő: 2026.01.23', today), '2026-01-15'); // first in the text, whatever the format
 });
 
+test('purchase dates beat mail timestamps and payment deadlines', () => {
+  assert.equal(findDate('2026-11-10\nPayment due: 2026-11-08\nPurchase date: 2026-10-21', '2026-11-11'), '2026-10-21');
+  assert.equal(findDate('Fizetési határidő: 2026.11.09.\nVásárlás dátuma: 2026.10.20.', '2026-11-11'), '2026-10-20');
+  assert.equal(findDate('Warranty expires: 2026-10-01\nPurchased on: September 15, 2025', '2026-11-11'), '2025-09-15');
+  assert.equal(findDate('Payment due: 2026-11-08', '2026-11-11'), null);
+  assert.equal(findDate('Vásárlás: 2026. szeptember 15.', '2026-11-11'), '2026-09-15');
+});
+
+test('autofill rejects impossible dates and accepts real leap days', () => {
+  assert.equal(findDate('2026-02-31\n2026-04-31', '2026-11-11'), null);
+  assert.equal(findDate('2024-02-29', '2026-11-11'), '2024-02-29');
+  assert.equal(findDate('2025-02-29', '2026-11-11'), null);
+});
+
 // Synthetic OCR text shaped like a Hungarian shop receipt with a warranty line.
 const receipt = `MEDIAMARKT
 MediaMarkt Budapest Árkád
@@ -41,4 +55,10 @@ test('parseScanText leaves unknown fields empty', () => {
   assert.deepEqual(parseScanText('Köszönjük a vásárlást!', '2026-11-11'), {
     storeName: 'Köszönjük a vásárlást!', productName: null, purchaseDate: null, warrantyMonths: null, orderNumber: null,
   });
+});
+
+test('scanning a mixed-warranty receipt does not give the first product the second guarantee', () => {
+  const result = parseScanText('Acme Store\n1 × Acme Mouse\nAcme Kettle | 12 months warranty', '2026-11-11');
+  assert.equal(result.productName, 'Acme Mouse');
+  assert.equal(result.warrantyMonths, null);
 });

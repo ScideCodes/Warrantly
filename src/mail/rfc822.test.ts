@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { parseEmail } from '../parser/parse.ts';
 import { decodeWords, mailToText, parseRfc822 } from './rfc822.ts';
+import { parseScanText } from '../parser/scan.ts';
 
 const pdf = Buffer.from('%PDF-1.4 test').toString('base64');
 const eml = [
@@ -69,4 +70,14 @@ test('encoded words and form text', () => {
   assert.equal(decodeWords('=?iso-8859-2?Q?Sz=E1mla?= now'), 'Számla now');
   const text = mailToText({ id: '1', from: 'a@b.hu', fromName: 'Shop', to: [], subject: 'Order', date: '2026-11-05T09:15:00.000Z', text: 'body', attachments: [] });
   assert.equal(text, 'Shop\n2026-11-05\nOrder\nbody');
+});
+
+test('shared email autofill keeps product and purchase date from the body', () => {
+  const raw = 'From: Acme Shop <support@acme.example>\nDate: Tue, 10 Nov 2026 12:00:00 +0000\nSubject: Warranty\nContent-Type: text/html; charset=utf-8\n\n<p>Purchase date: October 21, 2026</p><table><tr><td>Acme Kettle</td><td>24 months warranty</td></tr></table>';
+  const { message } = parseRfc822(new TextEncoder().encode(raw), 'shared-test');
+  const result = parseScanText(mailToText(message), '2026-11-11');
+  assert.equal(result.productName, 'Acme Kettle');
+  assert.equal(result.purchaseDate, '2026-10-21');
+  assert.equal(result.warrantyMonths, 24);
+  assert.equal(result.storeName, 'Acme Shop');
 });

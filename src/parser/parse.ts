@@ -1,6 +1,7 @@
 import { DEFAULT_WARRANTY_MONTHS, IGNORED_SENDERS, LANGUAGES, type LanguageKeywords } from './keywords.ts';
 import type { Item, Kind, MailMessage, ParseResult, RequiredField, Status, StoreRules } from './types.ts';
 import { todayYmd } from '../warranty.ts';
+import { findDate } from './dates.ts';
 
 const NOREPLY = /no-?reply|do-?not-?reply/i;
 
@@ -10,21 +11,25 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
   const text = cleanText(msg.text);
   const all = `${msg.subject}\n${text}`;
   const storeDomain = registrableDomain(msg.from);
-  const purchaseDate = todayYmd(new Date(msg.date)); // the phone's calendar day: a mail at 00:30 is not "yesterday" (UTC)
+  const receivedDay = todayYmd(new Date(msg.date));
+  // A later invoice/forward must not move the purchase to the day the email was sent.
+  const purchaseDate = findDate(msg.text, receivedDay, true) ?? receivedDay;
   const orderNumber = findOrderNumber(msg.subject) ?? findOrderNumber(text);
   const pdfAttachments = msg.attachments
     .filter((a) => a.mimeType === 'application/pdf' || /\.pdf$/i.test(a.filename))
     .map((a) => a.filename);
-  const deliveredDate = LANGUAGES.some((l) => l.delivered.test(all)) ? purchaseDate : null;
+  const deliveredDate = LANGUAGES.some((l) => l.delivered.test(all)) ? receivedDay : null;
 
   let kind: Kind;
   if (IGNORED_SENDERS.has(storeDomain) || IGNORED_SENDERS.has(msg.from.toLowerCase())) kind = 'ignored';
   else if (LANGUAGES.some((l) => l.returned.test(all))) kind = 'return';
   else kind = 'purchase';
 
-  const emailMonths = findWarrantyMonths(all);
+  const extracted = findItems(text);
+  // An item-specific guarantee must never silently fill another product's missing length.
+  const emailMonths = extracted.some(i => i.months !== null) ? null : findWarrantyMonths(all);
   const ruleMonths = storeRules[storeDomain]?.defaultWarrantyMonths ?? null;
-  const items: Item[] = findItems(text).map(({ name, months }) => {
+  const items: Item[] = extracted.map(({ name, months }) => {
     if (months) return { name, warrantyMonths: months, warrantySource: 'email' };
     if (emailMonths) return { name, warrantyMonths: emailMonths, warrantySource: 'email' };
     if (ruleMonths) return { name, warrantyMonths: ruleMonths, warrantySource: 'store_rule' };
@@ -84,7 +89,12 @@ export function cleanText(raw: string): string {
     .replace(/https?:\/\/\S+/g, '')
     .replace(/\(\s*\)/g, '')
     .split(/\n[ \t]*\n/)
-    .map((p) => p.replace(/[ \t]*\n[ \t]*/g, ' ').trim())
+    .map((p) => p.split('\n').map((line, i, lines) => {
+      const previous = lines[i - 1] ?? '';
+      // Table rows and separate quantity-led items are structural, not soft line wraps.
+      const boundary = previous.includes('|') || line.includes('|') || /^\s*\d+\s*[x×]\s+/i.test(line);
+      return (i ? boundary ? '\n' : ' ' : '') + line.trim();
+    }).join('').trim())
     .filter(Boolean)
     .join('\n');
 }
@@ -135,7 +145,18 @@ export function findWarrantyMonths(s: string): number | null {
 // (section 8, later) will handle layouts these generic markers miss.
 export function findItems(text: string): { name: string; months: number | null }[] {
   const found = new Map<string, number | null>();
-  const segments = text.split(/\n|\s*\|\s*|\s{2,}|\t/).map((s) => s.trim()).filter(Boolean);
+  // Pair a warranty cell only with the immediately preceding product cell in that row.
+  const rows = text.split('\n').map(row => {
+    const cells = row.split(/\s*\|\s*/);
+    for (let i = 1; i < cells.length; i++) {
+      if (findWarrantyMonths(cells[i]) && isProductName(cells[i - 1]) && !findWarrantyMonths(cells[i - 1])) {
+        cells[i - 1] += ` ${cells[i]}`;
+        cells[i] = '';
+      }
+    }
+    return cells.join(' | ');
+  });
+  const segments = rows.join('\n').split(/\n|\s*\|\s*|\s{2,}|\t/).map((s) => s.trim()).filter(Boolean);
   for (const seg of segments) {
     for (const lang of LANGUAGES) {
       const tagged = seg.match(
@@ -143,11 +164,13 @@ export function findItems(text: string): { name: string; months: number | null }
       );
       const name =
         tagged?.[1] ??
-        seg.match(/^\d+\s*x\s+(.+)$/i)?.[1] ??
-        seg.match(/^(.+?)\s*×\s*\d+\b/)?.[1] ?? // a variant line ("Black / XL") may follow
+        seg.match(/^\d+\s*[x×]\s+(.+)$/i)?.[1] ??
+        seg.match(/^(.+?)\s+[x×]\s*\d+\b/i)?.[1] ?? // a variant line ("Black / XL") may follow
         seg.match(new RegExp(`^(.+?)\\s+\\d+\\s*(?:${lang.quantityUnit})\\b`, 'i'))?.[1];
       if (!name || !isProductName(name)) continue;
-      found.set(name.trim(), tagged ? toMonths(tagged[2], tagged[3], lang) : null);
+      const product = name.trim().replace(/^\d+\s*[x×]\s+/i, '').replace(/\s+[x×]\s*\d+$/i, '').trim();
+      const months = tagged ? toMonths(tagged[2], tagged[3], lang) : null;
+      found.set(product, months ?? found.get(product) ?? null);
       break;
     }
   }
