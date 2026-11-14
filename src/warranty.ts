@@ -142,7 +142,7 @@ const PLAIN: Record<string, string> = { á: 'a', é: 'e', í: 'i', ó: 'o', ö: 
 export const plain = (s: string): string => s.toLowerCase().replace(/[áéíóöőúüűäß]/g, (c) => PLAIN[c]);
 
 // Fixed categories (keys; names are translated). Stored on the warranty as the key.
-export const CATEGORIES = ['electronics', 'computers', 'phones', 'appliances', 'home', 'tools', 'other'] as const;
+export const CATEGORIES = ['electronics', 'computers', 'phones', 'appliances', 'home', 'tools', 'vehicles', 'other'] as const;
 
 // Icon for a product in the list (MaterialCommunityIcons names): the first keyword found in the
 // name wins, then the category, then a parcel. Keywords are plain (no accents), English and Hungarian.
@@ -166,6 +166,7 @@ const PRODUCT_ICONS: [RegExp, string][] = [
   [/nyomtato|printer/, 'printer-outline'],
   [/furo|drill|csavarozo|flex|grinder|saw|fureszgep/, 'hammer-wrench'],
   [/kanape|sofa|couch|matrac|mattress|butor|furniture/, 'sofa-outline'],
+  [/auto|kocsi|car |jarmu|vehicle|motor|scooter|roller|bicikli|kerekpar|bike/, 'car-outline'],
 ];
 const CATEGORY_ICONS: Record<string, string> = {
   electronics: 'television',
@@ -174,6 +175,7 @@ const CATEGORY_ICONS: Record<string, string> = {
   appliances: 'washing-machine',
   home: 'sofa-outline',
   tools: 'hammer-wrench',
+  vehicles: 'car-outline',
 };
 export function productIcon(name: string | null, category: string | null | undefined): string {
   const text = plain(name ?? '');
