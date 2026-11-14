@@ -92,7 +92,7 @@ export function cleanText(raw: string): string {
     .map((p) => p.split('\n').map((line, i, lines) => {
       const previous = lines[i - 1] ?? '';
       // Table rows and separate quantity-led items are structural, not soft line wraps.
-      const boundary = previous.includes('|') || line.includes('|') || /^\s*\d+\s*[x×]\s+/i.test(line);
+      const boundary = previous.includes('|') || line.includes('|') || /^\s*\d+\s*(?:[x×]|db|darab|pcs|[\.\)])\s+/i.test(line);
       return (i ? boundary ? '\n' : ' ' : '') + line.trim();
     }).join('').trim())
     .filter(Boolean)
@@ -140,13 +140,43 @@ export function findWarrantyMonths(s: string): number | null {
   return null;
 }
 
-// Line items are recognised by a quantity marker ("1x Name", "Name × 1", "Name 1 db") or
-// by a warranty tag right after the name ("Name (sku) 24 hó gar."). Store templates
-// (section 8, later) will handle layouts these generic markers miss.
+function cleanProductName(raw: string): string {
+  let s = raw.trim();
+  // Strip leading pipes, bullets, dashes
+  s = s.replace(/^[|•–-]\s*/, '');
+  // Strip leading list numbers or quantity markers
+  s = s.replace(/^\s*(?:\d+[\.\)]\s+|\d+\s*(?:[x×]|db|darab|db\.|pcs|qty)\s+)/i, '');
+  // Strip leading ID / SKU / item code prefixes e.g. "Azonosító: 260901/900001", "Cikkszám: 12345"
+  s = s.replace(/^(?:azonosító|cikkszám|sku|item\s*no\.?|id|kód)\s*[:：]?\s*\S+\s+/i, '');
+  // Strip labelled prefixes e.g. "Termék:", "Megnevezés:", "Termék megnevezése:", "Product:"
+  s = s.replace(/^(?:termék(?:\s*megnevezése|\s*neve)?|megnevezés|tétel(?:\s*megnevezése)?|cikk(?:\s*megnevezése)?|item(?:\s*name)?|product(?:\s*name)?|description)\s*[:：-]\s*/i, '');
+  // Strip markdown link debris e.g. "[](#)" or "[](url)"
+  s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\(\s*\)/g, '').trim();
+  // Strip trailing price amounts e.g. "19 990 Ft", "499.00 EUR", "$29.99"
+  s = s.replace(/\s+[0-9]{1,3}(?:[\s.][0-9]{3})*(?:[.,][0-9]{2})?\s*(?:ft|huf|eur|usd|gbp|chf|pln|czk|ron|€|\$|£)\s*$/i, '');
+  // Strip trailing quantity and warranty markers in either order
+  for (let iter = 0; iter < 2; iter++) {
+    s = s.replace(/\s+(?:[x×]\s*\d+|\d+\s*[x×]|\d+\s*(?:db|darab|db\.|pcs))\s*$/i, '');
+    for (const lang of LANGUAGES) {
+      s = s.replace(
+        new RegExp(`\\s+(?:\\([\\w-]+\\)\\s*)?\\d{1,3}[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b.*$`, 'i'),
+        '',
+      );
+    }
+  }
+  // Strip trailing separators or stray punctuation
+  s = s.replace(/\s+[-–|/]\s*$/, '').trim();
+  // Normalize internal whitespace (e.g. collapsing multiple spaces from OCR)
+  return s.replace(/\s+/g, ' ');
+}
+
+// Line items are recognised by quantity markers ("1x Name", "1 db Name", "Name 1 db"),
+// list numbers ("1. Name"), labelled fields ("Termék: Name"), or warranty tags ("Name 24 hó gar.").
 export function findItems(text: string): { name: string; months: number | null }[] {
   const found = new Map<string, number | null>();
-  // Pair a warranty cell only with the immediately preceding product cell in that row.
-  const rows = text.split('\n').map(row => {
+
+  // 1. Process table rows (lines with pipes |)
+  const rows = text.split('\n').map((row) => {
     const cells = row.split(/\s*\|\s*/);
     for (let i = 1; i < cells.length; i++) {
       if (findWarrantyMonths(cells[i]) && isProductName(cells[i - 1]) && !findWarrantyMonths(cells[i - 1])) {
@@ -156,31 +186,114 @@ export function findItems(text: string): { name: string; months: number | null }
     }
     return cells.join(' | ');
   });
-  const segments = rows.join('\n').split(/\n|\s*\|\s*|\s{2,}|\t/).map((s) => s.trim()).filter(Boolean);
-  for (const seg of segments) {
+
+  const tableSegments = rows.join('\n').split(/\n|\s*\|\s*|\t/).map((s) => s.trim()).filter(Boolean);
+  for (const seg of tableSegments) {
     for (const lang of LANGUAGES) {
       const tagged = seg.match(
-        new RegExp(`^(.+?)\\s*(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})`, 'i'),
+        new RegExp(`^(.+?)\\s*(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b`, 'i'),
       );
       const name =
         tagged?.[1] ??
         seg.match(/^\d+\s*[x×]\s+(.+)$/i)?.[1] ??
-        seg.match(/^(.+?)\s+[x×]\s*\d+\b/i)?.[1] ?? // a variant line ("Black / XL") may follow
+        seg.match(/^(.+?)\s+[x×]\s*\d+\b/i)?.[1] ??
         seg.match(new RegExp(`^(.+?)\\s+\\d+\\s*(?:${lang.quantityUnit})\\b`, 'i'))?.[1];
-      if (!name || !isProductName(name)) continue;
-      const product = name.trim().replace(/^\d+\s*[x×]\s+/i, '').replace(/\s+[x×]\s*\d+$/i, '').replace(/\s+[-–]\s*$/, '').trim();
+      if (!name) continue;
+      const product = cleanProductName(name);
+      if (!isProductName(product)) continue;
       const months = tagged ? toMonths(tagged[2], tagged[3], lang) : null;
       found.set(product, months ?? found.get(product) ?? null);
       break;
     }
   }
+
+  // 2. For non-pipe lines, process line-by-line for full multi-word items, prefix quantities and numbers
+  const lines = text.split('\n').map((l) => l.trim()).filter((l) => l && !l.includes('|'));
+  for (const line of lines) {
+    let matched = false;
+    // Check if line has a warranty tag
+    for (const lang of LANGUAGES) {
+      const tagged = line.match(
+        new RegExp(`^(.+?)\\s*(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b`, 'i'),
+      );
+      if (tagged) {
+        const months = toMonths(tagged[2], tagged[3], lang);
+        // If line is a standalone warranty line (e.g. "Jótállás: 24 hó" or "Warranty: 2 years"), attach to previous product
+        if (/^(?:jótállás|garancia|warranty|guarantee)\b\s*[:：]?$/i.test(tagged[1].trim())) {
+          if (months && found.size > 0) {
+            const lastKey = [...found.keys()].pop()!;
+            if (found.get(lastKey) === null) {
+              found.set(lastKey, months);
+            }
+          }
+          matched = true;
+          break;
+        }
+        const candidate = cleanProductName(tagged[1]);
+        if (isProductName(candidate)) {
+          found.set(candidate, months ?? found.get(candidate) ?? null);
+          matched = true;
+          break;
+        }
+      }
+    }
+    if (matched) continue;
+
+    // Prefix quantity: "1x Name", "1 × Name", "1 db Name", "1 db. Name"
+    const prefixQty = line.match(/^\s*(?:\d+[\.\)]\s+)?(\d+)\s*(?:[x×]|db|darab|db\.|pcs|qty)\s+(.+)$/i);
+    if (prefixQty) {
+      const candidate = cleanProductName(prefixQty[2]);
+      if (isProductName(candidate)) {
+        found.set(candidate, found.get(candidate) ?? null);
+        continue;
+      }
+    }
+
+    // Numbered list items: "1. Name", "2) Name"
+    const numbered = line.match(/^\s*(\d+)[\.\)]\s+([A-ZÁÉÍÓÖŐÚÜŰ0-9].+)$/i);
+    if (numbered && !/^\s*\d+[\.\)]\s*\d/.test(line)) {
+      const candidate = cleanProductName(numbered[2]);
+      if (isProductName(candidate)) {
+        found.set(candidate, found.get(candidate) ?? null);
+        continue;
+      }
+    }
+
+    // Labelled items: "Termék: Name", "Megnevezés: Name", "Termék megnevezése: Name", "Item: Name"
+    const labelled = line.match(/^(?:termék(?:\s*megnevezése|\s*neve)?|megnevezés|tétel(?:\s*megnevezése)?|cikk(?:\s*megnevezése)?|item(?:\s*name)?|product(?:\s*name)?|description)\s*[:：-]\s*(.+)$/i);
+    if (labelled) {
+      const candidate = cleanProductName(labelled[1]);
+      if (isProductName(candidate)) {
+        found.set(candidate, found.get(candidate) ?? null);
+        continue;
+      }
+    }
+
+    // Suffix quantity: "Name 1 db", "Name × 2"
+    for (const lang of LANGUAGES) {
+      const suffixQty = line.match(new RegExp(`^(.+?)\\s+(?:[x×]\\s*\\d+|\\d+\\s*[x×]|\\d+\\s*(?:${lang.quantityUnit}))(?:\\s+.*)?$`, 'i'));
+      if (suffixQty) {
+        const candidate = cleanProductName(suffixQty[1]);
+        if (isProductName(candidate)) {
+          found.set(candidate, found.get(candidate) ?? null);
+          break;
+        }
+      }
+    }
+  }
+
   return [...found].map(([name, months]) => ({ name, months }));
 }
 
 function isProductName(name: string): boolean {
+  const trimmed = name.trim();
+  if (trimmed.length < 2 || trimmed.length > 120) return false;
   // A name ending in a filler word is a sentence ("comes with a 2-year warranty"), not a line item.
-  const sentence = /\s(a|an|the|with|has|includes|az|egy)$/i.test(name.trim());
-  return /\p{L}{2}/u.test(name) && !sentence && !name.includes(':') && !LANGUAGES.some((l) => l.nonProduct.test(name));
+  const sentence = /\s(a|an|the|with|has|includes|az|egy|és|and)$/i.test(trimmed);
+  const hasLetters = /\p{L}{2}/u.test(trimmed);
+  const isNonProduct = LANGUAGES.some((l) => l.nonProduct.test(trimmed));
+  const isMetadata = /^(?:adószám|számlaszám|bizonylatszám|dátum|teljesítés|fizetési|vevő|szállító|cím|iban|swift|kelt|date|invoice|total|tax|egységár|ár|mennyiség|összesen|végösszeg|subtotal|price|qty|unit\s*price|quantity|jótállás|garancia|warranty|guarantee)\s*[:：]/i.test(trimmed);
+  return hasLetters && !sentence && !isNonProduct && !isMetadata;
 }
 
 function findContactEmail(msg: MailMessage, text: string, storeDomain: string): string | null {

@@ -75,6 +75,9 @@ test('shortName: at most 3 words, ending at the model code', () => {
   assert.equal(shortName('ATK Blazing Sky ZERO Ultralight Wireless Gaming Mouse'), 'ATK Blazing Sky'); // no model code
   assert.equal(shortName('Mixing Desk FIFINE SC3'), 'Mixing Desk FIFINE');
   assert.equal(shortName('Samsung Galaxy S24'), 'Samsung Galaxy S24');
+  assert.equal(shortName('4K Ultra HD Gaming Monitor'), '4K Ultra HD');
+  assert.equal(shortName('1. Apple iPhone 15 Pro'), 'Apple iPhone 15');
+  assert.equal(shortName('1 db Sony WH-1000XM4 fejhallgató'), 'Sony WH-1000XM4');
 });
 
 test('reminderPlan: 90/60/30, weekly, expiry day; from today on; nearest first; capped', () => {
