@@ -4,7 +4,6 @@
 > Public release name: to be chosen once the app works (Gardo is one candidate, not cleared, see section 22)
 > Last updated: 2026-11-11
 > Status: Brainstorming (no code yet)
-> Purpose: When ready, hand this file to Claude Code to start the build.
 
 ---
 

@@ -1,33 +1,31 @@
+import { Pressable, Text, TextInput, View, reduceMotion, useThemeTransition } from '@/components/themeMotion';
 import { useEffect, useState, type ReactNode } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon, { type IconName } from '@/components/Icon';
 import {
-  AccessibilityInfo,
   ActivityIndicator,
   Animated,
   Easing,
-  Pressable,
+  Pressable as NativePressable,
   StyleSheet,
-  Text,
-  TextInput,
-  View,
+  useWindowDimensions,
   type PressableProps,
   type StyleProp,
   type TextInputProps,
   type TextStyle,
   type ViewProps,
   type ViewStyle,
+  type LayoutRectangle,
 } from 'react-native';
-import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_X, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE } from '@/theme';
+import Reanimated from 'react-native-reanimated';
+import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, PRESS_DELAY, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
+import { segmentedLayout } from '@/segmentedLayout';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
-export type IconName = keyof typeof Ionicons.glyphMap;
+export type { IconName } from '@/components/Icon';
 const ease = Easing.bezier(...EASE);
 
-// Reduced motion collapses the press scales and springs (ios.css lines 672-678).
-let reduced = false;
-void AccessibilityInfo.isReduceMotionEnabled().then((v) => (reduced = v));
-AccessibilityInfo.addEventListener('reduceMotionChanged', (v) => (reduced = v));
-export const reduceMotion = () => reduced;
+// Shared accessibility preference also controls theme colour transitions.
+export { reduceMotion } from '@/components/themeMotion';
 
 // Glass without a backdrop blur: the reference's defined fallback (--material-solid), its lit edge and sheen.
 export function glass(sheen = true): ViewStyle {
@@ -36,16 +34,6 @@ export function glass(sheen = true): ViewStyle {
     boxShadow: colors.glassEdge,
     ...(sheen ? { backgroundImage: SHEEN.replace('0.5)', `${0.5 * colors.glassSheen})`) } : null),
   };
-}
-
-// A pressable that scales while held: buttons .97 in .1 s, released over .16 s on the strong ease-out.
-function useScale(to: number, inMs: number, outMs: number) {
-  const scale = useState(() => new Animated.Value(1))[0];
-  const run = (v: number, ms: number) => {
-    if (reduced) return;
-    Animated.timing(scale, { toValue: v, duration: ms, easing: ease, useNativeDriver: true }).start();
-  };
-  return { scale, onPressIn: () => run(to, inMs), onPressOut: () => run(1, outMs) };
 }
 
 type ButtonKind = 'prominent' | 'glass' | 'destructive';
@@ -71,36 +59,35 @@ export function Button({
   testID?: string;
   accessibilityLabel?: string;
 }) {
-  const press = useScale(0.97, 100, 160);
+  const styles = useStyles();
   const prominent = kind === 'prominent';
-  const ink = prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
+  const ink = disabled ? colors.ink2 : prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
   return (
-    <Animated.View style={[{ transform: [{ scale: press.scale }] }, (disabled || busy) && styles.disabled, style]}>
-      <Pressable
-        testID={testID}
-        onPress={onPress}
-        onPressIn={press.onPressIn}
-        onPressOut={press.onPressOut}
-        disabled={disabled || busy}
-        hitSlop={4}
-        style={({ pressed }) => [styles.button, prominent ? { backgroundColor: pressed ? colors.accentDown : colors.accent } : glass(), kind === 'destructive' && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined }]}
-        accessibilityRole="button"
-        accessibilityLabel={accessibilityLabel}
-        accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
-      >
-        {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <Ionicons name={icon} size={20} color={ink} /> : null}
-        <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
-      </Pressable>
-    </Animated.View>
+    <Pressable
+      pressScale={0.97}
+      unstable_pressDelay={PRESS_DELAY}
+      testID={testID}
+      onPress={onPress}
+      disabled={disabled || busy}
+      hitSlop={4}
+      style={({ pressed }) => [styles.button, prominent ? { backgroundColor: pressed ? colors.accentDown : colors.accent } : glass(), (disabled || kind === 'destructive') && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined }, busy && styles.disabled, style]}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
+    >
+      {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
+      <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
+    </Pressable>
   );
 }
 
 // Round 44dp glass button for bars and sheet toolbars: label-coloured glyph, swells to 1.1 on press and
 // settles back on the bouncier spring.
 export function GlassButton({ icon, label, onPress, size = 20, color = colors.ink, testID, disabled, selected }: { icon: IconName; label: string; onPress: () => void; size?: number; color?: string; testID?: string; disabled?: boolean; selected?: boolean }) {
+  const styles = useStyles();
   const scale = useState(() => new Animated.Value(1))[0];
   const to = (v: number, fast: boolean) => {
-    if (reduced) return;
+    if (reduceMotion()) return;
     // press: the bounce spring compressed into .22 s; release: the reference's .5 s bounce
     Animated.spring(scale, { toValue: v, useNativeDriver: true, ...(fast ? { stiffness: 1153, damping: 42.1, mass: 1 } : SPRING_BOUNCE) }).start();
   };
@@ -118,14 +105,15 @@ export function GlassButton({ icon, label, onPress, size = 20, color = colors.in
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled, selected }}
       >
-        <Ionicons name={icon} size={size} color={color} />
+        <AppIcon name={icon} size={size} color={color} />
       </Pressable>
     </Animated.View>
   );
 }
 
-// Section header above a group: Prominent title, primary label colour, 28 above and 8 below.
+// Section header above a group: Prominent title, primary label colour, 20 above and 6 below.
 export function SectionHeader({ title, first, trailing }: { title: string; first?: boolean; trailing?: ReactNode }) {
+  const styles = useStyles();
   return (
     <View style={[styles.sectionHead, first && { marginTop: 8 }]}>
       <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -138,6 +126,7 @@ export function SectionHeader({ title, first, trailing }: { title: string; first
 
 // A grouped card: opaque, 26 radius, clips its rows. In a sheet the dark card is one step lighter.
 export function Group({ children, style, inSheet, ...rest }: ViewProps & { inSheet?: boolean }) {
+  const styles = useStyles();
   return (
     <View {...rest} style={[styles.group, inSheet && { backgroundColor: colors.sheetGroup }, style]}>
       {children}
@@ -146,23 +135,24 @@ export function Group({ children, style, inSheet, ...rest }: ViewProps & { inShe
 }
 
 // The row press: --press at once, fading back over .3 s on the ease-out.
-function usePressColor() {
+function usePressOpacity() {
   const v = useState(() => new Animated.Value(0))[0];
   return {
-    bg: v.interpolate({ inputRange: [0, 1], outputRange: ['rgba(0,0,0,0)', colors.press] }),
+    opacity: v,
     onPressIn: () => {
       v.stopAnimation();
       v.setValue(1);
     },
-    onPressOut: () => Animated.timing(v, { toValue: 0, duration: reduced ? 0 : 300, easing: ease, useNativeDriver: false }).start(),
+    onPressOut: () => Animated.timing(v, { toValue: 0, duration: reduceMotion() ? 0 : 300, easing: ease, useNativeDriver: true }).start(),
   };
 }
 
-// One row in a group: 52 minimum, 15/16 padding, Body text. `separator` draws the 1px line above it, inset 16
+// One row in a group: 46 minimum, 11/16 padding, Body text. `separator` draws the 1px line above it, inset 16
 // at both ends (or from 59 after an icon tile). `chevron` marks rows that open something.
 export function Row({
   children,
   onPress,
+  onLongPress,
   separator,
   iconInset,
   chevron,
@@ -176,6 +166,7 @@ export function Row({
 }: {
   children: ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
   separator?: boolean;
   iconInset?: boolean;
   chevron?: boolean;
@@ -187,7 +178,8 @@ export function Row({
   testID?: string;
   disabled?: boolean;
 }) {
-  const press = usePressColor();
+  const styles = useStyles();
+  const press = usePressOpacity();
   const body = (
     <>
       {separator && <View style={[styles.separator, { left: iconInset ? SEP_ICON : ROW_X }]} />}
@@ -197,32 +189,39 @@ export function Row({
   );
   if (!onPress) return <View style={[styles.row, selected && styles.rowSelected, style]}>{body}</View>;
   return (
-    <AnimatedPressable
+    <NativePressable
       testID={testID}
       onPress={onPress}
+      onLongPress={onLongPress}
       onPressIn={press.onPressIn}
       onPressOut={press.onPressOut}
+      unstable_pressDelay={PRESS_DELAY}
       disabled={disabled}
-      style={[styles.row, { backgroundColor: press.bg }, selected && styles.rowSelected, disabled && styles.disabled, style]}
+      style={[styles.row, selected && styles.rowSelected, disabled && styles.disabled, style]}
       accessibilityRole={accessibilityRole}
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ selected, disabled, ...accessibilityState }}
     >
+      {/* Animate only a non-interactive overlay. Driving the touch surface's background with both
+          Animated and theme CSS transitions made row holds and nested document buttons flash. */}
+      <Animated.View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
+        style={[StyleSheet.absoluteFill, { backgroundColor: colors.press, opacity: press.opacity }]} />
       {body}
-    </AnimatedPressable>
+    </NativePressable>
   );
 }
-const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 export function Chevron() {
-  return <Ionicons name="chevron-forward" size={14} color={colors.chevron} style={styles.chevron} />;
+  const styles = useStyles();
+  return <AppIcon name="chevron-forward" size={14} color={colors.chevron} style={styles.chevron} />;
 }
 
 // 29dp rounded tile with a white 18dp glyph (settings and hardware rows).
 export function IconTile({ name, color, glyph = '#fff' }: { name: IconName; color: string; glyph?: string }) {
+  const styles = useStyles();
   return (
     <View style={[styles.tile, { backgroundColor: color }]} importantForAccessibility="no-hide-descendants">
-      <Ionicons name={name} size={18} color={glyph} />
+      <AppIcon name={name} size={18} color={glyph} />
     </View>
   );
 }
@@ -231,6 +230,7 @@ export const TILE = { blue: '#007aff', orange: '#ff9500', green: '#34c759', grey
 
 // Text field: 44 tall, 9/12 padding, 14 radius, filled with --card-2; focus draws a 2dp tint ring.
 export function Input({ style, inSheet, ...props }: TextInputProps & { inSheet?: boolean }) {
+  const styles = useStyles();
   const [focused, setFocused] = useState(false);
   return (
     <TextInput
@@ -249,14 +249,16 @@ export function Input({ style, inSheet, ...props }: TextInputProps & { inSheet?:
     />
   );
 }
-export const inputStyle: TextStyle = { minHeight: CONTROL_H, paddingVertical: 9, paddingHorizontal: 12, borderRadius: FIELD_RADIUS, backgroundColor: colors.card2, color: colors.ink, ...TYPE.body };
+// A function, not a constant: it reads the live palette (a constant would keep the colours from start-up).
+export const inputStyle = (): TextStyle => ({ minHeight: CONTROL_H, paddingVertical: 9, paddingHorizontal: 12, borderRadius: FIELD_RADIUS, backgroundColor: colors.card2, color: colors.ink, ...TYPE.body });
 
 // iOS 27 switch: 64 x 28 track, 38 x 24 white knob 2dp in, 22dp travel on the spring; drawn in a 44dp hit area.
 export function Switch({ value, onValueChange, accessibilityLabel, disabled }: { value: boolean; onValueChange: (v: boolean) => void; accessibilityLabel?: string; disabled?: boolean }) {
+  const styles = useStyles();
   const knob = useState(() => new Animated.Value(value ? 1 : 0))[0];
   const track = useState(() => new Animated.Value(value ? 1 : 0))[0];
   useEffect(() => {
-    if (reduced) {
+    if (reduceMotion()) {
       knob.setValue(value ? 1 : 0);
       track.setValue(value ? 1 : 0);
       return;
@@ -280,54 +282,86 @@ export function Switch({ value, onValueChange, accessibilityLabel, disabled }: {
   );
 }
 
-// Segmented control. Small: 32 track, 28 options. Large (`seg-3`): 50 track, 46 options, optional glyphs.
+// Stable touch targets with a separate selection lens; whole options reflow at large text sizes.
 export function Segmented<K extends string>({ options, value, onChange, large }: { options: { key: K; label: string; icon?: IconName }[]; value: K; onChange: (k: K) => void; large?: boolean }) {
+  const styles = useStyles();
+  const transition = useThemeTransition();
+  const { fontScale } = useWindowDimensions();
+  const [width, setWidth] = useState(0);
+  const [rects, setRects] = useState<Record<string, LayoutRectangle>>({});
+  const { columns, optionWidth, icons } = segmentedLayout(width, fontScale, options.map((o) => o.label), large);
+  const selected = rects[value];
+  // Only the decorative lens moves; touch targets, text and the grid stay still.
+  // Recreate the lens when text/width reflows so resizing never sweeps over the UI.
+  const layoutKey = `${width}:${fontScale}:${columns}:${large}`;
   return (
-    <View style={[styles.seg, large && styles.segLarge]} accessibilityRole="radiogroup">
+    <View style={[styles.seg, large && styles.segLarge]} accessibilityRole="radiogroup" onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
+      {selected && (
+        <Reanimated.View key={layoutKey} pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants"
+          testID="segmented-selection"
+          style={[styles.segLens, large && styles.segLensLarge, {
+            width: selected.width, height: selected.height,
+            transform: [{ translateX: selected.x }, { translateY: selected.y }],
+            transitionProperty: ['transform', 'backgroundColor'],
+            transitionDuration: transition.transitionDuration === '0ms' ? '0ms' : '180ms',
+            transitionTimingFunction: 'ease-out',
+          }]} />
+      )}
       {options.map((o) => {
         const on = o.key === value;
         return (
-          <Pressable
+          <NativePressable
             key={o.key}
-            onPress={() => onChange(o.key)}
-            hitSlop={{ top: 8, bottom: 8 }}
-            style={[styles.segOption, large && styles.segOptionLarge, on && styles.segOn]}
+            onPress={() => { if (!on) onChange(o.key); }}
+            unstable_pressDelay={PRESS_DELAY}
+            onLayout={(event) => {
+              const rect = event.nativeEvent.layout;
+              setRects((previous) => {
+                const old = previous[o.key];
+                return old && old.x === rect.x && old.y === rect.y && old.width === rect.width && old.height === rect.height
+                  ? previous : { ...previous, [o.key]: rect };
+              });
+            }}
+            style={({ pressed }) => [styles.segOption, large && styles.segOptionLarge, optionWidth !== undefined && { flex: 0, width: optionWidth }, columns < options.length && { minHeight: 44 }, pressed && { opacity: 0.72 }, !selected && on && styles.segOn]}
             accessibilityRole="radio"
+            accessibilityLabel={o.label}
             accessibilityState={{ checked: on }}
           >
-            {o.icon && <Ionicons name={o.icon} size={17} color={colors.ink} />}
-            <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={2}>
+            {o.icon && icons && <AppIcon name={o.icon} size={17} color={colors.ink} />}
+            <Text style={[styles.segText, on && { fontWeight: '600' }]} numberOfLines={1}>
               {o.label}
             </Text>
-          </Pressable>
+          </NativePressable>
         );
       })}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  disabled: { opacity: 0.35 },
-  button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 11, paddingHorizontal: 20, borderRadius: 22 },
+const useStyles = themed(() => StyleSheet.create({
+  disabled: { opacity: 0.45 },
+  button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 12, borderRadius: CONTROL_H / 2 },
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
   glassButton: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center' },
-  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 28, marginBottom: 8, paddingHorizontal: 4 },
-  sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1 },
+  sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 24, marginBottom: 8, paddingHorizontal: 4 },
+  sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1, minWidth: 0 },
   group: { backgroundColor: colors.card, borderRadius: RADIUS, overflow: 'hidden' },
-  row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 15, paddingHorizontal: ROW_X },
+  row: { minHeight: ROW_H, flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: ROW_PAD, paddingHorizontal: ROW_X },
   rowSelected: { backgroundColor: colors.tintSoft },
-  separator: { position: 'absolute', top: 0, right: ROW_X, height: 1, backgroundColor: colors.line },
+  separator: { position: 'absolute', top: 0, right: ROW_X, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
   chevron: { marginLeft: 'auto' },
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
-  input: inputStyle,
+  input: inputStyle(),
   inputFocus: { outlineWidth: 2, outlineColor: colors.tint, outlineStyle: 'solid' },
   switchHit: { width: 64, minHeight: CONTROL_H, justifyContent: 'center' },
   switchTrack: { width: 64, height: 28, borderRadius: 14 },
   switchKnob: { position: 'absolute', top: 2, left: 2, width: 38, height: 24, borderRadius: 12, backgroundColor: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.12), 0 1px 1px rgba(0,0,0,0.04)' },
-  seg: { flexDirection: 'row', gap: 4, padding: 2, borderRadius: 16, backgroundColor: colors.fill },
-  segLarge: { borderRadius: 25 },
-  segOption: { flex: 1, minHeight: 28, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14 },
-  segOptionLarge: { minHeight: 46, paddingHorizontal: 8, borderRadius: 23 },
+  seg: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, padding: 2, borderRadius: 16, backgroundColor: colors.fill },
+  segLarge: { borderRadius: 22 },
+  segOption: { flex: 1, minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingHorizontal: 12, borderRadius: 14 },
+  segOptionLarge: { minHeight: 40, paddingHorizontal: 8, borderRadius: 20 },
   segOn: { backgroundColor: colors.segOn, boxShadow: colors.segShadow },
+  segLens: { position: 'absolute', top: 0, left: 0, borderRadius: 14, backgroundColor: colors.segOn, boxShadow: colors.segShadow },
+  segLensLarge: { borderRadius: 20 },
   segText: { ...TYPE.seg, color: colors.ink, textAlign: 'center', flexShrink: 1 },
-});
+}));

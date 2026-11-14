@@ -1,8 +1,9 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet } from 'react-native';
 import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
@@ -17,19 +18,23 @@ import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties }
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount } from '@/google';
 import { appLanguage, resources } from '@/i18n';
+import { getDensity, setDensity, setUsername, type Density } from '@/settings';
+import { forgetRecent } from '@/recentStore';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setReminderTime, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
-import { Button, Group, IconTile, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
-import { colors, RADIUS, ROW_X, TYPE } from '@/theme';
+import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
+import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
+import { GMAIL_IMPORT } from '@/features';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
-type Icon = keyof typeof Ionicons.glyphMap;
+type Icon = IconName;
 
 // Settings (section 13): mail accounts, app lock, reminders and backup.
 export default function Settings() {
+  const styles = useStyles();
   const { t, i18n } = useTranslation();
   const [lock, setLock] = useState(isLockEnabled);
   const [biometric, setBiometric] = useState(isBiometricEnabled);
@@ -39,6 +44,7 @@ export default function Settings() {
   const [time, setTime] = useState(getReminderTime);
   const [language, setLanguage] = useState(getLanguageSetting);
   const [theme, setTheme] = useState(getThemeSetting);
+  const [density, setDensityState] = useState<Density>(getDensity);
   const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
@@ -49,10 +55,14 @@ export default function Settings() {
   const [backupAccount, setBackupAccount] = useState(() => getSetting('backup_account'));
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [accountBusy, setAccountBusy] = useState<string | null>(null); // status line while adding or syncing
+  const [name, setName] = useState(getUsername);
+  const [editingName, setEditingName] = useState(false);
+  const [draftName, setDraftName] = useState('');
 
   // Back from PIN setup: show whether the lock is now on.
   useFocusEffect(
     useCallback(() => {
+      setName(getUsername());
       setLock(isLockEnabled());
       setWidgetNamesState(widgetShowsNames()); // the default follows the lock
       void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
@@ -100,11 +110,12 @@ export default function Settings() {
     await rescheduleReminders(await getDb()); // reminder texts are written in the app language
   }
 
-  // Styles are built at start, so a new theme needs a restart.
+  // Applies at once: the palette is live, so Settings stays open where it was (no restart, no update).
   function chooseTheme(next: string) {
     setThemeSetting(next);
     setTheme(next);
-    restartIntoUpdate().catch(() => showAlert(t('settings.themeRestart')));
+    applyTheme();
+    void getDb().then(updateWidget).catch(() => {}); // the widget follows the app's appearance
   }
 
   // Reminder time: Android's own clock picker; elsewhere (web preview) 9:00 and 18:00 alternate.
@@ -300,7 +311,13 @@ export default function Settings() {
       <Segmented large options={items} value={selected} onChange={onPick} />
     </Row>
   );
-  const name = getUsername();
+  const saveName = () => {
+    const next = draftName.trim();
+    if (!next) return;
+    setUsername(next);
+    setName(next);
+    setEditingName(false);
+  };
   // One group per topic, with the reference's section header above it.
   const section = (title: string, body: ReactNode) => (
     <View>
@@ -311,20 +328,40 @@ export default function Settings() {
 
   return (
     <Page title={t('settings.title')}>
-      {/* The reference's profile row: a 60dp grey avatar, the name in Title 3 and a Subheadline hint. */}
+      {/* The reference's profile row: a 48dp grey avatar, the name in Title 3 and a Subheadline hint. */}
       <View style={styles.profile}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
-        </View>
-        <View style={styles.rowText}>
-          <Text style={styles.profileName} numberOfLines={1}>
-            {name?.trim() || t('settings.title')}
-          </Text>
-          <Text style={styles.profileHint}>{t('settings.profileHint')}</Text>
-        </View>
+        {editingName ? (
+          <>
+            <View style={styles.profileRow}>
+              <View style={styles.avatar}>
+                <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
+              </View>
+              <Input style={styles.rowText} testID="settings-name" value={draftName} onChangeText={setDraftName} maxLength={30} autoFocus
+                accessibilityLabel={t('settings.editName')} autoCapitalize="words" returnKeyType="done" onSubmitEditing={saveName} />
+            </View>
+            <View style={styles.nameButtons}>
+              <Button title={t('detail.cancel')} kind="glass" style={styles.nameButton} onPress={() => setEditingName(false)} />
+              <Button title={t('collections.save')} style={styles.nameButton} onPress={saveName} disabled={!draftName.trim()} />
+            </View>
+          </>
+        ) : (
+          <Pressable style={styles.profileRow} accessibilityRole="button" accessibilityLabel={t('settings.editName')}
+            onPress={() => { setDraftName(name ?? ''); setEditingName(true); }}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{(name?.trim()[0] ?? 'W').toUpperCase()}</Text>
+            </View>
+            <View style={styles.rowText}>
+              <Text style={styles.profileName} numberOfLines={2}>
+                {name?.trim() || t('settings.title')}
+              </Text>
+              <Text style={styles.profileHint}>{t('settings.profileHint')}</Text>
+            </View>
+            <AppIcon name="pencil-outline" size={20} color={colors.tint} />
+          </Pressable>
+        )}
       </View>
 
-      {section(
+      {GMAIL_IMPORT && section(
         t('accounts.section'),
         <>
           {accounts.map((a) => (
@@ -370,7 +407,7 @@ export default function Settings() {
               // The reference's to-do circles: 22dp, --ink-3 ring, filled with the tint when on.
               <Row key={g} iconInset style={styles.row} onPress={() => toggleGroup(g)} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>
                 <View style={styles.tileSpace}>
-                  <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <Ionicons name="checkmark" size={15} color="#fff" />}</View>
+                  <View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <AppIcon name="checkmark" size={15} color="#fff" />}</View>
                 </View>
                 <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
               </Row>
@@ -395,6 +432,17 @@ export default function Settings() {
             theme,
             chooseTheme,
           )}
+          {choices(
+            'list-outline',
+            TILE.teal,
+            t('settings.density'),
+            [
+              { key: 'comfortable', label: t('settings.density_comfortable') },
+              { key: 'compact', label: t('settings.density_compact') },
+            ],
+            density,
+            (d: string) => { setDensity(d as Density); setDensityState(d as Density); },
+          )}
           {choices('globe-outline', TILE.blue, t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, label: t(`settings.lang_${key}`) })), language, chooseLanguage)}
         </>,
       )}
@@ -406,6 +454,7 @@ export default function Settings() {
           {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), () => router.push('/pin'))}
           {lock && canBiometric && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
           {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
+          {link('time-outline', TILE.grey, t('recent.clear'), () => { forgetRecent(); showAlert(t('recent.cleared')); }, { hint: t('recent.clearHint') })}
         </>,
       )}
 
@@ -448,6 +497,7 @@ export default function Settings() {
               <Text style={styles.linkSmall}>{t('backup.change')}</Text>
             </Pressable>
           </Row>
+          {link('pulse-outline', TILE.green, t('health.title'), () => router.push('/backup-status'))}
           {link('cloud-download-outline', TILE.cyan, t('backup.restore'), () => router.push('/restore'))}
         </>,
       )}
@@ -479,24 +529,27 @@ export default function Settings() {
   );
 }
 
-const styles = StyleSheet.create({
-  profile: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
-  avatar: { width: 60, height: 60, borderRadius: 30, backgroundImage: 'linear-gradient(#a5abb8, #858a96)', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 26, lineHeight: 26, fontWeight: '600', color: '#fff' },
+const useStyles = themed(() => StyleSheet.create({
+  profile: { gap: 12, paddingVertical: 10, paddingHorizontal: ROW_X, borderRadius: RADIUS, backgroundColor: colors.card, marginTop: 8 },
+  profileRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 48 },
+  avatar: { width: 48, height: 48, flexShrink: 0, borderRadius: 24, backgroundColor: colors.tintSoft, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 21, lineHeight: 24, fontWeight: '600', color: colors.tintInk },
   profileName: { ...TYPE.title3, color: colors.ink },
   profileHint: { ...TYPE.sub, color: colors.ink2 },
   row: { gap: 15 },
-  rowText: { flex: 1 },
+  rowText: { flex: 1, minWidth: 0 },
   tileSpace: { width: 29, alignItems: 'center' },
-  label: { ...TYPE.body, color: colors.ink },
+  label: { ...TYPE.body, color: colors.ink, flexShrink: 1 },
   hint: { ...TYPE.foot, color: colors.ink2 },
-  value: { ...TYPE.body, color: colors.ink2 },
+  value: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%', textAlign: 'right' },
+  nameButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  nameButton: { flexGrow: 1, flexBasis: 120 },
   inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4, marginTop: 4 },
   linkSmall: { ...TYPE.sub, color: colors.link },
   check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: colors.tint, borderColor: colors.tint },
-  block: { flexDirection: 'column', alignItems: 'stretch', gap: 12 },
+  block: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   error: { ...TYPE.foot, color: colors.bad },
   version: { ...TYPE.cap, color: colors.ink2, textAlign: 'center', paddingTop: 24 },
-});
+}));

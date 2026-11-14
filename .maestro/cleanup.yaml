@@ -1,5 +1,5 @@
 # #12: delete all my data; the app starts like a new install.
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 - extendedWaitUntil: { visible: "Search warranties", timeout: 60000 }
 - tapOn: "Settings"

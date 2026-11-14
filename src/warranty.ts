@@ -85,7 +85,7 @@ const REMINDER_DAYS = reminderDays(ALL_GROUPS);
 
 export interface Reminder {
   warrantyId: number;
-  kind: 'expiry' | 'return';
+  kind: 'expiry' | 'return' | 'custom';
   date: string; // YYYY-MM-DD, delivered at a fixed local time
   daysLeft: number;
 }
@@ -101,17 +101,29 @@ export const returnDeadline = (w: { origin: string; warranty_start_date: string 
 // keeps at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling
 // window). Today's are included: the caller drops them once their time of day has passed.
 // `return_by` adds one reminder two days before the return window closes.
+// `custom`: per-product dates the user set (shortlist 12), on top of these; only for warranties in the list,
+// and a custom date that falls on the same day as another reminder of that product is sent once.
 export function reminderPlan(
   warranties: { id: number; end_date: string; return_by?: string | null }[],
   today: string,
   limit = 60,
   days: number[] = REMINDER_DAYS,
+  custom: { warrantyId: number; date: string }[] = [],
 ): Reminder[] {
-  return warranties
+  const known = new Set(warranties.map((w) => w.id));
+  const plan = warranties
     .flatMap((w): Reminder[] => [
       ...days.map((daysLeft) => ({ warrantyId: w.id, kind: 'expiry' as const, daysLeft, date: addDays(w.end_date, -daysLeft) })),
       ...(w.return_by ? [{ warrantyId: w.id, kind: 'return' as const, daysLeft: RETURN_WARNING, date: addDays(w.return_by, -RETURN_WARNING) }] : []),
-    ].filter((r) => r.date >= today))
+    ]);
+  const taken = new Set(plan.map((r) => `${r.warrantyId}:${r.date}`));
+  for (const c of custom) {
+    if (!known.has(c.warrantyId) || taken.has(`${c.warrantyId}:${c.date}`)) continue;
+    taken.add(`${c.warrantyId}:${c.date}`);
+    plan.push({ warrantyId: c.warrantyId, kind: 'custom', daysLeft: 0, date: c.date });
+  }
+  return plan
+    .filter((r) => r.date >= today)
     .sort((a, b) => a.date.localeCompare(b.date) || a.warrantyId - b.warrantyId)
     .slice(0, limit);
 }
@@ -192,13 +204,29 @@ export function filterWarranties<W extends { product_name: string | null; store_
 ): W[] {
   const words = plain(f.query).split(/\s+/).filter(Boolean);
   return list.filter((w) => {
-    const days = daysUntil(w.end_date, today);
-    if ((days >= 0) !== (f.tab === 'active')) return false;
+    // ISO calendar dates sort chronologically; most filters need no Date allocations.
+    if ((w.end_date >= today) !== (f.tab === 'active')) return false;
     if (f.account !== 'all' && (f.account === 'manual' ? w.account_id !== null : w.account_id !== f.account)) return false;
     if (f.store && w.store_name !== f.store) return false;
     if (f.category && w.category !== f.category) return false;
-    if (f.soon && (days < 0 || days > 30)) return false;
+    if (f.soon && (w.end_date < today || daysUntil(w.end_date, today) > 30)) return false;
+    if (!words.length) return true;
     const text = plain(`${w.product_name ?? ''} ${w.store_name}`);
     return words.every((word) => text.includes(word));
   });
+}
+
+// Count all filter choices together, once per data change rather than rescanning the
+// entire library for every store/category each time the search field changes.
+export function warrantyFacets(list: { account_id: number | null; category?: string | null; store_name: string }[]) {
+  const accounts = new Map<number | 'manual', number>();
+  const categories = new Map<string, number>();
+  const stores = new Map<string, number>();
+  for (const w of list) {
+    const account = w.account_id ?? 'manual';
+    accounts.set(account, (accounts.get(account) ?? 0) + 1);
+    if (w.category) categories.set(w.category, (categories.get(w.category) ?? 0) + 1);
+    stores.set(w.store_name, (stores.get(w.store_name) ?? 0) + 1);
+  }
+  return { total: list.length, accounts, categories, stores };
 }

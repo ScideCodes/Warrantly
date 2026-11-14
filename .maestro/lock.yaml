@@ -1,5 +1,5 @@
 # The PIN must not be asked again when settings change (user report).
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 - launchApp:
     clearState: true

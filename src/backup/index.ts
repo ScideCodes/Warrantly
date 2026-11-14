@@ -1,5 +1,6 @@
 import { AESEncryptionKey, AESSealedData, aesDecryptAsync, aesEncryptAsync, getRandomBytes } from 'expo-crypto';
 import * as SecureStore from 'expo-secure-store';
+import { changeCount, markBackedUp } from '@/db/features.ts';
 import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, readDocument, writeDocument } from '@/documents';
 import { ensureDriveAccess, getAccessToken } from '@/google';
@@ -41,20 +42,27 @@ export async function runBackup(db: Db, interactive: boolean, now = new Date()):
     if (!stored) throw new Error('No backup password set');
     if (!(await ensureDriveAccess(interactive))) throw new Error('Google Drive access is needed');
     const key = fromBase64(stored.key);
+    const changes = await changeCount(db); // read before the data: an edit made during the upload stays pending
     const data = await dumpDb(db, settingsSnapshot(), now);
     const d = drive();
     // Documents first, each uploaded once: a backup never points at a document Drive does not have.
     const onDrive = new Set((await d.list()).map((f) => f.name));
+    const safe: string[] = [];
     for (const path of filesOf(data)) {
       const name = docBackupName(path);
+      if (onDrive.has(name)) safe.push(path);
       if (onDrive.has(name) || !documentExists(path)) continue;
       await d.upload(name, await sealBytes(aead, key, await readDocument(path)));
+      safe.push(path);
     }
     await uploadAndPrune(d, `${BACKUP_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}.json`, await seal(aead, key, stored.kdf, data));
+    await markBackedUp(db, changes, safe); // only after the backup file itself is on Drive
     setSetting('last_backup_at', now.toISOString());
     setSetting('last_backup_error', '');
+    setSetting('last_backup_error_at', '');
   } catch (e) {
     setSetting('last_backup_error', e instanceof Error ? e.message : String(e));
+    setSetting('last_backup_error_at', new Date().toISOString());
     throw e;
   }
 }
@@ -111,12 +119,15 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
     if (!id || documentExists(path)) continue;
     await writeDocument(path, await unsealBytes(aead, key, await drive().download(id)));
   }
+  // What was just restored is exactly what Drive holds: nothing is pending until the next change.
+  await markBackedUp(db, await changeCount(db), filesOf(data).filter((p) => files.has(docBackupName(p))));
 }
 
-// Every file a backup refers to: documents and product photos.
+// Every file a backup refers to: documents, product photos and found product pictures.
 const filesOf = (data: { tables: Record<string, Record<string, unknown>[] | undefined> }): string[] => [
   ...(data.tables.attachments ?? []).map((a) => String(a.local_path)),
-  ...(data.tables.warranties ?? []).flatMap((w) => (typeof w.photo_path === 'string' ? [w.photo_path] : [])),
+  ...(data.tables.inbox ?? []).map((a) => String(a.local_path)),
+  ...(data.tables.warranties ?? []).flatMap((w) => [w.photo_path, w.found_photo_path].filter((p): p is string => typeof p === 'string')),
 ];
 
 // --- Disconnect / reconnect an account (section 15) ---
@@ -127,7 +138,7 @@ export async function disconnectAccount(db: Db, account: Account, now = new Date
   const stored = storedKey();
   if (!stored) throw new Error('No backup password set');
   const rows = await dumpAccount(db, account.id);
-  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: rows.attachments!.filter(keptOnDisconnect), returns: [], history: rows.history ?? [] }, settings: {} };
+  const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: rows.attachments!.filter(keptOnDisconnect), returns: [], history: rows.history ?? [], claims: rows.claims ?? [], custom_reminders: rows.custom_reminders ?? [] }, settings: {} };
   const text = await seal(aead, fromBase64(stored.key), stored.kdf, payload);
   await saveDisconnectBackup(db, account.email, text, now.toISOString());
   if (getSetting('backup_enabled') === '1' && (await ensureDriveAccess(false))) {
@@ -150,6 +161,6 @@ export async function restoreDisconnected(db: Db, account: Account): Promise<voi
   const stored = storedKey();
   if (!saved || !stored) throw new Error('No backup for this account');
   const data = await unseal(aead, saved.envelope, async () => fromBase64(stored.key));
-  const rows: AccountRows = { account: data.tables.accounts[0], warranties: data.tables.warranties, sources: data.tables.sources, attachments: data.tables.attachments, history: data.tables.history };
+  const rows: AccountRows = { account: data.tables.accounts![0], warranties: data.tables.warranties ?? [], sources: data.tables.sources ?? [], attachments: data.tables.attachments, history: data.tables.history, claims: data.tables.claims, custom_reminders: data.tables.custom_reminders };
   await restoreAccount(db, account.id, rows);
 }

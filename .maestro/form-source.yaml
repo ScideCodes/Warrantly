@@ -1,4 +1,4 @@
-appId: dev.warrantly.prototype
+appId: dev.warrantly.app
 ---
 # Edit/copy links to a warranty that no longer exists show a message and a way back, never a dead or
 # blank form that could save a new warranty. Then an ordinary edit and copy still load and save.

@@ -1,6 +1,6 @@
 # UI finishing pass — November 13, 2026
 
-Branch: `codex/finish-warranty-ui`, based on `0cf253c`. Started by Codex, finished by Claude. Runtime/app version stays 0.8.1; no OTA update was published.
+Branch: `codex/finish-warranty-ui`, based on `0cf253c`. Runtime/app version stays 0.8.1; no OTA update was published.
 
 ## Changes
 

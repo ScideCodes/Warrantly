@@ -1,32 +1,35 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState } from 'react';
-import Ionicons from '@expo/vector-icons/Ionicons';
+import AppIcon from '@/components/Icon';
 import { useLocalSearchParams } from 'expo-router';
-import { ActivityIndicator, FlatList, Image, PixelRatio, Pressable, ScrollView, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, PixelRatio, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import PdfPages, { type PdfPage } from '../../modules/pdf-pages';
 import { documentUri, openDocument, saveDocument } from '@/documents';
 import { NavBar } from '@/components/Page';
+import { PdfCanvas, type PdfCanvasHandle } from '@/components/PdfCanvas';
+import { MIN_ZOOM, MAX_ZOOM } from '@/pdfViewport';
 import { Button, type IconName } from '@/components/ui';
-import { BAR_H, colors, gutter, isDark, TYPE } from '@/theme';
+import { BAR_H, colors, gutter, isDarkNow, pairWidth, TYPE, themed, useRoom } from '@/theme';
 
-const ZOOMS = [1, 2, 3];
 type Status = { kind: 'idle' } | { kind: 'saving' } | { kind: 'sharing' } | { kind: 'saved' } | { kind: 'error'; action: 'save' | 'share'; detail: string };
 
-// In-app PDF viewer (section 18): pages drawn as images by Android's PdfRenderer. Zoom uses buttons
-// instead of pinch (RN's Android ScrollView has no pinch zoom); wider pages scroll sideways.
+// PDF pages are drawn by Android's PdfRenderer; the canvas supports focal pinch zoom and panning.
 // Save puts a copy in a folder the person picks; Share hands the file to another app.
 export default function DocumentViewer() {
+  const styles = useStyles();
   const { t } = useTranslation();
   const { path, title, name } = useLocalSearchParams<{ path: string; title?: string; name?: string }>();
-  const { width: windowWidth, fontScale } = useWindowDimensions();
+  const { width: windowWidth } = useWindowDimensions();
   const width = Math.min(windowWidth, 720);
-  const stackActions = width / fontScale < 360;
+  const stackActions = !useRoom()(pairWidth(t('detail.save'), t('viewer.shareShort'))); // side by side while their words fit
   const insets = useSafeAreaInsets();
   const [pages, setPages] = useState<PdfPage[] | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [zoom, setZoom] = useState(0);
+  const [zoom, setZoom] = useState(1);
   const [status, setStatus] = useState<Status>({ kind: 'idle' });
+  const canvas = useRef<PdfCanvasHandle>(null);
   const working = useRef(false);
   const busy = status.kind === 'saving' || status.kind === 'sharing';
 
@@ -36,7 +39,7 @@ export default function DocumentViewer() {
     const px = Math.min(Math.round(PixelRatio.getPixelSizeForLayoutSize(width) * 2), 2400);
     Promise.resolve()
       .then(() => {
-        if (active) { setPages(null); setError(null); }
+        if (active) { setPages(null); setError(null); setZoom(1); }
         return PdfPages.render(documentUri(path), px); // rejects names outside stored documents
       })
       .then((value) => { if (active) setPages(value); })
@@ -44,7 +47,6 @@ export default function DocumentViewer() {
     return () => { active = false; };
   }, [path, width]);
 
-  const shown = width * ZOOMS[zoom];
   const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
   async function share() {
     if (working.current) return;
@@ -79,9 +81,9 @@ export default function DocumentViewer() {
       {/* Zoom out, the level and zoom in share one capsule (the reference's `.pc-tools`). */}
       <View style={styles.tools}>
         <View style={styles.capsule}>
-          <ToolButton icon="remove" label={t('viewer.zoomOut')} onPress={() => setZoom((z) => z - 1)} disabled={zoom === 0} />
-          <Text style={styles.zoom}>{ZOOMS[zoom] * 100}%</Text>
-          <ToolButton icon="add" label={t('viewer.zoomIn')} onPress={() => setZoom((z) => z + 1)} disabled={zoom === ZOOMS.length - 1} />
+          <ToolButton icon="remove" label={t('viewer.zoomOut')} onPress={() => canvas.current?.zoomTo(Math.max(MIN_ZOOM, zoom - 1))} disabled={!pages || zoom <= MIN_ZOOM} />
+          <Text style={styles.zoom}>{Math.round(zoom * 100)}%</Text>
+          <ToolButton icon="add" label={t('viewer.zoomIn')} onPress={() => canvas.current?.zoomTo(Math.min(MAX_ZOOM, zoom + 1))} disabled={!pages || zoom >= MAX_ZOOM} />
         </View>
       </View>
       {error ? (
@@ -91,20 +93,7 @@ export default function DocumentViewer() {
       ) : !pages ? (
         <ActivityIndicator style={styles.loading} color={colors.tint} size="large" />
       ) : (
-        <ScrollView style={styles.fill} horizontal scrollEnabled={zoom > 0}>
-          <FlatList
-            style={{ width: shown }}
-            data={pages}
-            keyExtractor={(p) => p.uri}
-            renderItem={({ item, index }) => (
-              <Image
-                source={{ uri: item.uri }}
-                style={[styles.page, { width: shown, aspectRatio: item.width / item.height }]}
-                accessibilityLabel={t('viewer.page', { page: index + 1, count: pages.length })}
-              />
-            )}
-          />
-        </ScrollView>
+        <PdfCanvas key={`${path}:${width}`} ref={canvas} pages={pages} width={width} onZoom={setZoom} />
       )}
       <View style={[styles.actions, { paddingBottom: insets.bottom + 12, paddingHorizontal: gutter(windowWidth) }]}>
         {status.kind !== 'idle' && (
@@ -124,6 +113,7 @@ export default function DocumentViewer() {
 
 // A round 44dp tool in the capsule: label colour, presses to .94 on --press.
 function ToolButton({ icon, label, onPress, disabled }: { icon: IconName; label: string; onPress: () => void; disabled: boolean }) {
+  const styles = useStyles();
   return (
     <Pressable
       style={({ pressed }) => [styles.round, pressed && styles.roundPressed, disabled && styles.roundDisabled]}
@@ -133,12 +123,12 @@ function ToolButton({ icon, label, onPress, disabled }: { icon: IconName; label:
       accessibilityLabel={label}
       accessibilityState={{ disabled }}
     >
-      <Ionicons name={icon} size={20} color={colors.ink} />
+      <AppIcon name={icon} size={20} color={colors.ink} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   tools: { alignItems: 'center', paddingBottom: 14, paddingHorizontal: 16 },
   capsule: {
@@ -146,14 +136,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 3,
     borderRadius: 28,
-    backgroundColor: isDark ? colors.card2 : colors.card,
-    boxShadow: isDark ? undefined : 'inset 0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06)',
+    backgroundColor: isDarkNow() ? colors.card2 : colors.card,
+    boxShadow: isDarkNow() ? undefined : 'inset 0 0 0 0.5px rgba(0,0,0,0.05), 0 2px 8px rgba(0,0,0,0.06)',
   },
   round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   roundPressed: { backgroundColor: colors.press, transform: [{ scale: 0.94 }] },
   roundDisabled: { opacity: 0.35 },
   zoom: { minWidth: 56, paddingHorizontal: 8, textAlign: 'center', ...TYPE.sub, fontWeight: '600', color: colors.ink },
-  page: { marginBottom: 8, backgroundColor: '#fff' },
   fill: { flex: 1 },
   loading: { flex: 1 },
   error: { margin: 16, ...TYPE.body, color: colors.bad },
@@ -163,4 +152,4 @@ const styles = StyleSheet.create({
   actionRow: { flexDirection: 'row', gap: 8 },
   action: { flex: 1, minWidth: 0 },
   stacked: { flexDirection: 'column' },
-});
+}));

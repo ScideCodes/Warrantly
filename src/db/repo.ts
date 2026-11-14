@@ -13,6 +13,10 @@ export interface Db {
   withTransactionAsync(task: () => Promise<void>): Promise<void>;
 }
 
+// Tables whose content a backup carries; a change in any of them makes the backup out of date.
+// accounts and sources are left out: every sync touches them, and a sync can be repeated.
+const CHANGE_TABLES = ['warranties', 'attachments', 'history', 'store_rules', 'returns', 'bundles', 'claims', 'collections', 'collection_items', 'custom_reminders', 'inbox'];
+
 // Data model from brainstorm section 12. Attachments arrive in build step 4.
 const MIGRATIONS = [
   `CREATE TABLE accounts (
@@ -122,7 +126,76 @@ const MIGRATIONS = [
    );`,
   // v11: a photo of the product (file name in the attachments folder, like documents).
   `ALTER TABLE warranties ADD COLUMN photo_path TEXT;`,
+  // v12: a product picture found online (removed from the app; src/legacyPictures.ts empties these columns), kept apart from the user's own photo, which
+  // always wins. found_photo_key is the product name it was looked up for: a renamed product is looked up
+  // again. A key with no path means nothing certain was found, or the user removed the picture.
+  `ALTER TABLE warranties ADD COLUMN found_photo_path TEXT;
+   ALTER TABLE warranties ADD COLUMN found_photo_key TEXT;
+   ALTER TABLE warranties ADD COLUMN found_photo_credit TEXT;`,
+  // v13 (shortlist, docs/shortlist-implementation.md). Additive only: every existing row keeps its data.
+  // favorite: pinned on the home list. archived_at: put away by the user (not expired, not deleted).
+  // deleted_at: deleted but still undoable; purged once the undo window has passed (src/undo.ts).
+  // bundle_id: products bought together (bundles); each keeps its own dates and cover.
+  // attachments.label: receipt, warranty_card, repair_report, extended, other. Mail PDFs are invoices.
+  // attachments.claim_id: a document filed with a claim. One file may back several rows (a shared receipt);
+  // it is deleted only when no row points at it any more.
+  // claims: dated repair/warranty claims with a status; the old free-text history stays as notes.
+  // doc_text: text read from each stored file (local OCR), keyed by file so a shared receipt is read once.
+  // inbox: shared/imported files waiting to be assigned; source_key stops the same share being added twice.
+  // meta.changes counts every content change (triggers), so backup health can say what is not backed up.
+  `ALTER TABLE warranties ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0;
+   ALTER TABLE warranties ADD COLUMN archived_at TEXT;
+   ALTER TABLE warranties ADD COLUMN deleted_at TEXT;
+   ALTER TABLE warranties ADD COLUMN bundle_id INTEGER;
+   ALTER TABLE attachments ADD COLUMN label TEXT NOT NULL DEFAULT 'other';
+   ALTER TABLE attachments ADD COLUMN claim_id INTEGER;
+   ALTER TABLE attachments ADD COLUMN deleted_at TEXT;
+   UPDATE attachments SET label = 'receipt' WHERE local_path LIKE 'mail-%';
+   CREATE TABLE bundles (id INTEGER PRIMARY KEY, created_at TEXT NOT NULL);
+   CREATE TABLE claims (
+     id INTEGER PRIMARY KEY,
+     warranty_id INTEGER NOT NULL REFERENCES warranties(id),
+     title TEXT NOT NULL,
+     status TEXT NOT NULL DEFAULT 'submitted',
+     submitted_on TEXT NOT NULL,
+     resolved_on TEXT,
+     notes TEXT,
+     updated_at TEXT NOT NULL
+   );
+   CREATE TABLE collections (id INTEGER PRIMARY KEY, name TEXT NOT NULL, kind TEXT, created_at TEXT NOT NULL);
+   CREATE TABLE collection_items (
+     collection_id INTEGER NOT NULL REFERENCES collections(id),
+     warranty_id INTEGER NOT NULL REFERENCES warranties(id),
+     PRIMARY KEY (collection_id, warranty_id)
+   );
+   CREATE TABLE custom_reminders (
+     id INTEGER PRIMARY KEY,
+     warranty_id INTEGER NOT NULL REFERENCES warranties(id),
+     date TEXT NOT NULL,
+     note TEXT,
+     UNIQUE (warranty_id, date)
+   );
+   CREATE TABLE inbox (
+     id INTEGER PRIMARY KEY,
+     local_path TEXT NOT NULL,
+     filename TEXT NOT NULL,
+     text TEXT NOT NULL DEFAULT '',
+     source_key TEXT NOT NULL UNIQUE,
+     received_at TEXT NOT NULL
+   );
+   CREATE TABLE doc_text (local_path TEXT PRIMARY KEY, text TEXT NOT NULL, status TEXT NOT NULL, indexed_at TEXT NOT NULL);
+   CREATE TABLE duplicate_dismissals (a INTEGER NOT NULL, b INTEGER NOT NULL, PRIMARY KEY (a, b));
+   CREATE TABLE backed_up_docs (local_path TEXT PRIMARY KEY);
+   CREATE TABLE meta (key TEXT PRIMARY KEY, value INTEGER NOT NULL);
+   INSERT INTO meta (key, value) VALUES ('changes', 1), ('backup_changes', 0);
+   CREATE INDEX attachments_warranty ON attachments(warranty_id);
+   CREATE INDEX attachments_path ON attachments(local_path);
+   CREATE INDEX warranties_bundle ON warranties(bundle_id);
+   CREATE INDEX claims_warranty ON claims(warranty_id);
+   ${CHANGE_TABLES.map((t) => ['INSERT', 'UPDATE', 'DELETE'].map((op) => `CREATE TRIGGER ${t}_${op.toLowerCase()}_changes AFTER ${op} ON ${t} BEGIN UPDATE meta SET value = value + 1 WHERE key = 'changes'; END;`).join('\n')).join('\n')}`,
 ];
+
+export const MIGRATIONS_FOR_TEST: readonly string[] = MIGRATIONS;
 
 export async function migrate(db: Db): Promise<void> {
   const row = await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version', []);
@@ -217,7 +290,7 @@ export async function saveResult(db: Db, accountId: number, r: ParseResult, now 
 // item twice in two months merges; upgrade with order numbers in build step 6 (dedupe).
 async function mergeIntoExisting(db: Db, accountId: number, r: ParseResult, product: string): Promise<number | null> {
   const hit = await db.getFirstAsync<{ id: number }>(
-    `SELECT id FROM warranties WHERE account_id = ? AND store_domain = ? AND product_name = ? AND status != 'ignored'
+    `SELECT id FROM warranties WHERE account_id = ? AND store_domain = ? AND product_name = ? AND status != 'ignored' AND deleted_at IS NULL
        AND abs(julianday(purchase_date) - julianday(?)) <= 60 LIMIT 1`,
     [accountId, r.storeDomain, product, r.purchaseDate],
   );
@@ -263,31 +336,65 @@ export interface WarrantyRow {
   category: string | null;
   coverage: 'store' | 'extended' | null;
   photo_path: string | null;
+  found_photo_path: string | null;
+  found_photo_key: string | null;
+  found_photo_credit: string | null; // JSON PictureCredit
   status: 'complete' | 'needs_input' | 'ignored';
   missing_fields: string;
+  favorite: number;
+  archived_at: string | null;
+  deleted_at: string | null;
+  bundle_id: number | null;
+  created_at: string;
+  updated_at: string;
+  doc_count: number; // live documents (computed by the queries below)
 }
 
 export type Warranty = WarrantyRow & { end_date: string };
 const withEnd = (w: WarrantyRow): Warranty => ({ ...w, end_date: endDate(w.warranty_start_date, w.warranty_months) });
 
+// Every query that shows warranties skips deleted ones (they wait out the undo window, then go).
+const SELECT_W = `SELECT w.*, (SELECT COUNT(*) FROM attachments a WHERE a.warranty_id = w.id AND a.deleted_at IS NULL) AS doc_count FROM warranties w`;
+
 // Main list: complete warranties only; needs-input items live in the attention list (section 9).
+// Archived ones are listed apart (`listArchived`).
 export async function listWarranties(db: Db, status: 'complete' | 'needs_input'): Promise<Warranty[]> {
-  const rows = await db.getAllAsync<WarrantyRow>('SELECT * FROM warranties WHERE status = ?', [status]);
+  const rows = await db.getAllAsync<WarrantyRow>(`${SELECT_W} WHERE w.status = ? AND w.deleted_at IS NULL AND w.archived_at IS NULL`, [status]);
   return rows.map(withEnd).sort((a, b) => a.end_date.localeCompare(b.end_date));
 }
 
-// The other warranties of the same purchase (manufacturer, store, extended plan), section 12.
+export async function listArchived(db: Db): Promise<Warranty[]> {
+  const rows = await db.getAllAsync<WarrantyRow>(`${SELECT_W} WHERE w.status != 'ignored' AND w.deleted_at IS NULL AND w.archived_at IS NOT NULL ORDER BY w.archived_at DESC`, []);
+  return rows.map(withEnd);
+}
+
+// The other warranties of the same purchase (manufacturer, store, extended plan), section 12, and the
+// products put in the same bundle (bought together, one receipt).
 export async function otherCovers(db: Db, w: Warranty): Promise<Warranty[]> {
   const rows = await db.getAllAsync<WarrantyRow>(
-    `SELECT * FROM warranties WHERE id != ? AND status != 'ignored' AND product_name IS ? AND store_name = ? AND purchase_date = ?`,
-    [w.id, w.product_name, w.store_name, w.purchase_date],
+    `${SELECT_W} WHERE w.id != ? AND w.status != 'ignored' AND w.deleted_at IS NULL
+       AND ((w.product_name IS ? AND w.store_name = ? AND w.purchase_date = ?) OR (w.bundle_id IS NOT NULL AND w.bundle_id = ?))`,
+    [w.id, w.product_name, w.store_name, w.purchase_date, w.bundle_id],
   );
   return rows.map(withEnd);
 }
 
 export async function getWarranty(db: Db, id: number): Promise<Warranty | null> {
-  const row = await db.getFirstAsync<WarrantyRow>('SELECT * FROM warranties WHERE id = ?', [id]);
+  const row = await db.getFirstAsync<WarrantyRow>(`${SELECT_W} WHERE w.id = ? AND w.deleted_at IS NULL`, [id]);
   return row && withEnd(row);
+}
+
+// Files that no row points at any more (a receipt shared by a bundle stays while one product still has it).
+export async function unreferenced(db: Db, paths: string[]): Promise<string[]> {
+  const out: string[] = [];
+  for (const p of new Set(paths)) {
+    const used = await db.getFirstAsync(
+      `SELECT 1 FROM attachments WHERE local_path = ? UNION ALL SELECT 1 FROM warranties WHERE photo_path = ? UNION ALL SELECT 1 FROM inbox WHERE local_path = ? LIMIT 1`,
+      [p, p, p],
+    );
+    if (!used) out.push(p);
+  }
+  return out;
 }
 
 // What the add/edit form saves (section 18 "Manual add"). Saved values count as confirmed.
@@ -359,17 +466,30 @@ export async function ignoreWarranty(db: Db, id: number): Promise<void> {
 // the mail back; they just stop pointing at the deleted record. Returns the attachment files the
 // caller must delete from disk.
 export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
-  const photo = (await db.getFirstAsync<{ photo_path: string | null }>('SELECT photo_path FROM warranties WHERE id = ?', [id]))?.photo_path;
-  const files = [...(await listAttachments(db, id)).map((a) => a.local_path), ...(photo ? [photo] : [])];
+  let files: string[] = [];
   await db.withTransactionAsync(async () => {
-    await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
-    // SQLite reuses ids: a return question left behind would later show up on an unrelated new warranty.
-    await db.runAsync('DELETE FROM returns WHERE warranty_id = ?', [id]);
-    await db.runAsync('DELETE FROM history WHERE warranty_id = ?', [id]);
-    await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
-    await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
+    files = await purgeWarrantyRows(db, id);
   });
   return files;
+}
+
+// The rows of one warranty and everything hanging off it, without its own transaction (callers hold one).
+// Returns the files nothing points at any more, for the caller to delete from disk.
+export async function purgeWarrantyRows(db: Db, id: number): Promise<string[]> {
+  const row = await db.getFirstAsync<{ photo_path: string | null; found_photo_path: string | null }>('SELECT photo_path, found_photo_path FROM warranties WHERE id = ?', [id]);
+  const docs = await db.getAllAsync<{ local_path: string }>('SELECT local_path FROM attachments WHERE warranty_id = ?', [id]);
+  const candidates = [...docs.map((a) => a.local_path), ...[row?.photo_path, row?.found_photo_path].filter((p): p is string => !!p)];
+  await db.runAsync('DELETE FROM attachments WHERE warranty_id = ?', [id]);
+  // SQLite reuses ids: a return question left behind would later show up on an unrelated new warranty.
+  await db.runAsync('DELETE FROM returns WHERE warranty_id = ?', [id]);
+  await db.runAsync('DELETE FROM history WHERE warranty_id = ?', [id]);
+  await db.runAsync('DELETE FROM claims WHERE warranty_id = ?', [id]);
+  await db.runAsync('DELETE FROM custom_reminders WHERE warranty_id = ?', [id]);
+  await db.runAsync('DELETE FROM collection_items WHERE warranty_id = ?', [id]);
+  await db.runAsync('DELETE FROM duplicate_dismissals WHERE a = ? OR b = ?', [id, id]);
+  await db.runAsync('UPDATE sources SET warranty_id = NULL WHERE warranty_id = ?', [id]);
+  await db.runAsync('DELETE FROM warranties WHERE id = ?', [id]);
+  return unreferenced(db, candidates);
 }
 
 // --- Sharing with another phone (household): warranties as a file, merged in on the other side ---
@@ -377,7 +497,7 @@ export async function deleteWarranty(db: Db, id: number): Promise<string[]> {
 export interface SharedWarranty {
   warranty: Record<string, unknown>;
   history: { date: string; note: string }[];
-  documents: { filename: string; local_path?: string; data?: string }[]; // local_path on the sending phone, data (base64) in the file
+  documents: { filename: string; local_path?: string; data?: string; label?: string }[]; // local_path on the sending phone, data (base64) in the file
 }
 
 const SHARED_COLUMNS = ['product_name', 'store_name', 'store_domain', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
@@ -386,12 +506,12 @@ const SHARED_COLUMNS = ['product_name', 'store_name', 'store_domain', 'purchase_
 export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWarranty[]> {
   const out: SharedWarranty[] = [];
   for (const id of ids) {
-    const w = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM warranties WHERE id = ?', [id]);
+    const w = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM warranties WHERE id = ? AND deleted_at IS NULL', [id]);
     if (!w) continue;
     out.push({
       warranty: Object.fromEntries(SHARED_COLUMNS.map((c) => [c, w[c] ?? null])),
       history: await db.getAllAsync('SELECT date, note FROM history WHERE warranty_id = ? ORDER BY id', [id]),
-      documents: await db.getAllAsync('SELECT filename, local_path FROM attachments WHERE warranty_id = ? ORDER BY id', [id]),
+      documents: await db.getAllAsync('SELECT filename, local_path, label FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL ORDER BY id', [id]),
     });
   }
   return out;
@@ -403,10 +523,12 @@ export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWar
 export async function importShared(db: Db, items: SharedWarranty[], saveDocument: (doc: SharedWarranty['documents'][number]) => Promise<string | null>, now = new Date().toISOString()): Promise<number> {
   let added = 0;
   for (const { warranty: src, history, documents } of items) {
-    const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, (src[c] ?? null) as Param]));
+    if (typeof src !== 'object' || src === null) continue;
+    // Only plain text and numbers from another person's file; anything else is left empty.
+    const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, typeof src[c] === 'string' || typeof src[c] === 'number' ? (src[c] as Param) : null]));
     if (typeof w.store_name !== 'string' || typeof w.purchase_date !== 'string' || typeof w.warranty_start_date !== 'string' || typeof w.warranty_months !== 'number') continue;
     const dup = await db.getFirstAsync(
-      `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored'`,
+      `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored' AND deleted_at IS NULL`,
       [w.product_name, w.store_name, w.purchase_date, w.coverage],
     );
     if (dup) continue;
@@ -418,7 +540,7 @@ export async function importShared(db: Db, items: SharedWarranty[], saveDocument
     for (const h of history ?? []) await addHistory(db, res.lastInsertRowId, String(h.date), String(h.note));
     for (const d of documents ?? []) {
       const stored = await saveDocument(d);
-      if (stored) await addAttachment(db, res.lastInsertRowId, String(d.filename), stored);
+      if (stored) await addAttachment(db, res.lastInsertRowId, String(d.filename), stored, DOC_LABELS.includes(d.label as DocLabel) ? (d.label as DocLabel) : 'other');
     }
     added++;
   }
@@ -428,9 +550,11 @@ export async function importShared(db: Db, items: SharedWarranty[], saveDocument
 // "Delete all my data": every table, children first.
 export async function wipeDb(db: Db): Promise<void> {
   await db.withTransactionAsync(async () => {
-    for (const t of ['history', 'returns', 'attachments', 'sources', 'warranties', 'store_rules', 'disconnect_backups', 'accounts']) {
+    for (const t of ['history', 'returns', 'attachments', 'claims', 'custom_reminders', 'collection_items', 'collections', 'bundles', 'inbox', 'doc_text',
+      'duplicate_dismissals', 'backed_up_docs', 'sources', 'warranties', 'store_rules', 'disconnect_backups', 'accounts']) {
       await db.runAsync(`DELETE FROM ${t}`, []);
     }
+    await db.runAsync('UPDATE meta SET value = 0', []); // after the deletes, which counted as changes
   });
 }
 
@@ -451,10 +575,15 @@ export async function deleteHistory(db: Db, id: number): Promise<void> {
   await db.runAsync('DELETE FROM history WHERE id = ?', [id]);
 }
 
+export const DOC_LABELS = ['receipt', 'warranty_card', 'repair_report', 'extended', 'other'] as const;
+export type DocLabel = (typeof DOC_LABELS)[number];
+
 export interface Attachment {
   id: number;
   filename: string;
   local_path: string;
+  label: DocLabel;
+  claim_id: number | null;
 }
 
 // Returns the previous photo's file, for the caller to delete.
@@ -464,19 +593,25 @@ export async function setPhoto(db: Db, warrantyId: number, photo: string | null)
   return old;
 }
 
-export async function addAttachment(db: Db, warrantyId: number, filename: string, localPath: string): Promise<void> {
-  await db.runAsync('INSERT INTO attachments (warranty_id, filename, local_path) VALUES (?, ?, ?)', [warrantyId, filename, localPath]);
+export async function addAttachment(db: Db, warrantyId: number, filename: string, localPath: string, label: DocLabel = 'other', claimId: number | null = null): Promise<number> {
+  const res = await db.runAsync('INSERT INTO attachments (warranty_id, filename, local_path, label, claim_id) VALUES (?, ?, ?, ?, ?)', [warrantyId, filename, localPath, label, claimId]);
+  return res.lastInsertRowId;
 }
 
-// Returns the file to delete from disk.
+// Returns the file to delete from disk: null while another row (a bundle's shared receipt) still uses it.
 export async function deleteAttachment(db: Db, id: number): Promise<string | null> {
   const row = await db.getFirstAsync<{ local_path: string }>('SELECT local_path FROM attachments WHERE id = ?', [id]);
   await db.runAsync('DELETE FROM attachments WHERE id = ?', [id]);
-  return row?.local_path ?? null;
+  return row ? ((await unreferenced(db, [row.local_path]))[0] ?? null) : null;
+}
+
+export async function setAttachmentLabel(db: Db, id: number, label: DocLabel): Promise<void> {
+  if (!DOC_LABELS.includes(label)) throw new Error('Unknown label');
+  await db.runAsync('UPDATE attachments SET label = ? WHERE id = ?', [label, id]);
 }
 
 export async function listAttachments(db: Db, warrantyId: number): Promise<Attachment[]> {
-  return db.getAllAsync('SELECT id, filename, local_path FROM attachments WHERE warranty_id = ? ORDER BY id', [warrantyId]);
+  return db.getAllAsync('SELECT id, filename, local_path, label, claim_id FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL ORDER BY id', [warrantyId]);
 }
 
 // --- Disconnecting and reconnecting an account (section 15) ---
@@ -487,15 +622,20 @@ export interface AccountRows {
   sources: Record<string, unknown>[];
   attachments?: Record<string, unknown>[]; // missing in disconnect backups made before documents were kept
   history?: Record<string, unknown>[];
+  claims?: Record<string, unknown>[]; // missing before v13
+  custom_reminders?: Record<string, unknown>[];
 }
 
 export async function dumpAccount(db: Db, accountId: number): Promise<AccountRows> {
+  const of = 'WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ? AND deleted_at IS NULL)';
   return {
     account: (await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM accounts WHERE id = ?', [accountId]))!,
-    warranties: await db.getAllAsync('SELECT * FROM warranties WHERE account_id = ?', [accountId]),
+    warranties: await db.getAllAsync('SELECT * FROM warranties WHERE account_id = ? AND deleted_at IS NULL', [accountId]),
     sources: await db.getAllAsync('SELECT * FROM sources WHERE account_id = ?', [accountId]),
-    attachments: await db.getAllAsync('SELECT * FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]),
-    history: await db.getAllAsync('SELECT * FROM history WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]),
+    attachments: await db.getAllAsync(`SELECT * FROM attachments ${of} AND deleted_at IS NULL`, [accountId]),
+    history: await db.getAllAsync(`SELECT * FROM history ${of}`, [accountId]),
+    claims: await db.getAllAsync(`SELECT * FROM claims ${of}`, [accountId]),
+    custom_reminders: await db.getAllAsync(`SELECT * FROM custom_reminders ${of}`, [accountId]),
   };
 }
 
@@ -504,18 +644,21 @@ export async function dumpAccount(db: Db, accountId: number): Promise<AccountRow
 export async function deleteAccount(db: Db, accountId: number): Promise<string[]> {
   const files = await db.getAllAsync<{ local_path: string }>(
     `SELECT local_path FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)
-     UNION ALL SELECT photo_path FROM warranties WHERE account_id = ? AND photo_path IS NOT NULL`,
-    [accountId, accountId],
+     UNION ALL SELECT photo_path FROM warranties WHERE account_id = ? AND photo_path IS NOT NULL
+     UNION ALL SELECT found_photo_path FROM warranties WHERE account_id = ? AND found_photo_path IS NOT NULL`,
+    [accountId, accountId, accountId],
   );
+  let gone: string[] = [];
   await db.withTransactionAsync(async () => {
-    await db.runAsync('DELETE FROM attachments WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
+    const of = '(SELECT id FROM warranties WHERE account_id = ?)';
+    for (const t of ['attachments', 'history', 'claims', 'custom_reminders', 'collection_items']) await db.runAsync(`DELETE FROM ${t} WHERE warranty_id IN ${of}`, [accountId]);
     await db.runAsync('DELETE FROM returns WHERE account_id = ?', [accountId]); // see deleteWarranty: ids are reused
-    await db.runAsync('DELETE FROM history WHERE warranty_id IN (SELECT id FROM warranties WHERE account_id = ?)', [accountId]);
     await db.runAsync('DELETE FROM sources WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM warranties WHERE account_id = ?', [accountId]);
     await db.runAsync('DELETE FROM accounts WHERE id = ?', [accountId]);
+    gone = await unreferenced(db, files.map((f) => f.local_path)); // a receipt shared with a manual product stays
   });
-  return files.map((f) => f.local_path);
+  return gone;
 }
 
 // Puts a disconnect backup back under the (re)connected account. Rows get new ids, so nothing added
@@ -529,17 +672,26 @@ export async function restoreAccount(db: Db, accountId: number, rows: AccountRow
   };
   await db.withTransactionAsync(async () => {
     const ids = new Map<unknown, number>();
-    for (const { id, ...w } of rows.warranties) ids.set(id, await insert('warranties', { ...w, account_id: accountId }));
+    const bundles = new Set((await db.getAllAsync<{ id: number }>('SELECT id FROM bundles', [])).map((b) => b.id));
+    for (const { id, ...w } of rows.warranties) {
+      // A bundle that no longer exists on this phone is dropped rather than left dangling.
+      ids.set(id, await insert('warranties', { ...w, account_id: accountId, ...('bundle_id' in w ? { bundle_id: bundles.has(Number(w.bundle_id)) ? w.bundle_id : null } : {}) }));
+    }
     for (const { id: _id, ...src } of rows.sources) {
       await insert('sources', { ...src, account_id: accountId, warranty_id: src.warranty_id == null ? null : (ids.get(src.warranty_id) ?? null) });
     }
+    const claimIds = new Map<unknown, number>();
+    for (const table of ['history', 'claims', 'custom_reminders'] as const) {
+      for (const { id, ...h } of rows[table] ?? []) {
+        const warrantyId = ids.get(h.warranty_id);
+        if (!warrantyId) continue;
+        const newId = await insert(table, { ...h, warranty_id: warrantyId });
+        if (table === 'claims') claimIds.set(id, newId);
+      }
+    }
     for (const { id: _id, source_id: _source, ...a } of rows.attachments ?? []) {
       const warrantyId = ids.get(a.warranty_id);
-      if (warrantyId) await insert('attachments', { ...a, warranty_id: warrantyId });
-    }
-    for (const { id: _id, ...h } of rows.history ?? []) {
-      const warrantyId = ids.get(h.warranty_id);
-      if (warrantyId) await insert('history', { ...h, warranty_id: warrantyId });
+      if (warrantyId) await insert('attachments', { ...a, warranty_id: warrantyId, ...('claim_id' in a ? { claim_id: claimIds.get(a.claim_id) ?? null } : {}) });
     }
     await db.runAsync('UPDATE accounts SET last_synced_at = ?, docs_backfilled = 0 WHERE id = ?', [rows.account.last_synced_at as string | null, accountId]);
   });
@@ -565,7 +717,7 @@ const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 // belongs to the same store's warranty whose order number appears in the file name or the mail.
 export async function warrantiesForDocument(db: Db, accountId: number, storeDomain: string, haystack: string): Promise<number[]> {
   const rows = await db.getAllAsync<{ id: number; order_number: string }>(
-    `SELECT id, order_number FROM warranties WHERE account_id = ? AND store_domain = ? AND order_number IS NOT NULL AND status != 'ignored'`,
+    `SELECT id, order_number FROM warranties WHERE account_id = ? AND store_domain = ? AND order_number IS NOT NULL AND status != 'ignored' AND deleted_at IS NULL`,
     [accountId, storeDomain],
   );
   const text = normalize(haystack);
@@ -614,7 +766,7 @@ export async function listIgnored(db: Db): Promise<IgnoredRow[]> {
   return db.getAllAsync<IgnoredRow>(
     `SELECT w.id, w.product_name, w.store_name, w.purchase_date, min(s.subject) AS subject, min(s.sender) AS sender
        FROM warranties w LEFT JOIN sources s ON s.warranty_id = w.id
-      WHERE w.status = 'ignored' GROUP BY w.id ORDER BY w.purchase_date DESC, w.id DESC`,
+      WHERE w.status = 'ignored' AND w.deleted_at IS NULL GROUP BY w.id ORDER BY w.purchase_date DESC, w.id DESC`,
     [],
   );
 }
@@ -641,7 +793,7 @@ export async function matchReturns(db: Db, accountId: number): Promise<void> {
   );
   for (const r of pending) {
     const candidates = await db.getAllAsync<{ id: number; order_number: string | null; product_name: string | null; purchase_date: string }>(
-      `SELECT id, order_number, product_name, purchase_date FROM warranties WHERE account_id = ? AND store_domain = ? AND status != 'ignored'`,
+      `SELECT id, order_number, product_name, purchase_date FROM warranties WHERE account_id = ? AND store_domain = ? AND status != 'ignored' AND deleted_at IS NULL`,
       [accountId, r.store_domain],
     );
     const products: string[] = JSON.parse(r.products);
@@ -677,7 +829,7 @@ export interface ReturnPrompt {
 export async function listReturnPrompts(db: Db): Promise<ReturnPrompt[]> {
   return db.getAllAsync<ReturnPrompt>(
     `SELECT r.id, r.warranty_id, w.product_name, w.store_name, r.received_at FROM returns r JOIN warranties w ON w.id = r.warranty_id
-      WHERE r.state = 'asked' ORDER BY r.received_at DESC`,
+      WHERE r.state = 'asked' AND w.deleted_at IS NULL AND w.archived_at IS NULL ORDER BY r.received_at DESC`,
     [],
   );
 }
@@ -714,7 +866,7 @@ export async function applyLengthToStore(db: Db, storeDomain: string, months: nu
 
 // The next item to resolve after this one (newest purchase first, like the list).
 export async function nextNeedsInput(db: Db, afterId: number): Promise<number | null> {
-  const rows = await db.getAllAsync<{ id: number }>(`SELECT id FROM warranties WHERE status = 'needs_input' ORDER BY purchase_date DESC, id DESC`, []);
+  const rows = await db.getAllAsync<{ id: number }>(`SELECT id FROM warranties WHERE status = 'needs_input' AND deleted_at IS NULL ORDER BY purchase_date DESC, id DESC`, []);
   const i = rows.findIndex((r) => r.id === afterId);
   const rest = i >= 0 ? [...rows.slice(i + 1), ...rows.slice(0, i)] : rows;
   return rest.find((r) => r.id !== afterId)?.id ?? null;

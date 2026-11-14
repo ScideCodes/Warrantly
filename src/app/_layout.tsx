@@ -1,9 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
-import { putSharedFile } from '@/shareInbox';
+import { addInbox } from '@/db/features.ts';
+import { emailToDocument, fileToDocument, deleteDocuments, textToDocument } from '@/documents';
+import { setLockShowing } from '@/lock/gate';
+import { UndoHost } from '@/components/UndoHost';
 import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
@@ -14,19 +17,15 @@ import { isLockEnabled, takeRelaunchPass } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
-import { colors, isDark } from '@/theme';
+import { colors, useTheme } from '@/theme';
 
-// Headers and screen backgrounds follow the app palette (dark mode).
-const navTheme = {
-  ...(isDark ? DarkTheme : DefaultTheme),
-  colors: { ...(isDark ? DarkTheme : DefaultTheme).colors, background: colors.bg, card: colors.bg, text: colors.ink, primary: colors.tint, border: colors.line },
-};
-void SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
 export const unstable_settings = { anchor: 'index' };
 
-// Share into Warrantly (section 18): a PDF or photo sent from another app opens the add form with it.
+// Share into Warrantly (section 18, shortlist 16): a PDF, photo, mail (.eml) or text sent from another app is stored at once in
+// the document inbox, so it survives the app closing; the inbox then offers to add or attach it. The same
+// share delivered twice (Android re-sends an intent after a restart) is taken in once.
 function SharedFiles() {
   const { hasShareIntent, shareIntent, resetShareIntent, error } = useShareIntentContext();
   useEffect(() => {
@@ -34,20 +33,43 @@ function SharedFiles() {
   }, [error]);
   useEffect(() => {
     const file = shareIntent.files?.[0];
-    if (!hasShareIntent || !file) return;
-    putSharedFile({ uri: file.path, name: file.fileName, mimeType: file.mimeType });
+    const text = shareIntent.text?.trim();
+    if (!hasShareIntent || (!file && !text)) return;
     resetShareIntent();
-    router.push({ pathname: '/warranty/edit', params: { shared: '1' } });
+    // A mail's text selected and shared (no mail account needed), or a mail saved as an .eml file.
+    const email = !!file && (file.mimeType === 'message/rfc822' || /\.eml$/i.test(file.fileName));
+    const sourceKey = file ? `${file.path}|${file.fileName}|${file.size ?? ''}` : `text|${text!.length}|${text!.slice(0, 200)}`;
+    void (async () => {
+      const db = await getDb();
+      const doc = !file
+        ? await textToDocument(text!, text!.split('\n')[0])
+        : email ? await emailToDocument(file.path, file.fileName) : { ...(await fileToDocument(file.path, file.fileName, file.mimeType)), filename: file.fileName };
+      if (!(await addInbox(db, { local_path: doc.localPath, text: doc.text, filename: doc.filename, source_key: sourceKey }))) deleteDocuments([doc.localPath]);
+      router.push('/inbox');
+    })().catch((e) => showAlert(i18n.t('share.failed'), e instanceof Error ? e.message : String(e)));
   }, [hasShareIntent, shareIntent, resetShareIntent]);
   return null;
 }
 
 export default function RootLayout() {
+  // Headers, screen backgrounds, the root view behind them and the status bar follow the live palette.
+  const { dark, version } = useTheme();
+  const navTheme = useMemo(() => {
+    const base = dark ? DarkTheme : DefaultTheme;
+    return { ...base, colors: { ...base.colors, background: colors.bg, card: colors.bg, text: colors.ink, primary: colors.tint, border: colors.line } };
+  }, [dark, version]); // eslint-disable-line react-hooks/exhaustive-deps -- colors is updated in place
+  useEffect(() => {
+    void SystemUI.setBackgroundColorAsync(colors.bg).catch(() => {});
+  }, [version]);
   // Android can change the language while the app runs; follow it.
   useReminderTaps();
 
   // App lock (section 19): locked on every cold start; again after more than 3 minutes in the background.
-  const [locked, setLocked] = useState(() => isLockEnabled() && !takeRelaunchPass());
+  const [locked, setLocked] = useState(() => {
+    const on = isLockEnabled() && !takeRelaunchPass();
+    setLockShowing(on); // before any screen's first effect (a shortcut's scan waits for it)
+    return on;
+  });
   const unlock = useCallback(() => setLocked(false), []); // stable, so the lock screen's fingerprint prompt starts once
   const hiddenAt = useRef<number | null>(null);
   useEffect(() => {
@@ -63,6 +85,7 @@ export default function RootLayout() {
     });
     return () => sub.remove();
   }, []);
+  useEffect(() => setLockShowing(locked), [locked]);
   const locales = useLocales();
   useEffect(() => {
     i18n.changeLanguage(appLanguage()); // the phone's language changed; a language chosen in Settings stays
@@ -72,11 +95,12 @@ export default function RootLayout() {
     <ShareIntentProvider>
       <ThemeProvider value={navTheme}>
         <SharedFiles />
-        <StatusBar style={isDark ? 'light' : 'dark'} />
+        <StatusBar style={dark ? 'light' : 'dark'} />
         {/* Tablets and wide screens: screens keep a readable width, centred. */}
         <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.bg } }}>
           <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
         </Stack>
+        <UndoHost />
         {locked && <LockScreen onUnlock={unlock} />}
         <DialogHost />
       </ThemeProvider>

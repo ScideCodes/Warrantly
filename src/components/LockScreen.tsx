@@ -1,21 +1,24 @@
+import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
-import { AppState, BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppState, BackHandler, StyleSheet } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import Ionicons from '@expo/vector-icons/Ionicons';
-import { KEY_SIZE, PinPad } from '@/components/PinPad';
+import { PinLayout, PinPad } from '@/components/PinPad';
 import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { logError } from '@/errorLog';
 import { showAlert } from '@/components/Dialog';
-import { colors, CONTROL_H, TYPE } from '@/theme';
+import { colors, CONTROL_H, TYPE, themed } from '@/theme';
 
 // Full-screen lock over the app (section 19). The app stays mounted underneath, so unlocking keeps your place.
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
+  const styles = useStyles();
   const { t } = useTranslation();
   const [pin, setPin] = useState('');
   const [wrong, setWrong] = useState(false);
   const [wait, setWait] = useState(waitSeconds);
+  const [shake, setShake] = useState(0);
+  const insets = useSafeAreaInsets();
   const length = storedPinLength();
 
   const tryBiometrics = useCallback(async () => {
@@ -65,11 +68,13 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
 
   function onDigit(d: string) {
     if (wait) return;
+    if (wrong) setWrong(false);
     const next = pin + d;
     if (next.length < length) return setPin(next);
     if (checkPin(next)) return onUnlock();
     setPin('');
     setWrong(true);
+    setShake((n) => n + 1);
     setWait(waitSeconds());
   }
 
@@ -82,53 +87,37 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   }
 
   return (
-    <SafeAreaView style={styles.screen}>
-      <View style={styles.top}>
-        <View style={styles.logo}>
-          <Ionicons name="shield-checkmark" size={32} color="#fff" />
-        </View>
-        <Text style={styles.title} accessibilityRole="header">
-          {t('lock.title')}
-        </Text>
-        <Text style={[styles.message, (wrong || wait > 0) && styles.error]} accessibilityLiveRegion="polite">
-          {wait > 0 ? t('lock.wait', { count: wait }) : wrong ? t('lock.wrong') : ' '}
-        </Text>
-      </View>
-      <PinPad
-        value={pin}
-        dots={length}
-        onDigit={onDigit}
-        onDelete={() => setPin((p) => p.slice(0, -1))}
-        extra={
-          isBiometricEnabled() && (
-            <Pressable
-              style={({ pressed }) => [styles.finger, pressed && styles.fingerPressed]}
-              onPress={tryBiometrics}
-              accessibilityRole="button"
-              accessibilityLabel={t('lock.biometric')}
-            >
-              <Ionicons name="finger-print" size={34} color={colors.tint} />
-            </Pressable>
-          )
+    <View style={styles.screen}>
+      <PinLayout
+        icon="shield-checkmark"
+        title={t('lock.title')}
+        message={wait > 0 ? t('lock.wait', { count: wait }) : wrong ? t('lock.wrong') : t('lock.hint')}
+        error={wrong || wait > 0}
+        top={insets.top}
+        pad={
+          <PinPad
+            value={pin}
+            dots={length}
+            onDigit={onDigit}
+            onDelete={() => setPin((p) => p.slice(0, -1))}
+            disabled={wait > 0}
+            shake={shake}
+            extra={isBiometricEnabled() ? { icon: 'finger-print', label: t('lock.biometric'), onPress: () => void tryBiometrics() } : undefined}
+          />
+        }
+        footer={
+          <Pressable style={styles.link} onPress={forgot} accessibilityRole="button" hitSlop={4}>
+            <Text style={styles.linkText}>{t('lock.forgot')}</Text>
+          </Pressable>
         }
       />
-      <Pressable style={styles.link} onPress={forgot} accessibilityRole="button">
-        <Text style={styles.linkText}>{t('lock.forgot')}</Text>
-      </Pressable>
-    </SafeAreaView>
+    </View>
   );
 }
 
-const styles = StyleSheet.create({
-  screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.bg, alignItems: 'center', justifyContent: 'space-evenly', zIndex: 10 },
-  top: { alignItems: 'center', gap: 8, paddingHorizontal: 24 },
-  // The reference's large tile (`.detail-hero .hardware-icon`): 56dp, 14 radius, 32dp white glyph.
-  logo: { width: 56, height: 56, borderRadius: 14, backgroundColor: '#007aff', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
-  title: { ...TYPE.title2, color: colors.ink },
-  message: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', minHeight: 20 },
-  error: { color: colors.bad },
-  finger: { width: KEY_SIZE, height: KEY_SIZE, borderRadius: KEY_SIZE / 2, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
-  fingerPressed: { backgroundColor: colors.fill2 },
+const useStyles = themed(() => StyleSheet.create({
+  screen: { ...StyleSheet.absoluteFill, backgroundColor: colors.bg, zIndex: 10 },
+  // Text button in the reference's link colour, 44dp tall.
   link: { minHeight: CONTROL_H, justifyContent: 'center', paddingHorizontal: 16 },
-  linkText: { ...TYPE.body, color: colors.link },
-});
+  linkText: { ...TYPE.body, color: colors.link, textAlign: 'center' },
+}));

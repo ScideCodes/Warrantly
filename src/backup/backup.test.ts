@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { addAttachment, addManual, migrate, saveStoreRule } from '../db/repo.ts';
 import { nodeDb } from '../db/testDb.ts';
 import { driveClient, uploadAndPrune, FOLDER_NAME } from './drive.ts';
-import { backupDue, deriveKey, docBackupName, dumpDb, readEnvelope, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
+import { backupDue, checkKdf, deriveKey, docBackupName, dumpDb, readEnvelope, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
 
 // Same AES-256-GCM as expo-crypto, from node:crypto; tag appended to the ciphertext.
 const nodeAead: Aead = {
@@ -137,4 +137,11 @@ test('documents are sealed on their own and only open with the right key', async
   assert.deepEqual([...(await unsealBytes(nodeAead, key, text))], [...pdf]);
   await assert.rejects(unsealBytes(nodeAead, await deriveKey('wrong', kdf), text), WrongPasswordError);
   assert.equal(docBackupName('scan-1.pdf'), 'doc-scan-1.pdf.enc');
+});
+
+test('backup files cannot ask for extreme key-derivation cost', () => {
+  assert.throws(() => checkKdf({ N: 2 ** 30, r: 8, p: 1, salt: 'AA==' }), /Damaged backup/);
+  assert.throws(() => checkKdf({ N: 2 ** 15, r: 1000, p: 1, salt: 'AA==' }), /Damaged backup/);
+  assert.throws(() => checkKdf({ N: 3000, r: 8, p: 1, salt: 'AA==' }), /Damaged backup/);
+  assert.equal(checkKdf({ N: 2 ** 15, r: 8, p: 1, salt: 'AA==' }).N, 2 ** 15);
 });

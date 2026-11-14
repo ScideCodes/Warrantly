@@ -10,7 +10,7 @@ import { deleteDriveBackups } from '@/backup';
 import { fromBase64, toBase64 } from '@/backup/format.ts';
 import { documentExists, readDocument, writeDocument } from '@/documents';
 import { clearLock } from '@/lock/store';
-import { importShared, sharedWarranties, wipeDb, type Db } from '@/db/repo.ts';
+import { importShared, sharedWarranties, wipeDb, type Db, type SharedWarranty } from '@/db/repo.ts';
 import { updateWidget } from '@/widget';
 
 // Export and "delete all my data" (GDPR: access and erasure).
@@ -38,14 +38,25 @@ export async function sharePdf(name: string, html: string): Promise<void> {
 // Household sharing (section 13): warranties with their notes and documents as one file, sent with any
 // app (mail, chat, Drive) and merged in on the other phone.
 const SHARE_FORMAT = 'warrantly-share';
+const IMPORT_MAX_BYTES = 100 * 1024 * 1024;
 
-export async function shareWarranties(db: Db, ids: number[], name: string): Promise<void> {
-  const items = await sharedWarranties(db, ids);
+async function embedDocuments(items: SharedWarranty[]): Promise<SharedWarranty[]> {
   for (const item of items) {
     item.documents = await Promise.all(
-      item.documents.filter((d) => documentExists(d.local_path!)).map(async (d) => ({ filename: d.filename, data: toBase64(await readDocument(d.local_path!)) })),
+      item.documents.filter((d) => documentExists(d.local_path!)).map(async (d) => ({ filename: d.filename, label: d.label, data: toBase64(await readDocument(d.local_path!)) })),
     );
   }
+  return items;
+}
+
+export async function shareWarranties(db: Db, ids: number[], name: string): Promise<void> {
+  const items = await embedDocuments(await sharedWarranties(db, ids));
+  await shareText(name, JSON.stringify({ format: SHARE_FORMAT, v: 1, items }), 'application/json');
+}
+
+// Transfer (shortlist 18): one item, only the chosen parts, as a Warrantly file the new owner imports.
+export async function shareTransferFile(item: SharedWarranty, name: string): Promise<void> {
+  const items = await embedDocuments([item]);
   await shareText(name, JSON.stringify({ format: SHARE_FORMAT, v: 1, items }), 'application/json');
 }
 
@@ -53,7 +64,10 @@ export async function shareWarranties(db: Db, ids: number[], name: string): Prom
 export async function importSharedFile(db: Db): Promise<number | null> {
   const picked = await DocumentPicker.getDocumentAsync({ type: ['application/json', 'text/plain', 'application/octet-stream'], copyToCacheDirectory: true });
   if (picked.canceled || !picked.assets.length) return null;
-  const data = JSON.parse(await new File(picked.assets[0].uri).text());
+  // A file from someone else: a bounded size, so a huge one cannot exhaust memory while it is read.
+  const file = new File(picked.assets[0].uri);
+  if ((picked.assets[0].size ?? file.size ?? 0) > IMPORT_MAX_BYTES) throw new Error('This file is too large to be a Warrantly file');
+  const data = JSON.parse(await file.text());
   if (data?.format !== SHARE_FORMAT || !Array.isArray(data.items)) throw new Error('Not a Warrantly file');
   return importShared(db, data.items, async (doc) => {
     if (typeof doc.data !== 'string') return null;
