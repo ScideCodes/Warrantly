@@ -1,3 +1,6 @@
+import PriceField from '@/components/PriceField';
+import ChoicePills from '@/components/ChoicePills';
+import { priceNumber } from '@/money';
 import SerialNumbersEditor from '@/components/SerialNumbersEditor';
 import { serialEntries, serialFields, encodeSerialEntries, validSerialEntries, type SerialEntry } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
@@ -5,7 +8,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'rea
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
-import { ActivityIndicator, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, useWindowDimensions, type KeyboardTypeOptions } from 'react-native';
 import { useDatePicker } from '@/components/DatePicker';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
@@ -31,7 +34,7 @@ import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
 import { CATEGORIES, formErrors, todayYmd, type FormField } from '@/warranty';
 
-const LENGTH_CHOICES = [12, 24, 36];
+const LENGTH_CHOICES = [3, 6, 12, 24, 36];
 type Form = Record<FormField | 'order_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
 
 const localCurrency = () => getLocales()[0]?.currencyCode ?? 'EUR';
@@ -57,6 +60,7 @@ const fromWarranty = (w: Warranty | null): Form => ({
 export default function EditWarranty() {
   const styles = useStyles();
   const room = useRoom();
+  const { fontScale } = useWindowDimensions();
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
   // inbox: a file waiting in the document inbox becomes this warranty's document.
   // scan: opened from the app icon's "Scan receipt" shortcut.
@@ -205,8 +209,8 @@ export default function EditWarranty() {
       contact_phone: opt(form.contact_phone),
       website_url: opt(form.website_url),
       notes: opt(form.notes),
-      // "105 263" or "49,90" as typed; anything that is not a number is left empty.
-      price: form.price.trim() && Number.isFinite(Number(form.price.replace(/\s/g, '').replace(',', '.'))) ? Number(form.price.replace(/\s/g, '').replace(',', '.')) : null,
+      // PriceField stores a canonical number; saving uses the same precision as its formatted value.
+      price: priceNumber(form.price, form.currency),
       currency: form.price.trim() ? form.currency.trim().toUpperCase() || localCurrency() : null,
       category: opt(form.category),
       coverage,
@@ -314,9 +318,9 @@ export default function EditWarranty() {
   const side = room(300);
   // Scan and Photo or PDF side by side while their words fit (the panel's padding is 2 × ROW_X)
   const stackMethods = !room(pairWidth(t('form.scanShort'), t('form.importShort'), 2 * ROW_X));
-  const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean; stacked?: boolean } = {}) => {
+  const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
-    const inline = !opts.stacked && side && room(label.length * 14 * 0.6 / 0.32 + 2 * ROW_X);
+    const inline = side && room(label.length * 14 * 0.6 / 0.32 + 2 * ROW_X);
     if (opts.date) {
       const value = form[key];
       return (
@@ -372,7 +376,7 @@ export default function EditWarranty() {
   const chip = (k: string, text: string, selected: boolean, onPress: () => void, wide = false) => (
     <Pressable
       key={k}
-      style={({ pressed }) => [styles.chip, wide && styles.chipWide, selected && styles.chipSelected, pressed && styles.chipPressed]}
+      style={({ pressed }) => [styles.chip, !wide && { width: Math.max(44, Math.ceil(28 * fontScale + 16)), minWidth: 44, minHeight: Math.max(44, Math.ceil(19 * fontScale + 18)), paddingHorizontal: 4 }, wide && styles.chipWide, selected && styles.chipSelected, pressed && styles.chipPressed]}
       onPress={onPress}
       accessibilityRole="radio"
       accessibilityState={{ selected }}
@@ -477,15 +481,15 @@ export default function EditWarranty() {
 
           <View style={styles.field}>
             <Text style={styles.label}>{t('form.length')}</Text>
-            <View style={[styles.chips, !room(310) && { flexWrap: 'wrap' }]} accessibilityRole="radiogroup">
+            <View style={styles.chips} accessibilityRole="radiogroup">
               {LENGTH_CHOICES.map((m) => chip(String(m), String(m), !customMonths && form.warranty_months === String(m), () => { setCustomMonths(false); set('warranty_months')(String(m)); }))}
               <Input
-                style={[styles.monthsInput, !room(310) && { flexBasis: '100%' }, errors.includes('warranty_months') && styles.inputError]}
+                style={[styles.monthsInput, { width: Math.max(76, Math.ceil(t('form.custom').length * 13 * 0.6 * fontScale + 24)) }, errors.includes('warranty_months') && styles.inputError]}
                 testID="custom-months"
                 placeholder={t('form.custom')}
                 value={customMonths || !LENGTH_CHOICES.includes(Number(form.warranty_months)) ? form.warranty_months : ''}
                 onFocus={() => { if (!customMonths && LENGTH_CHOICES.includes(Number(form.warranty_months))) set('warranty_months')(''); setCustomMonths(true); }}
-                onChangeText={set('warranty_months')}
+                onChangeText={value => set('warranty_months')(value.replace(/[^0-9]/g, ''))}
                 keyboardType="number-pad"
                 maxLength={3}
                 accessibilityLabel={t('form.customMonths')}
@@ -519,20 +523,13 @@ export default function EditWarranty() {
               {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
               <View style={styles.field}>
                 <Text style={styles.label}>{t('form.coverage')}</Text>
-                <View style={styles.wrapChips} accessibilityRole="radiogroup">
-                  {([null, 'store', 'extended'] as const).map((c) => chip(String(c), t(`coverage.${c ?? 'standard'}`), coverage === c, () => setCoverage(c)))}
-                </View>
+                <ChoicePills disabled={busy} options={([null, 'store', 'extended'] as const).map(c => ({ key: String(c), label: t(`coverage.${c ?? 'standard'}`), selected: coverage === c, onPress: () => setCoverage(c) }))} />
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>{t('form.category')}</Text>
-                <View style={styles.wrapChips} accessibilityRole="radiogroup">
-                  {CATEGORIES.map((c) => chip(c, t(`category.${c}`), form.category === c, () => set('category')(form.category === c ? '' : c)))}
-                </View>
+                <ChoicePills disabled={busy} options={CATEGORIES.map(c => ({ key: c, label: t(`category.${c}`), selected: form.category === c, onPress: () => set('category')(form.category === c ? '' : c) }))} />
               </View>
-              <View style={[styles.priceRow, !side && { flexDirection: 'column' }]}>
-                <View style={styles.flex}>{field('price', t('form.price'), { keyboard: 'decimal-pad', stacked: true })}</View>
-                <View style={[styles.currency, !side && { width: '100%' }]}>{field('currency', t('form.currency'), { keyboard: 'default', stacked: true })}</View>
-              </View>
+              <PriceField amount={form.price} currency={form.currency} onAmount={set('price')} onCurrency={set('currency')} disabled={busy} />
               {field('order_number', t('form.orderNumber'))}
               <SerialNumbersEditor entries={serials} onChange={setSerials} disabled={busy} showErrors={serialError} onScan={index => { scanTarget.current = index; router.push('/scan-serial'); }} />
               {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
@@ -573,20 +570,18 @@ const useStyles = themed(() => StyleSheet.create({
   inputError: { outlineWidth: 2, outlineColor: colors.bad, outlineStyle: 'solid' },
   hint: { ...TYPE.foot, color: colors.ink2 },
   error: { ...TYPE.foot, color: colors.bad },
-  chips: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
   chip: { minHeight: 44, minWidth: 48, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
   chipWide: { maxWidth: '100%' },
   chipSelected: { backgroundColor: colors.tintSoft },
   chipPressed: { backgroundColor: colors.press },
   chipText: { ...TYPE.sub, fontWeight: '500', color: colors.ink },
   chipTextSelected: { color: colors.tintInk, fontWeight: '600' },
-  monthsInput: { flex: 1, minWidth: 0, textAlign: 'center' },
+  monthsInput: { textAlign: 'center' },
   dateInput: { justifyContent: 'center' },
   dateText: { ...TYPE.body, color: colors.ink },
   datePlaceholder: { color: colors.ink2 },
-  priceRow: { flexDirection: 'row', gap: 12 },
-  currency: { width: 96 },
   switchRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 46, paddingTop: 8 },
   switchLabel: { ...TYPE.body, flex: 1, color: colors.ink },
   more: { marginTop: 16 },
