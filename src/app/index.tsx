@@ -41,6 +41,7 @@ import { finishPendingDeletes, showUndo } from '@/undo';
 import { CATEGORIES, daysUntil, filterWarranties, plain, todayYmd, totalValue, warrantyFacets } from '@/warranty';
 import { updateWidget } from '@/widget';
 import { isGmailImportEnabled, useGmailImport } from '@/features';
+import { HomeListSkeleton } from '@/components/Skeleton';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
 // What the filter sheet narrows the list to; one at a time, so it is always clear what is shown.
@@ -344,7 +345,7 @@ export default function Home() {
           onSubmitEditing={() => Keyboard.dismiss()}
         />
         {query !== '' && (
-          <Pressable style={styles.clear} onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel={t('home.clearSearch')}>
+          <Pressable pressScale={0.9} style={styles.clear} onPress={() => setQuery('')} accessibilityRole="button" accessibilityLabel={t('home.clearSearch')}>
             <AppIcon name="close-circle" size={18} color={colors.ink2} />
           </Pressable>
         )}
@@ -352,13 +353,13 @@ export default function Home() {
       {(filter.kind !== 'all' || quick) && (
         <View style={styles.chips}>
           {filter.kind !== 'all' && (
-            <Pressable style={styles.filterChip} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
+            <Pressable pressScale={0.97} style={styles.filterChip} onPress={() => setFilter(all)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: filterName(filter) })}>
               <Text style={styles.filterChipText}>{t('home.showing', { name: filterName(filter) })}</Text>
               <AppIcon name="close" size={18} color={colors.tintInk} />
             </Pressable>
           )}
           {quick && (
-            <Pressable style={styles.filterChip} onPress={() => setQuick(null)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: t(quick === 'expiring' ? 'home.quickExpiring' : 'home.quickNoDocs') })}>
+            <Pressable pressScale={0.97} style={styles.filterChip} onPress={() => setQuick(null)} accessibilityRole="button" accessibilityLabel={t('home.clearFilter', { name: t(quick === 'expiring' ? 'home.quickExpiring' : 'home.quickNoDocs') })}>
               <Text style={styles.filterChipText}>{t(quick === 'expiring' ? 'home.quickExpiring' : 'home.quickNoDocs')}</Text>
               <AppIcon name="close" size={18} color={colors.tintInk} />
             </Pressable>
@@ -438,7 +439,7 @@ export default function Home() {
 
   const clearSearchAndFilters = () => { setQuery(''); setFilter(all); setQuick(null); Keyboard.dismiss(); };
   const hasSearch = searchQuery.trim() !== '' || filter.kind !== 'all' || quick !== null;
-  const empty = accounts === null ? <ActivityIndicator style={styles.empty} color={colors.tint} /> : accounts.length || warranties.length || archived.length ? (
+  const empty = accounts === null ? <HomeListSkeleton /> : accounts.length || warranties.length || archived.length ? (
     <View style={styles.connect}>
       <Text style={styles.connectBody}>{sync.kind === 'syncing' ? t('home.syncing', { email: sync.email }) : hasSearch ? t('home.noMatch') : t('home.empty_active')}</Text>
       {hasSearch && <Button title={t('home.resetFilters')} onPress={clearSearchAndFilters} kind="glass" />}
@@ -586,7 +587,7 @@ function SummaryItem({ value, label, on, tone, onPress }: { value: number; label
   const { width, fontScale } = useWindowDimensions();
   const stacked = (Math.min(width, MAX_WIDTH) - 2 * gutter(width)) / fontScale < 280;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.sumItem, stacked && styles.sumStack, on && styles.sumOn, pressed && styles.sumPressed]} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} accessibilityState={{ selected: on }}>
+    <Pressable pressScale={0.97} onPress={onPress} style={({ pressed }) => [styles.sumItem, stacked && styles.sumStack, on && styles.sumOn, pressed && styles.sumPressed]} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} accessibilityState={{ selected: on }}>
       <Text style={[styles.sumValue, tone ? { color: tone } : null]}>{value}</Text>
       <Text style={[styles.sumLabel, on && styles.sumLabelOn]}>{label}</Text>
     </Pressable>
@@ -671,7 +672,7 @@ const useStyles = themed(() => StyleSheet.create({
   // Align the counts even when one translated label needs another line.
   sumItem: { flex: 1, minHeight: 44, borderRadius: RADIUS - 4, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 4, paddingVertical: 8, paddingHorizontal: 6 },
   sumOn: { backgroundColor: colors.select },
-  sumPressed: { opacity: 0.6 },
+  sumPressed: { backgroundColor: colors.press },
   sumStack: { flex: 0, width: '100%', justifyContent: 'flex-start', paddingHorizontal: 12 },
   sumValue: { ...TYPE.headline, color: colors.ink, fontVariant: ['tabular-nums'] },
   sumLabelOn: { color: colors.ink },
