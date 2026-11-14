@@ -1,4 +1,4 @@
-import { GoogleOneTapSignIn, isNoSavedCredentialFoundResponse, isSuccessResponse } from 'react-native-nitro-google-signin';
+import { GoogleOneTapSignIn, isSuccessResponse } from 'react-native-nitro-google-signin';
 import GoogleAccountToken from '../modules/google-account-token';
 import { isGmailImportEnabled } from '@/features';
 import { getSetting, setSetting } from '@/settings';
@@ -15,6 +15,13 @@ export function configureGoogleSignIn(): void {
 }
 configureGoogleSignIn();
 
+let playServicesChecked = false;
+async function ensurePlayServices(): Promise<void> {
+  if (playServicesChecked) return;
+  await GoogleOneTapSignIn.checkPlayServices();
+  playServicesChecked = true;
+}
+
 // iOS (later): add the "react-native-nitro-google-signin" plugin to app.json with iosUrlScheme from an
 // iOS OAuth client. Android needs no plugin: autolinking plus webClientId below is enough.
 
@@ -23,7 +30,7 @@ configureGoogleSignIn();
 // consent screen only when access is missing. (The saved session's scope list is what was asked for, not
 // what was granted, so it cannot tell a revoked grant apart.) Returns the email, or null if cancelled.
 export async function connectGmail(): Promise<string | null> {
-  await GoogleOneTapSignIn.checkPlayServices();
+  await ensurePlayServices();
   const res = await GoogleOneTapSignIn.presentExplicitSignIn();
   if (!isSuccessResponse(res)) return null;
   await GoogleOneTapSignIn.requestScopes([GMAIL_READONLY]);
@@ -57,13 +64,13 @@ export async function ensureDriveAccess(interactive: boolean): Promise<boolean> 
   if (interactive || !GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) {
     if (!interactive) return false;
     if (!GoogleOneTapSignIn.getCurrentUser()) {
-      await GoogleOneTapSignIn.checkPlayServices();
-      let res = await GoogleOneTapSignIn.signIn();
-      if (isNoSavedCredentialFoundResponse(res)) res = await GoogleOneTapSignIn.presentExplicitSignIn();
+      await ensurePlayServices();
+      const res = await GoogleOneTapSignIn.presentExplicitSignIn();
       if (!isSuccessResponse(res)) return false;
     }
-    await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
-    cached = null; // the cached token was issued before Drive access was granted
+    const auth = await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
+    if (auth.accessToken) cached = { token: auth.accessToken, at: Date.now() };
+    else cached = null;
   }
   const email = GoogleOneTapSignIn.getCurrentUser()?.user.email;
   if (email) setSetting('backup_account', email);
@@ -86,14 +93,15 @@ export async function getAccessToken(expired?: string): Promise<string> {
 // Pick the Google account whose Drive holds the backups (Google's account picker). Returns its email,
 // or null if cancelled.
 export async function chooseBackupAccount(): Promise<string | null> {
-  await GoogleOneTapSignIn.checkPlayServices();
+  await ensurePlayServices();
   const res = await GoogleOneTapSignIn.presentExplicitSignIn();
   if (!isSuccessResponse(res)) return null;
-  await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]); // shows consent only if missing (see connectGmail)
+  const auth = await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]); // shows consent only if missing (see connectGmail)
+  if (auth.accessToken) cached = { token: auth.accessToken, at: Date.now() };
+  else cached = null;
   const email = res.data!.user.email;
   if (!email) return null;
   setSetting('backup_account', email);
-  cached = null;
   return email;
 }
 
