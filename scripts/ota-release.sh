@@ -23,7 +23,7 @@ out=$(npx eas-cli@latest update --channel preview --environment preview --platfo
   --non-interactive --json --message "$msg")
 group=$(printf '%s' "$out" | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0,'utf8'))[0].group)")
 
-max=$(gh release list --limit 200 --json tagName --jq '.[].tagName' | sed -n "s/^v${version}-ota\.//p" | sort -n | tail -1 || true)
+max=$(git tag -l "v${version}-ota.*" | sed -n "s/^v${version}-ota\.//p" | sort -n | tail -1 || true)
 n=$(( ${max:-0} + 1 ))
 tag="v${version}-ota.${n}"
 notes=$(mktemp)
@@ -38,9 +38,14 @@ Compatible builds with runtime $version fetch this update on launch. If your ins
 uses an older runtime, install the APK from the stable \`v${version}\` release first.
 NOTES
 
-args=(--target "$sha" --title "Warrantly $version update $n" --notes-file "$notes" --prerelease --latest=false)
-[ "${DRAFT:-}" = 1 ] && args+=(--draft)
-[ -n "$apk" ] && args+=("$apk#Warrantly-$version.apk")
-gh release create "$tag" "${args[@]}"
+if [ -n "$apk" ]; then
+  args=(--target "$sha" --title "Warrantly $version update $n" --notes-file "$notes" --prerelease --latest=false "$apk#Warrantly-$version.apk")
+  [ "${DRAFT:-}" = 1 ] && args+=(--draft)
+  gh release create "$tag" "${args[@]}"
+  echo "Published update $group and release $tag with APK"
+else
+  git tag "$tag" "$sha"
+  git push origin "$tag"
+  echo "Published OTA update $group and tagged $tag"
+fi
 rm -f "$notes"
-echo "Published update $group and release $tag"
