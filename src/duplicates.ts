@@ -1,3 +1,4 @@
+import { serialEntries } from './serialNumbers.ts';
 // Likely duplicates (shortlist 10): the same purchase entered twice (a Gmail import and a scan, or a manual
 // entry). Only suggested with the reasons shown; the user decides. Pure, tested in Node.
 import { daysUntil, plain } from './warranty.ts';
@@ -12,6 +13,7 @@ interface Item {
   purchase_date: string;
   order_number: string | null;
   serial_number: string | null;
+  serial_numbers?: string | null;
   coverage: string | null;
   bundle_id: number | null;
   status: string;
@@ -27,6 +29,7 @@ const DAYS = 14;
 export function duplicatePairs<W extends Item>(list: W[], dismissed: Set<string>): DuplicatePair<W>[] {
   const out: DuplicatePair<W>[] = [];
   const items = list.filter((w) => w.status !== 'ignored');
+  const serialCodes = new Map(items.map(w => [w.id, new Set(serialEntries(w).map(e => code(e.value)).filter(value => value.length >= 4))]));
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const [a, b] = items[i].id < items[j].id ? [items[i], items[j]] : [items[j], items[i]];
@@ -35,7 +38,7 @@ export function duplicatePairs<W extends Item>(list: W[], dismissed: Set<string>
       if (a.bundle_id !== null && a.bundle_id === b.bundle_id) continue;
       const reasons: MatchReason[] = [];
       if (code(a.order_number).length >= 4 && code(a.order_number) === code(b.order_number)) reasons.push('order');
-      if (code(a.serial_number).length >= 4 && code(a.serial_number) === code(b.serial_number)) reasons.push('serial');
+      if ([...serialCodes.get(a.id)!].some(value => serialCodes.get(b.id)!.has(value))) reasons.push('serial');
       const wa = words(a.product_name), wb = words(b.product_name);
       const sameName = wa.length > 0 && wb.length > 0 && (wa.join(' ') === wb.join(' ') || (Math.min(wa.length, wb.length) >= 2 && contains(wa, wb)));
       const sameStore = plain(a.store_name).trim() === plain(b.store_name).trim();

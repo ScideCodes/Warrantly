@@ -1,3 +1,5 @@
+import SerialNumbersEditor from '@/components/SerialNumbersEditor';
+import { serialEntries, serialFields, encodeSerialEntries, validSerialEntries, type SerialEntry } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -30,7 +32,7 @@ import { getLocales } from 'expo-localization';
 import { CATEGORIES, formErrors, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [12, 24, 36];
-type Form = Record<FormField | 'order_number' | 'serial_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
+type Form = Record<FormField | 'order_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
 
 const localCurrency = () => getLocales()[0]?.currencyCode ?? 'EUR';
 
@@ -41,7 +43,6 @@ const fromWarranty = (w: Warranty | null): Form => ({
   warranty_start_date: w?.warranty_start_date ?? '',
   warranty_months: String(w?.warranty_months ?? 24),
   order_number: w?.order_number ?? '',
-  serial_number: w?.serial_number ?? '',
   contact_email: w?.contact_email ?? '',
   contact_phone: w?.contact_phone ?? '',
   website_url: w?.website_url ?? '',
@@ -63,6 +64,9 @@ export default function EditWarranty() {
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
+  const [serials, setSerials] = useState<SerialEntry[]>([{ label: '', value: '' }]);
+  const [serialError, setSerialError] = useState(false);
+  const scanTarget = useRef<number | null>(null);
   const [errors, setErrors] = useState<FormField[]>([]);
   const [remember, setRemember] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -102,7 +106,9 @@ export default function EditWarranty() {
   // A serial number read by the scanner screen (shortlist 11) comes back here.
   useFocusEffect(useCallback(() => {
     const serial = takeScannedSerial();
-    if (serial) setForm((f) => ({ ...f, serial_number: serial }));
+    const target = scanTarget.current;
+    scanTarget.current = null;
+    if (serial && target !== null) setSerials(rows => rows.map((row, i) => i === target ? { ...row, value: serial } : row));
   }, []));
   const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date');
 
@@ -120,9 +126,13 @@ export default function EditWarranty() {
     const loader = new SourceLoader<Warranty>((state, w) => {
       setSource(state);
       if (!w) return setExisting(null);
+      const entries = serialEntries(w);
+      setSerials(entries.length ? entries : [{ label: '', value: '' }]);
+      setSerialError(false);
+      scanTarget.current = null;
       if (state.key?.startsWith('copy:')) {
         setForm({ ...fromWarranty(null), product_name: w.product_name ?? '', store_name: w.store_name, purchase_date: w.purchase_date,
-          warranty_start_date: w.warranty_start_date, category: w.category ?? '', order_number: w.order_number ?? '', serial_number: w.serial_number ?? '' });
+          warranty_start_date: w.warranty_start_date, category: w.category ?? '', order_number: w.order_number ?? '' });
         setAccountId(w.account_id);
         setCoverage('extended');
         return;
@@ -160,6 +170,9 @@ export default function EditWarranty() {
     if (saving.current || draft.current.busy || !sourceReady) return;
     const found = formErrors(form);
     setErrors(found);
+    const invalidSerials = !validSerialEntries(serials);
+    setSerialError(invalidSerials);
+    if (invalidSerials) { setMore(true); setSaveError(t('serials.required')); return; }
     if (found.length) {
       scroll.current?.scrollTo({ y: 0 }); // the required fields are at the top
       return;
@@ -187,7 +200,7 @@ export default function EditWarranty() {
       warranty_start_date: form.warranty_start_date || form.purchase_date,
       warranty_months: Number(form.warranty_months),
       order_number: opt(form.order_number),
-      serial_number: opt(form.serial_number),
+      ...serialFields({ serial_numbers: encodeSerialEntries(serials) }),
       contact_email: opt(form.contact_email),
       contact_phone: opt(form.contact_phone),
       website_url: opt(form.website_url),
@@ -521,8 +534,7 @@ export default function EditWarranty() {
                 <View style={styles.currency}>{field('currency', t('form.currency'), { keyboard: 'default' })}</View>
               </View>
               {field('order_number', t('form.orderNumber'))}
-              {field('serial_number', t('form.serial'))}
-              <Button kind="glass" icon="barcode-outline" title={t('serial.scan')} onPress={() => router.push('/scan-serial')} disabled={busy} />
+              <SerialNumbersEditor entries={serials} onChange={setSerials} disabled={busy} showErrors={serialError} onScan={index => { scanTarget.current = index; router.push('/scan-serial'); }} />
               {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
               {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
               {field('website_url', t('form.website'), { keyboard: 'url' })}

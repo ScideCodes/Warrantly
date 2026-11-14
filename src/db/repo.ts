@@ -1,6 +1,7 @@
 import type { ParseResult, StoreRules } from '../parser/types.ts';
 import { DEFAULT_WARRANTY_MONTHS } from '../parser/keywords.ts';
 import { endDate } from '../warranty.ts';
+import { serialFields } from '../serialNumbers.ts';
 
 type Param = string | number | null;
 
@@ -193,6 +194,8 @@ const MIGRATIONS = [
    CREATE INDEX warranties_bundle ON warranties(bundle_id);
    CREATE INDEX claims_warranty ON claims(warranty_id);
    ${CHANGE_TABLES.map((t) => ['INSERT', 'UPDATE', 'DELETE'].map((op) => `CREATE TRIGGER ${t}_${op.toLowerCase()}_changes AFTER ${op} ON ${t} BEGIN UPDATE meta SET value = value + 1 WHERE key = 'changes'; END;`).join('\n')).join('\n')}`,
+  // v14: labeled component serials. The legacy scalar stays intact and mirrors the first value.
+  `ALTER TABLE warranties ADD COLUMN serial_numbers TEXT;`,
 ];
 
 export const MIGRATIONS_FOR_TEST: readonly string[] = MIGRATIONS;
@@ -330,6 +333,7 @@ export interface WarrantyRow {
   contact_phone: string | null;
   website_url: string | null;
   serial_number: string | null;
+  serial_numbers: string | null;
   notes: string | null;
   price: number | null;
   currency: string | null;
@@ -407,6 +411,7 @@ export interface WarrantyInput {
   warranty_months: number;
   order_number: string | null;
   serial_number: string | null;
+  serial_numbers?: string | null;
   contact_email: string | null;
   contact_phone: string | null;
   website_url: string | null;
@@ -417,10 +422,11 @@ export interface WarrantyInput {
   coverage?: 'store' | 'extended' | null;
 }
 const FIELDS = ['account_id', 'product_name', 'store_name', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
-  'serial_number', 'contact_email', 'contact_phone', 'website_url', 'notes', 'price', 'currency', 'category', 'coverage'] as const;
+  'serial_number', 'serial_numbers', 'contact_email', 'contact_phone', 'website_url', 'notes', 'price', 'currency', 'category', 'coverage'] as const;
 
 // Manual entries go to the tab the user picks: an account, or null for the general "Manual" tab (section 15).
 export async function addManual(db: Db, w: WarrantyInput, origin: 'manual' | 'scan' = 'manual', now = new Date().toISOString()): Promise<number> {
+  w = { ...w, ...serialFields(w) };
   const res = await db.runAsync(
     `INSERT INTO warranties (origin, ${FIELDS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
      VALUES (?, ${FIELDS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
@@ -441,6 +447,8 @@ export async function addManualWithDocument(db: Db, w: WarrantyInput, localPath:
 
 // Editing confirms the item: suggested labels go, and a needs-input item becomes complete.
 export async function updateWarranty(db: Db, id: number, w: WarrantyInput, now = new Date().toISOString()): Promise<void> {
+  const previous = w.serial_numbers === undefined ? await db.getFirstAsync<{ serial_number: string | null; serial_numbers: string | null }>('SELECT serial_number, serial_numbers FROM warranties WHERE id = ?', [id]) : null;
+  w = { ...w, ...serialFields(w, previous ?? undefined) };
   await db.runAsync(
     `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, start_is_suggested = 0, length_is_suggested = 0,
        status = 'complete', missing_fields = '[]', updated_at = ? WHERE id = ?`,
@@ -501,7 +509,7 @@ export interface SharedWarranty {
 }
 
 const SHARED_COLUMNS = ['product_name', 'store_name', 'store_domain', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
-  'serial_number', 'notes', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'coverage'] as const;
+  'serial_number', 'serial_numbers', 'notes', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'coverage'] as const;
 
 export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWarranty[]> {
   const out: SharedWarranty[] = [];
@@ -527,6 +535,7 @@ export async function importShared(db: Db, items: SharedWarranty[], saveDocument
     // Only plain text and numbers from another person's file; anything else is left empty.
     const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, typeof src[c] === 'string' || typeof src[c] === 'number' ? (src[c] as Param) : null]));
     if (typeof w.store_name !== 'string' || typeof w.purchase_date !== 'string' || typeof w.warranty_start_date !== 'string' || typeof w.warranty_months !== 'number') continue;
+    Object.assign(w, serialFields(w));
     const dup = await db.getFirstAsync(
       `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored' AND deleted_at IS NULL`,
       [w.product_name, w.store_name, w.purchase_date, w.coverage],

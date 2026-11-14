@@ -1,3 +1,4 @@
+import { serialEntries, serialSummary } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
@@ -357,7 +358,7 @@ export default function WarrantyDetail() {
       purchaseDate: date(w!.purchase_date),
       endDate: date(w!.end_date),
       orderNumber: w!.order_number,
-      serialNumber: w!.serial_number,
+      serialNumber: serialSummary(w!),
       name: getUsername(),
     });
     sendClaim(w!.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => showAlert(t('detail.noMailApp')));
@@ -455,7 +456,7 @@ export default function WarrantyDetail() {
     w.price !== null && w.currency && { label: t('form.price'), value: formatMoney(w.price, w.currency, i18n.language) },
     w.category && { label: t('form.category'), value: t(`category.${w.category}`) },
     w.order_number && { label: t('warranty.orderNumber'), value: w.order_number },
-    w.serial_number && { label: t('detail.serial'), value: w.serial_number },
+    ...serialEntries(w).map((entry, index, entries) => ({ label: entry.label || (entries.length === 1 ? t('detail.serial') : t('serials.number', { n: index + 1 })), value: entry.value })),
     w.notes && { label: t('detail.notes'), value: w.notes },
   ].filter((f): f is { label: string; value: string } => !!f);
   const contacts = [

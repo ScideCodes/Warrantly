@@ -1,3 +1,4 @@
+import { serialSummary } from '@/serialNumbers';
 import { Pressable, Text, TextInput, View } from '@/components/themeMotion';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
@@ -188,7 +189,7 @@ export default function Home() {
   // Search: name, store, order and serial number, and (once read) the text of the documents.
   const matches = useCallback((w: Warranty) => {
     if (!words.length) return true;
-    const text = plain(`${w.product_name ?? ''} ${w.store_name} ${w.order_number ?? ''} ${w.serial_number ?? ''}`);
+    const text = plain(`${w.product_name ?? ''} ${w.store_name} ${w.order_number ?? ''} ${serialSummary(w) ?? ''}`);
     return words.every((word) => text.includes(word)) || (textHits.q === searchQuery && textHits.hits.has(w.id));
   }, [words, textHits, searchQuery]);
   const visible = useMemo(() => {

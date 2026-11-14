@@ -1,3 +1,4 @@
+import { serialSummary } from './serialNumbers.ts';
 // Transfer to a new owner (shortlist 18): the person picks what goes with the item. Pure, tested in Node.
 import type { SharedWarranty } from './db/repo.ts';
 
@@ -8,7 +9,7 @@ export type TransferField = (typeof TRANSFER_FIELDS)[number];
 const COLUMNS: Record<TransferField, string[]> = {
   price: ['price', 'currency'],
   order_number: ['order_number'],
-  serial_number: ['serial_number'],
+  serial_number: ['serial_number', 'serial_numbers'],
   contact: ['contact_email', 'contact_phone', 'website_url'],
   notes: ['notes'],
   history: [],
@@ -34,9 +35,9 @@ const esc = (s: unknown) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&
 export function transferHtml(item: SharedWarranty, labels: { title: string; rows: Record<string, string>; documents: string; note: string }): string {
   const w = item.warranty;
   const rows = Object.entries(labels.rows).filter(([k]) => w[k] !== undefined && w[k] !== null && w[k] !== '')
-    .map(([k, label]) => `<tr><th>${esc(label)}</th><td>${esc(w[k])}</td></tr>`).join('');
+    .map(([k, label]) => `<tr><th>${esc(label)}</th><td>${esc(k === 'serial_number' ? serialSummary(w) : w[k])}</td></tr>`).join('');
   const history = item.history.map((h) => `<li>${esc(h.date)}: ${esc(h.note)}</li>`).join('');
   const docs = item.documents.map((d) => `<li>${esc(d.filename)}</li>`).join('');
-  return `<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:24px}th{text-align:left;padding:4px 16px 4px 0;color:#555}td{padding:4px 0}</style></head>
+  return `<html><head><meta charset="utf-8"><style>body{font-family:sans-serif;padding:24px}th{text-align:left;padding:4px 16px 4px 0;color:#555}td{padding:4px 0;white-space:pre-line}</style></head>
 <body><h1>${esc(labels.title)}</h1><table>${rows}</table>${history ? `<ul>${history}</ul>` : ''}${docs ? `<h3>${esc(labels.documents)}</h3><ul>${docs}</ul>` : ''}<p style="color:#555">${esc(labels.note)}</p></body></html>`;
 }
