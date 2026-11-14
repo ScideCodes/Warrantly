@@ -908,5 +908,16 @@
     "coord3": "Magasság %",
     "addArea": "Terület kitakarása",
     "invalidArea": "Adj meg pozitív méreteket, és maradj az oldalon belül (0–100%)."
+  },
+  "serials": {
+    "title": "Sorozatszámok",
+    "hint": "A beltéri és kültéri egységet külön is hozzáadhatod.",
+    "label": "Egység neve (nem kötelező)",
+    "placeholder": "pl. Beltéri egység",
+    "number": "{{n}}. sorozatszám",
+    "add": "Sorozatszám hozzáadása",
+    "remove": "{{n}}. sorozatszám törlése",
+    "scan": "{{n}}. sorozatszám beolvasása",
+    "required": "Adj meg sorozatszámot, vagy töröld az egység nevét."
   }
 }

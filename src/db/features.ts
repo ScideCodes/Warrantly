@@ -1,3 +1,4 @@
+import { encodeSerialEntries, mergeSerialEntries } from '../serialNumbers.ts';
 // Data for the shortlist features (docs/shortlist-implementation.md): favorites, archive, undoable deletes,
 // collections, claims, custom reminders, the document inbox, the text index, duplicates, bundles and backup
 // state. Same rules as repo.ts: plain SQL through `Db`, so node tests run the real queries.
@@ -264,7 +265,7 @@ export async function dismissDuplicate(db: Db, a: number, b: number): Promise<vo
   await db.runAsync('INSERT OR IGNORE INTO duplicate_dismissals (a, b) VALUES (?, ?)', [Math.min(a, b), Math.max(a, b)]);
 }
 
-const MERGE_FILL = ['order_number', 'serial_number', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'store_domain', 'account_id'] as const;
+const MERGE_FILL = ['order_number', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'store_domain', 'account_id'] as const;
 
 // `drop` goes into `keep`: its documents, photo, notes, claims, reminders, collections and mail markers move;
 // empty fields of `keep` are filled from it. Different covers (standard vs extended) are never merged.
@@ -278,11 +279,12 @@ export async function mergeWarranties(db: Db, keepId: number, dropId: number, no
     if (!keep || !drop) throw new Error('Warranty not found');
     if ((keep.coverage ?? null) !== (drop.coverage ?? null)) throw new Error('Different covers are kept apart');
     const fill = MERGE_FILL.filter((c) => keep[c] === null && drop[c] !== null);
+    const serials = mergeSerialEntries(keep, drop);
     const notes = [keep.notes, drop.notes].filter(Boolean).join('\n\n') || null;
     const photo = keep.photo_path ?? drop.photo_path ?? null;
     await db.runAsync(
-      `UPDATE warranties SET ${fill.map((c) => `${c} = ?`).concat('notes = ?', 'photo_path = ?', 'favorite = ?', 'bundle_id = ?', 'updated_at = ?').join(', ')} WHERE id = ?`,
-      [...fill.map((c) => drop[c]), notes, photo, Math.max(Number(keep.favorite), Number(drop.favorite)), keep.bundle_id ?? drop.bundle_id, now, keepId],
+      `UPDATE warranties SET ${fill.map((c) => `${c} = ?`).concat('serial_number = ?', 'serial_numbers = ?', 'notes = ?', 'photo_path = ?', 'favorite = ?', 'bundle_id = ?', 'updated_at = ?').join(', ')} WHERE id = ?`,
+      [...fill.map((c) => drop[c]), serials[0]?.value ?? null, encodeSerialEntries(serials), notes, photo, Math.max(Number(keep.favorite), Number(drop.favorite)), keep.bundle_id ?? drop.bundle_id, now, keepId],
     );
     // Same file on both (a receipt shared earlier): one row is enough.
     await db.runAsync('DELETE FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL AND claim_id IS NULL AND local_path IN (SELECT local_path FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL AND claim_id IS NULL)', [dropId, keepId]);

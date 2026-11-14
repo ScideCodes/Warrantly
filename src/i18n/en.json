@@ -908,5 +908,16 @@
     "coord3": "Height %",
     "addArea": "Hide this area",
     "invalidArea": "Use positive sizes and keep the area inside the page (0–100%)."
+  },
+  "serials": {
+    "title": "Serial numbers",
+    "hint": "Add each unit separately, such as indoor and outdoor.",
+    "label": "Unit label (optional)",
+    "placeholder": "e.g. Indoor unit",
+    "number": "Serial number {{n}}",
+    "add": "Add serial number",
+    "remove": "Remove serial number {{n}}",
+    "scan": "Scan serial number {{n}}",
+    "required": "Enter a serial number or remove its label."
   }
 }
