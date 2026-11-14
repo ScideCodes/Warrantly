@@ -314,9 +314,9 @@ export default function EditWarranty() {
   const side = room(300);
   // Scan and Photo or PDF side by side while their words fit (the panel's padding is 2 × ROW_X)
   const stackMethods = !room(pairWidth(t('form.scanShort'), t('form.importShort'), 2 * ROW_X));
-  const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean } = {}) => {
+  const field = (key: keyof Form, label: string, opts: { hint?: string; error?: string; keyboard?: KeyboardTypeOptions; multiline?: boolean; date?: boolean; stacked?: boolean } = {}) => {
     const invalid = errors.includes(key as FormField);
-    const inline = side && room(label.length * 14 * 0.6 / 0.32 + 2 * ROW_X);
+    const inline = !opts.stacked && side && room(label.length * 14 * 0.6 / 0.32 + 2 * ROW_X);
     if (opts.date) {
       const value = form[key];
       return (
@@ -529,9 +529,9 @@ export default function EditWarranty() {
                   {CATEGORIES.map((c) => chip(c, t(`category.${c}`), form.category === c, () => set('category')(form.category === c ? '' : c)))}
                 </View>
               </View>
-              <View style={styles.priceRow}>
-                <View style={styles.flex}>{field('price', t('form.price'), { keyboard: 'decimal-pad' })}</View>
-                <View style={styles.currency}>{field('currency', t('form.currency'), { keyboard: 'default' })}</View>
+              <View style={[styles.priceRow, !side && { flexDirection: 'column' }]}>
+                <View style={styles.flex}>{field('price', t('form.price'), { keyboard: 'decimal-pad', stacked: true })}</View>
+                <View style={[styles.currency, !side && { width: '100%' }]}>{field('currency', t('form.currency'), { keyboard: 'default', stacked: true })}</View>
               </View>
               {field('order_number', t('form.orderNumber'))}
               <SerialNumbersEditor entries={serials} onChange={setSerials} disabled={busy} showErrors={serialError} onScan={index => { scanTarget.current = index; router.push('/scan-serial'); }} />
