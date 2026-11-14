@@ -42,6 +42,7 @@ export default function Settings() {
   const [reminders, setReminders] = useState(getRemindersEnabled);
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
   const [reminderMenu, setReminderMenu] = useState(false);
+  const [intervalMenu, setIntervalMenu] = useState(false);
   const [language, setLanguage] = useState(getLanguageSetting);
   const [theme, setTheme] = useState(getThemeSetting);
   const [density, setDensityState] = useState<Density>(getDensity);
@@ -450,27 +451,21 @@ export default function Settings() {
         <>
           {row('cloud-upload-outline', TILE.cyan, t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
           {backup && (
-            <Row key="interval" iconInset style={styles.block}>
-              <Text style={styles.label}>{t('backup.interval')}</Text>
-              <Segmented
-                options={INTERVALS.map((i) => ({ key: i, label: t(`backup.${i}`) }))}
-                value={interval}
-                onChange={(i) => {
-                  setSetting('backup_interval', i);
-                  setIntervalChoice(i);
-                }}
-              />
-              <Text style={backupError ? styles.error : styles.hint}>
-                {backupBusy
-                  ? t('backup.working')
-                  : backupError
-                    ? t('backup.failed', { detail: backupError })
-                    : lastBackup
-                      ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
-                      : t('backup.never')}
-              </Text>
-              <Button kind="glass" title={t('backup.now')} onPress={backupNow} busy={backupBusy} />
-            </Row>
+            <>
+              {link('repeat-outline', TILE.cyan, t('backup.interval'), () => setIntervalMenu(true), { value: t(`backup.${interval}`) })}
+              <Row key="backup-status" iconInset style={styles.block}>
+                <Text style={backupError ? styles.error : styles.hint}>
+                  {backupBusy
+                    ? t('backup.working')
+                    : backupError
+                      ? t('backup.failed', { detail: backupError })
+                      : lastBackup
+                        ? t('backup.last', { date: new Date(lastBackup).toLocaleString(i18n.language) })
+                        : t('backup.never')}
+                </Text>
+                <Button kind="glass" title={t('backup.now')} onPress={backupNow} busy={backupBusy} />
+              </Row>
+            </>
           )}
           <Row key="account" iconInset style={styles.row}>
             <IconTile name="person-circle-outline" color={TILE.grey} />
@@ -519,6 +514,32 @@ export default function Settings() {
             <Text style={[styles.label, styles.rowText]}>{t(`settings.group_${g}`)}</Text>
           </Row>
         ))}</Group></SheetBody>
+      </SheetFrame>
+      <SheetFrame open={intervalMenu} onClose={() => setIntervalMenu(false)} title={t('backup.interval')}>
+        <SheetBody>
+          <Group inSheet>
+            {INTERVALS.map((i, index) => (
+              <Row
+                key={i}
+                separator={index > 0}
+                onPress={() => {
+                  setSetting('backup_interval', i);
+                  setIntervalChoice(i);
+                  setIntervalMenu(false);
+                }}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: interval === i }}
+              >
+                <View style={styles.tileSpace}>
+                  <View style={[styles.check, interval === i && styles.checkOn]}>
+                    {interval === i && <AppIcon name="checkmark" size={15} color="#fff" />}
+                  </View>
+                </View>
+                <Text style={[styles.label, styles.rowText]}>{t(`backup.${i}`)}</Text>
+              </Row>
+            ))}
+          </Group>
+        </SheetBody>
       </SheetFrame>
     </Page>
   );

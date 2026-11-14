@@ -34,7 +34,7 @@ import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
 import { CATEGORIES, formErrors, todayYmd, type FormField } from '@/warranty';
 
-const LENGTH_CHOICES = [3, 6, 12, 24, 36];
+const LENGTH_CHOICES = [6, 12, 24, 36];
 type Form = Record<FormField | 'order_number' | 'contact_email' | 'contact_phone' | 'website_url' | 'notes' | 'price' | 'currency' | 'category', string>;
 
 const localCurrency = () => getLocales()[0]?.currencyCode ?? 'EUR';
@@ -484,7 +484,13 @@ export default function EditWarranty() {
             <View style={styles.chips} accessibilityRole="radiogroup">
               {LENGTH_CHOICES.map((m) => chip(String(m), String(m), !customMonths && form.warranty_months === String(m), () => { setCustomMonths(false); set('warranty_months')(String(m)); }))}
               <Input
-                style={[styles.monthsInput, { width: Math.max(76, Math.ceil(t('form.custom').length * 13 * 0.6 * fontScale + 24)) }, errors.includes('warranty_months') && styles.inputError]}
+                style={[
+                  styles.monthsInput,
+                  (customMonths || !LENGTH_CHOICES.includes(Number(form.warranty_months))) && form.warranty_months
+                    ? styles.monthsInputSelected
+                    : null,
+                  errors.includes('warranty_months') && styles.inputError,
+                ]}
                 testID="custom-months"
                 placeholder={t('form.custom')}
                 value={customMonths || !LENGTH_CHOICES.includes(Number(form.warranty_months)) ? form.warranty_months : ''}
@@ -571,14 +577,15 @@ const useStyles = themed(() => StyleSheet.create({
   hint: { ...TYPE.foot, color: colors.ink2 },
   error: { ...TYPE.foot, color: colors.bad },
   wrapChips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, alignItems: 'center' },
+  chips: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   chip: { minHeight: 44, minWidth: 48, paddingHorizontal: 14, borderRadius: 22, backgroundColor: colors.fill, alignItems: 'center', justifyContent: 'center' },
   chipWide: { maxWidth: '100%' },
   chipSelected: { backgroundColor: colors.tintSoft },
   chipPressed: { backgroundColor: colors.press },
   chipText: { ...TYPE.sub, fontWeight: '500', color: colors.ink },
   chipTextSelected: { color: colors.tintInk, fontWeight: '600' },
-  monthsInput: { textAlign: 'center' },
+  monthsInput: { flex: 1, minWidth: 70, minHeight: 44, height: 44, borderRadius: 22, backgroundColor: colors.fill, textAlign: 'center', paddingVertical: 0, paddingHorizontal: 10, ...TYPE.sub, fontWeight: '500', color: colors.ink },
+  monthsInputSelected: { backgroundColor: colors.tintSoft, color: colors.tintInk, fontWeight: '600' },
   dateInput: { justifyContent: 'center' },
   dateText: { ...TYPE.body, color: colors.ink },
   datePlaceholder: { color: colors.ink2 },
