@@ -64,15 +64,18 @@ export function formErrors(f: { product_name: string; store_name: string; purcha
 }
 
 // Shop product names are long: "Jonsbo D300 - fekete, 270°-Tempered Glass (D300 BLACK)". For the list,
-// drop bracketed codes and a trailing "12+" (from "12+12 hó gar."), cut at the first " - ", " / ", " | "
-// or ", " when two words remain, then keep at most 3 words, stopping early after the model code (first
-// word with a digit, "D300"). The full name stays in the database and on the detail screen.
+// drop bracketed codes, quantity prefixes ("1x", "1 db", "1."), trailing "12+" (from "12+12 hó gar."), cut at
+// the first " - ", " / ", " | " or ", " when two words remain, then keep at most 3 words, stopping after
+// the model code (word with a digit, "D300") but keeping at least 2 words if available.
 export function shortName(name: string): string {
-  const base = name.replace(/\s*[([][^)\]]*[)\]]/g, '').replace(/\s+\d+\+$/, '').trim();
+  const stripped = name.replace(/^\s*(?:\d+[\.\)]\s+|\d+\s*(?:[x×]|db|darab|pcs)\s+)/i, '');
+  const base = stripped.replace(/\s*[([][^)\]]*[)\]]/g, '').replace(/\s+\d+\+$/, '').trim();
   const head = base.split(/\s+[-–|/]\s+|,\s+/)[0].trim();
-  const words = (head.split(/\s+/).length >= 2 ? head : base).split(/\s+/);
+  const words = (head.split(/\s+/).length >= 2 ? head : base).split(/\s+/).filter(Boolean);
+  if (words.length <= 2) return words.join(' ');
   const model = words.findIndex((w) => /\d/.test(w));
-  return words.slice(0, model >= 0 && model < 3 ? model + 1 : 3).join(' ');
+  const take = model > 0 && model < 3 ? model + 1 : Math.min(3, words.length);
+  return words.slice(0, take).join(' ');
 }
 
 // Expiry reminders (section 16): 90, 60 and 30 days before, then weekly until expiry, and on the day.
