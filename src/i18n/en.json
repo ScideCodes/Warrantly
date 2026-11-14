@@ -919,5 +919,9 @@
     "remove": "Remove serial number {{n}}",
     "scan": "Scan serial number {{n}}",
     "required": "Enter a serial number or remove its label."
+  },
+  "money": {
+    "search": "Search name or code",
+    "none": "No matching currency"
   }
 }

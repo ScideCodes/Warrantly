@@ -919,5 +919,9 @@
     "remove": "{{n}}. sorozatszám törlése",
     "scan": "{{n}}. sorozatszám beolvasása",
     "required": "Adj meg sorozatszámot, vagy töröld az egység nevét."
+  },
+  "money": {
+    "search": "Keresés név vagy kód alapján",
+    "none": "Nincs ilyen pénznem"
   }
 }
