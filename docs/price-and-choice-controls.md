@@ -21,8 +21,10 @@ Product: a purchase and warranty archive. Character: calm, exact, familiar. Worl
 
 ## Verification
 
-- 175 tests pass. Typecheck passes. Lint has zero errors and the existing i18next warning. Regression cases cover localized sorting, historical codes, decimal precision, numeric filtering/paste parsing, formatting and saved-value consistency.
+- 176 tests pass. Typecheck passes. Lint has zero errors and the existing i18next warning. Regression cases cover localized sorting, historical codes, decimal precision, numeric filtering/paste parsing, formatting and saved-value consistency.
 - Android developer emulator, Hungarian dark: inspected short length presets and equal-sized coverage/category controls. Selected 6 months, saved and reopened; its radio remains selected.
 - Searched HUF, selected it with the keyboard open, entered 12345,67, attempted letters (rejected), blurred to 12 345,67 HUF, saved and reopened with the same amount/currency. Closing the picker without choosing leaves the selection intact.
 - At 320dp/160% text: coverage/category groups become uniform full-width pills. Price/currency fields stack, the currency affix stays visible, and the searchable sheet fits above the keyboard. Selecting JPY rounds the test price to 12 346 with no decimals.
 - Only synthetic records used. Recent ReactNativeJS/AndroidRuntime error logs are empty. No actual mailbox or Drive backup changed.
+
+- Signed stable APK applied initial OTA 7 (group `c1c9a8ae-1061-4da1-a672-1e491a00d290`). Verified English light controls, selected 6 months and saved USD 1,234.50. The review also found the existing detail/total formatter capped fractional currencies at two decimals. It now shares the editor's ISO precision, with regression coverage for KWD, CLF, JPY and EUR. Whole-number summaries keep their previous compact appearance.

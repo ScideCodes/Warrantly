@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { currencyData } from './currencyData.ts';
-import { currencyChoices, currencyFirst, currencyName, editingPrice, fractionDigits, priceDisplay, priceInput, priceNumber } from './money.ts';
+import { currencyChoices, currencyFirst, currencyName, formatMoney, editingPrice, fractionDigits, priceDisplay, priceInput, priceNumber } from './money.ts';
 
 test('complete offline currency list sorts localized names and keeps historical receipt codes', () => {
   for (const language of ['en', 'hu']) {
@@ -50,4 +50,12 @@ test('display follows currency precision and language; saved value matches the f
   assert.equal(editingPrice('1234.50', 'hu'), '1234,50');
   assert.equal(currencyFirst('en'), true);
   assert.equal(currencyFirst('hu'), false);
+});
+
+test('detail and total price labels retain the selected currency precision', () => {
+  assert.ok(formatMoney(12.345, 'KWD', 'en').includes('12.345'));
+  assert.ok(formatMoney(12.3456, 'CLF', 'en').includes('12.3456'));
+  assert.ok(formatMoney(1234, 'JPY', 'en').includes('1,234'));
+  assert.ok(!formatMoney(1234, 'JPY', 'en').includes('.00'));
+  assert.ok(formatMoney(49.9, 'EUR', 'hu').startsWith('49,90'));
 });

@@ -46,3 +46,12 @@ export function currencyFirst(language: string): boolean {
   const parts = new Intl.NumberFormat(moneyLocale(language), { style: 'currency', currency: 'USD', currencyDisplay: 'code' }).formatToParts(1);
   return parts.findIndex(p => p.type === 'currency') < parts.findIndex(p => p.type === 'integer');
 }
+
+// Preserve compact whole amounts, but never drop KWD/BHD's third or CLF's fourth decimal in details/totals.
+export function formatMoney(amount: number, currency: string, language: string): string {
+  try {
+    return amount.toLocaleString(language, { style: 'currency', currency, maximumFractionDigits: Number.isInteger(amount) ? 0 : fractionDigits(currency) });
+  } catch {
+    return `${amount} ${currency}`;
+  }
+}
