@@ -64,13 +64,14 @@ export default function EditWarranty() {
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
   // inbox: a file waiting in the document inbox becomes this warranty's document.
   // scan: opened from the app icon's "Scan receipt" shortcut.
-  const { id, copyFrom, inbox, scan: scanNow, more: moreParam } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string }>();
+  const { id, copyFrom, inbox, scan: scanNow, more: moreParam, focus } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string; focus?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
   const [serials, setSerials] = useState<SerialEntry[]>([{ label: '', value: '' }]);
   const [serialError, setSerialError] = useState(false);
   const scanTarget = useRef<number | null>(null);
+  const fieldY = useRef<Record<string, number>>({});
   const [errors, setErrors] = useState<FormField[]>([]);
   const [remember, setRemember] = useState(false);
   const [accounts, setAccounts] = useState<Account[]>([]);
@@ -106,7 +107,7 @@ export default function EditWarranty() {
   const resolving = existing?.status === 'needs_input'; // section 9 resolve view
   // A new warranty asks only for the essentials; the rest opens on request, or by itself when there is
   // something in it to see (editing, a copied purchase, a scan, an error in the start date).
-  const [more, setMore] = useState(!!moreParam);
+  const [more, setMore] = useState(!!moreParam || focus === 'no_serial' || focus === 'start_unconfirmed');
   // A serial number read by the scanner screen (shortlist 11) comes back here.
   useFocusEffect(useCallback(() => {
     const serial = takeScannedSerial();
@@ -114,7 +115,18 @@ export default function EditWarranty() {
     scanTarget.current = null;
     if (serial && target !== null) setSerials(rows => rows.map((row, i) => i === target ? { ...row, value: serial } : row));
   }, []));
-  const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date');
+  const showMore = more || !!id || !!copyFrom || scan.state === 'done' || errors.includes('warranty_start_date') || focus === 'no_serial' || focus === 'start_unconfirmed';
+
+  useEffect(() => {
+    if (!focus || !sourceReady) return;
+    const timer = setTimeout(() => {
+      const y = fieldY.current[focus];
+      if (y !== undefined && scroll.current) {
+        scroll.current.scrollTo({ y: Math.max(0, y - 20), animated: true });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [focus, sourceReady]);
 
   useEffect(() => {
     let cancelled = false;
@@ -479,7 +491,7 @@ export default function EditWarranty() {
         <Group style={styles.panel}>
           {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
 
-          <View style={styles.field}>
+          <View style={styles.field} onLayout={(e) => { fieldY.current['length_unconfirmed'] = e.nativeEvent.layout.y; fieldY.current['length'] = e.nativeEvent.layout.y; }}>
             <Text style={styles.label}>{t('form.length')}</Text>
             <View style={styles.chips} accessibilityRole="radiogroup">
               {LENGTH_CHOICES.map((m) => chip(String(m), String(m), !customMonths && form.warranty_months === String(m), () => { setCustomMonths(false); set('warranty_months')(String(m)); }))}
@@ -526,7 +538,9 @@ export default function EditWarranty() {
             <Button kind="glass" title={t('form.more')} onPress={() => setMore(true)} style={styles.more} />
           ) : (
             <>
-              {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
+              <View onLayout={(e) => { fieldY.current['start_unconfirmed'] = e.nativeEvent.layout.y; fieldY.current['start'] = e.nativeEvent.layout.y; }}>
+                {field('warranty_start_date', t('form.startDate'), { hint: t('form.startHint'), error: t('form.errStart'), keyboard: 'numbers-and-punctuation', date: true })}
+              </View>
               <View style={styles.field}>
                 <Text style={styles.label}>{t('form.coverage')}</Text>
                 <ChoicePills disabled={busy} options={([null, 'store', 'extended'] as const).map(c => ({ key: String(c), label: t(`coverage.${c ?? 'standard'}`), selected: coverage === c, onPress: () => setCoverage(c) }))} />
@@ -537,7 +551,9 @@ export default function EditWarranty() {
               </View>
               <PriceField amount={form.price} currency={form.currency} onAmount={set('price')} onCurrency={set('currency')} disabled={busy} />
               {field('order_number', t('form.orderNumber'))}
-              <SerialNumbersEditor entries={serials} onChange={setSerials} disabled={busy} showErrors={serialError} onScan={index => { scanTarget.current = index; router.push('/scan-serial'); }} />
+              <View onLayout={(e) => { fieldY.current['no_serial'] = e.nativeEvent.layout.y; fieldY.current['serial'] = e.nativeEvent.layout.y; }}>
+                <SerialNumbersEditor entries={serials} onChange={setSerials} disabled={busy} showErrors={serialError} onScan={index => { scanTarget.current = index; router.push('/scan-serial'); }} />
+              </View>
               {field('contact_email', t('form.contactEmail'), { keyboard: 'email-address' })}
               {field('contact_phone', t('form.contactPhone'), { keyboard: 'phone-pad' })}
               {field('website_url', t('form.website'), { keyboard: 'url' })}

@@ -72,3 +72,16 @@ export const clearRecent = (): void => void Storage.removeItemSync('recent');
 export const getWidgetConfigText = (id: number): string | null => Storage.getItemSync(`widget:${id}`);
 export const setWidgetConfigText = (id: number, text: string): void => Storage.setItemSync(`widget:${id}`, text);
 export const removeWidgetConfig = (id: number): void => void Storage.removeItemSync(`widget:${id}`);
+
+// Products bought together: which warranty is the primary entry on the home list.
+export function getBundleLead(bundleId: number, members: { id: number }[]): number {
+  const stored = Storage.getItemSync(`bundle_lead_${bundleId}`);
+  if (stored) {
+    const num = Number(stored);
+    if (members.some(m => m.id === num)) return num;
+  }
+  return members.length ? Math.min(...members.map(m => m.id)) : 0;
+}
+export function setBundleLead(bundleId: number, leadId: number): void {
+  Storage.setItemSync(`bundle_lead_${bundleId}`, String(leadId));
+}

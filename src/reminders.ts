@@ -77,7 +77,7 @@ async function reschedule(db: Db): Promise<void> {
 
 function content(w: Warranty, daysLeft: number): Notifications.NotificationContentInput {
   return {
-    title: w.product_name ? (w.origin === 'manual' ? w.product_name : shortName(w.product_name)) : w.store_name,
+    title: w.product_name ? (w.origin === 'manual' || w.origin === 'scan' || w.status === 'complete' ? w.product_name : shortName(w.product_name)) : w.store_name,
     body: daysLeft === 0 ? i18n.t('reminder.today') : i18n.t('reminder.daysLeft', { count: daysLeft }),
     data: { url: `/warranty/${w.id}` },
   };

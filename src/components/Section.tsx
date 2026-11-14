@@ -43,10 +43,10 @@ export function Field({ label, value, onPress, last }: { label: string; value: s
 
 const useStyles = themed(() => StyleSheet.create({
   field: { minHeight: ROW_H, justifyContent: 'center', paddingVertical: ROW_PAD, paddingHorizontal: ROW_X },
-  fieldSide: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
+  fieldSide: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 },
   label: { ...TYPE.foot, color: colors.ink2 },
-  labelSide: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%' },
-  value: { ...TYPE.body, color: colors.ink, fontVariant: ['tabular-nums'] },
+  labelSide: { ...TYPE.body, color: colors.ink2, flexShrink: 0, maxWidth: '48%' },
+  value: { ...TYPE.body, color: colors.ink, fontVariant: ['tabular-nums'], includeFontPadding: false },
   valueSide: { flex: 1, textAlign: 'right' },
   link: { color: colors.link },
   line: { position: 'absolute', left: ROW_X, right: ROW_X, bottom: 0, height: StyleSheet.hairlineWidth, backgroundColor: colors.line },
