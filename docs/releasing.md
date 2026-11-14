@@ -2,24 +2,24 @@
 
 Warrantly ships in two ways.
 
-- **Over the air.** JavaScript and asset changes reach installed beta builds on the `preview` channel without a new
+- **Over the air.** JavaScript and asset changes reach compatible installed builds on the `preview` channel without a new
   APK. The runtime version equals the app version in `app.json`.
 - **New build.** Native code changes need a new `version` in `app.json`, then an APK
   (`npx eas-cli@latest build --platform android --profile preview`).
 
-## Every update gets a GitHub release
+## OTA records
 
 ```sh
 scripts/ota-release.sh "What changed, in plain words"
 ```
 
-The script checks that the commit is pushed, publishes the update, and creates the pre-release `v<version>-beta.<n>`
+The script checks that the commit is pushed, publishes the update, and creates the pre-release `v<version>-ota.<n>`
 with the update group in its notes. Use `DRAFT=1` to review a release before it goes live.
 
-The first release of each app version also carries the installable APK:
+The stable release of each app version carries its installable APK. OTA records are prereleases and never replace the stable release as Latest. An optional APK can be attached to an OTA record:
 
 ```sh
-scripts/ota-release.sh "First beta" path/to/app.apk
+scripts/ota-release.sh "Update description" path/to/app.apk
 ```
 
 ## 1.0.0
@@ -31,7 +31,7 @@ scripts/ota-release.sh "First beta" path/to/app.apk
   it off, sign-in asks only for `drive.file`. See `docs/gmail-verification.md`.
 - 1.0.0 is a full release: create it with `gh release create` without `--prerelease`, APK attached.
 
-## Before the repository goes public
+## Release checks
 
 - No keys, tokens, keystores or real mail in the tree or in history (checked again for 0.9.0, 14 Nov 2026).
 - Security review for 0.9.0: links from stored data open only web, mail and phone addresses; Android app backup is

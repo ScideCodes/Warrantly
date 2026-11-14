@@ -21,7 +21,7 @@ export function Section({ title, children, first }: { title: string; children: R
 // (small phone with large text) does the label go above the value. The line between rows is inset 16.
 export function Field({ label, value, onPress, last }: { label: string; value: string; onPress?: () => void; last?: boolean }) {
   const styles = useStyles();
-  const side = useRoom()(260);
+  const side = useRoom()(Math.max(260, label.length * 16 * 0.6 / 0.45 + 32));
   const body = (
     <>
       <Text style={[styles.label, side && styles.labelSide]}>{label}</Text>

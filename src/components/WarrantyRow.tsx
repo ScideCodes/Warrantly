@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import type { Warranty } from '@/db/repo.ts';
 import { useProductPhoto } from '@/components/useProductPhoto';
-import { colors, TONE, TYPE, themed } from '@/theme';
+import { colors, TONE, TYPE, themed, useRoom } from '@/theme';
 import { Row, TILE } from '@/components/ui';
 import type { Density } from '@/settings';
 import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
@@ -76,6 +76,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
   // The person's own photo; the category icon when there is none or it cannot be shown.
   const photo = useProductPhoto(w);
 
+  const stacked = !useRoom()(300);
   const compact = density === 'compact';
   const docs = w.doc_count ?? 0;
   return (
@@ -107,7 +108,8 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
       )}
       <View style={styles.text}>
         {/* Compact, single-line counter; full wording remains available to accessibility readers. */}
-        <View style={styles.top}>
+        <View style={[styles.top, stacked && styles.topStack]}>
+          <View style={[styles.nameLine, stacked && styles.nameLineStack]}>
           {!!w.favorite && (
             <View style={styles.pin} accessible accessibilityLabel={t('row.pinned')}>
               <AppIcon name="star" size={14} color={colors.warn} />
@@ -116,7 +118,8 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
           <Text style={styles.title} numberOfLines={2}>
             {product}
           </Text>
-          <View style={[styles.badge, { backgroundColor: tone.bg }]} accessible accessibilityLabel={left}>
+          </View>
+          <View style={[styles.badge, stacked && styles.badgeStack, { backgroundColor: tone.bg }]} accessible accessibilityLabel={left}>
             <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.5}
               style={[styles.badgeText, { color: tone.fg }, (level === 'ok' || level === 'expired') && styles.quietBadge]}>{counter}</Text>
           </View>
@@ -173,6 +176,10 @@ const useStyles = themed(() => StyleSheet.create({
   tile: { width: 29, height: 29, borderRadius: 7, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   text: { flex: 1, minWidth: 0, gap: 2 },
   top: { flexDirection: 'row', flexWrap: 'nowrap', alignItems: 'flex-start', columnGap: 8 },
+  topStack: { flexDirection: 'column', alignItems: 'stretch', gap: 4 },
+  nameLine: { flex: 1, minWidth: 0, flexDirection: 'row', gap: 8 },
+  nameLineStack: { flex: undefined },
+  badgeStack: { alignSelf: 'flex-end', maxWidth: '100%' },
   title: { ...TYPE.body, color: colors.ink, flexGrow: 1, flexShrink: 1, flexBasis: 0, minWidth: 0 },
   metaRow: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 4 },
   meta: { ...TYPE.foot, color: colors.ink2 },

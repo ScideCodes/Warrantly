@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publishes an over-the-air update to the preview channel, then a matching GitHub pre-release.
 #   scripts/ota-release.sh "what changed" [path/to/app.apk]
-# The APK is only needed for the first release of an app version (see docs/releasing.md).
+# Stable APK releases are published separately (see docs/releasing.md).
 # DRAFT=1 creates the release as a draft instead of publishing it.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -23,8 +23,8 @@ out=$(npx eas-cli@latest update --channel preview --environment preview --platfo
   --non-interactive --json --message "$msg")
 group=$(printf '%s' "$out" | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0,'utf8'))[0].group)")
 
-n=$(( $(gh release list --limit 200 --json tagName --jq '.[].tagName' | grep -c "^v${version}-beta\." || true) + 1 ))
-tag="v${version}-beta.${n}"
+n=$(( $(gh release list --limit 200 --json tagName --jq '.[].tagName' | grep -c "^v${version}-ota\." || true) + 1 ))
+tag="v${version}-ota.${n}"
 notes=$(mktemp)
 cat > "$notes" <<NOTES
 $msg
@@ -33,11 +33,11 @@ $msg
 - Commit: ${sha:0:7}
 - Over-the-air update group: \`$group\`
 
-Beta builds with runtime $version fetch this update on the next launch. If your installed app
-uses an older runtime, install the APK from the first \`v${version}-beta.*\` release first.
+Compatible builds with runtime $version fetch this update on launch. If your installed app
+uses an older runtime, install the APK from the stable \`v${version}\` release first.
 NOTES
 
-args=(--target "$sha" --title "Warrantly $version beta $n" --notes-file "$notes" --prerelease)
+args=(--target "$sha" --title "Warrantly $version update $n" --notes-file "$notes" --prerelease --latest=false)
 [ "${DRAFT:-}" = 1 ] && args+=(--draft)
 [ -n "$apk" ] && args+=("$apk#Warrantly-$version-beta.apk")
 gh release create "$tag" "${args[@]}"
