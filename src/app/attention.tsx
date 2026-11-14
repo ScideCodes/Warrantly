@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -67,13 +68,12 @@ export default function Attention() {
           to={{ pathname: '/warranty/edit', params: { id: String(item.id) } }}
         />
       )}
-      ListEmptyComponent={returns.length ? undefined : <Text style={styles.empty}>{t('attention.empty')}</Text>}
+      ListEmptyComponent={returns.length ? undefined : <EmptyState message={t('attention.empty')} icon="checkmark-circle-outline" />}
     />
   );
 }
 
 const useStyles = themed(() => StyleSheet.create({
-  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 48 },
   card: { padding: 16, gap: 12 },
   cardBody: { ...TYPE.body, color: colors.ink },
   actions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },

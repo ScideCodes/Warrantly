@@ -1,7 +1,8 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
 import { Page } from '@/components/Page';
@@ -25,6 +26,7 @@ export default function Transfer() {
   const [item, setItem] = useState<SharedWarranty | null>(null);
   const [fields, setFields] = useState(() => new Set<TransferField>(DEFAULT_FIELDS));
   const [docs, setDocs] = useState(() => new Set<number>());
+  const [loaded, setLoaded] = useState(false);
   const [busy, setBusy] = useState<'pdf' | 'file' | null>(null);
   useEffect(() => {
     void getDb().then(async (db) => {
@@ -32,11 +34,13 @@ export default function Transfer() {
       const [found] = await sharedWarranties(db, [Number(id)]);
       setItem(found ?? null);
       setDocs(new Set((found?.documents ?? []).map((_, i) => i))); // documents are what a buyer needs most
-    });
+      setLoaded(true);
+    }).catch(() => setLoaded(true));
   }, [id]);
   const toggle = <K,>(set: Set<K>, k: K) => { const n = new Set(set); if (n.has(k)) n.delete(k); else n.add(k); return n; };
 
-  if (!w || !item) return <Page title={t('transfer.title')}><View /></Page>;
+  if (!loaded) return <Page title={t('transfer.title')}><View style={styles.loading}><ActivityIndicator color={colors.ink2} /><Text style={styles.hint}>{t('transfer.loading')}</Text></View></Page>;
+  if (!w || !item) return <Page title={t('transfer.title')}><EmptyState icon="shield-checkmark-outline" message={t('transfer.unavailable')} /></Page>;
   const name = displayName(t, w);
   const chosen = () => transferItem(item, fields, docs);
   const fileName = name.replace(/[^\p{L}\p{N} -]/gu, '').trim() || 'warranty';
@@ -59,7 +63,7 @@ export default function Transfer() {
 
   const check = (on: boolean, label: string, onPress: () => void, separator: boolean, hint?: string) => (
     <Row separator={separator} onPress={onPress} accessibilityRole="checkbox" accessibilityState={{ checked: on }} iconInset>
-      <AppIcon name={on ? 'checkbox' : 'square-outline'} size={24} color={on ? colors.tint : colors.ink3} />
+      <AppIcon name={on ? 'checkbox' : 'square-outline'} size={24} color={on ? colors.tint : colors.ink2} />
       <View style={styles.flex}>
         <Text style={styles.label}>{label}</Text>
         {hint ? <Text style={styles.hint}>{hint}</Text> : null}
@@ -101,6 +105,7 @@ export default function Transfer() {
 }
 
 const useStyles = themed(() => StyleSheet.create({
+  loading: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16 },
   flex: { flex: 1, gap: 2 },
   label: { ...TYPE.body, color: colors.ink },
   hint: { ...TYPE.foot, color: colors.ink2, flex: 1 },

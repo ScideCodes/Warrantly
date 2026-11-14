@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -69,7 +70,7 @@ export default function Inbox() {
         header={<View style={styles.gap} />}
         data={items}
         keyExtractor={(r) => String(r.id)}
-        ListEmptyComponent={<Text style={styles.empty}>{t('inbox.empty')}</Text>}
+        ListEmptyComponent={<EmptyState message={t('inbox.empty')} icon="file-tray-outline" />}
         renderItem={({ item, index }) => (
           <Row separator={index > 0} style={[styles.card, index === 0 && styles.first, index === items.length - 1 && styles.last]} onPress={() => setStep({ item, step: 'menu' })} chevron
             accessibilityLabel={`${item.filename}, ${formatDate(item.received_at.slice(0, 10), i18n.language)}`}>
@@ -93,7 +94,6 @@ export default function Inbox() {
 
 const useStyles = themed(() => StyleSheet.create({
   gap: { height: 20 },
-  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 32 },
   card: { backgroundColor: colors.card },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },

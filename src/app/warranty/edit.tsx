@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'rea
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
-import { ActivityIndicator, KeyboardAvoidingView, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, type KeyboardTypeOptions } from 'react-native';
 import { useDatePicker } from '@/components/DatePicker';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
@@ -388,7 +388,7 @@ export default function EditWarranty() {
 
   return (
     // Edge-to-edge Android does not resize the window for the keyboard, so pad on both platforms.
-    <KeyboardAvoidingView style={styles.screen} behavior="padding">
+    <View style={styles.screen}>
       <Page
         ref={scroll}
         title={title}
@@ -421,7 +421,7 @@ export default function EditWarranty() {
             <SectionHeader title={t('form.fromDocument')} first />
             <Group style={styles.panel}>
               <View style={[styles.methods, stackMethods && styles.methodsStacked]}>
-                <Button title={t('form.scanShort')} icon="camera-outline" onPress={() => runScan(scanDocument)} disabled={busy && scan.state !== 'busy'} busy={scan.state === 'busy'} accessibilityLabel={t('form.scan')} style={!stackMethods && styles.flex} />
+                <Button kind="glass" title={t('form.scanShort')} icon="camera-outline" onPress={() => runScan(scanDocument)} disabled={busy && scan.state !== 'busy'} busy={scan.state === 'busy'} accessibilityLabel={t('form.scan')} style={!stackMethods && styles.flex} />
                 <Button kind="glass" title={t('form.importShort')} icon="folder-open-outline" onPress={() => runScan(importDocument)} disabled={busy} accessibilityLabel={t('form.import')} style={!stackMethods && styles.flex} />
               </View>
               {scan.state === 'done' || scan.state === 'attached' ? (
@@ -524,7 +524,7 @@ export default function EditWarranty() {
         )}
       </Page>
       {datePicker}
-    </KeyboardAvoidingView>
+    </View>
   );
 }
 

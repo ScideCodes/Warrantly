@@ -142,7 +142,7 @@ const useStyles = themed(() => StyleSheet.create({
   round: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
   roundPressed: { backgroundColor: colors.press, transform: [{ scale: 0.94 }] },
   roundDisabled: { opacity: 0.35 },
-  zoom: { minWidth: 56, paddingHorizontal: 8, textAlign: 'center', ...TYPE.sub, fontWeight: '600', color: colors.ink },
+  zoom: { fontVariant: ['tabular-nums'], minWidth: 56, paddingHorizontal: 8, textAlign: 'center', ...TYPE.sub, fontWeight: '600', color: colors.ink },
   fill: { flex: 1 },
   loading: { flex: 1 },
   error: { margin: 16, ...TYPE.body, color: colors.bad },

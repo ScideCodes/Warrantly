@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Pressable, Text, TextInput, View } from '@/components/themeMotion';
 import { useCallback, useDeferredValue, useMemo, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
@@ -101,7 +102,7 @@ export default function Documents() {
         header={header}
         data={shown}
         keyExtractor={(d) => String(d.id)}
-        ListEmptyComponent={<Text style={styles.empty}>{docs.length ? t('home.noMatch') : t('docs.empty')}</Text>}
+        ListEmptyComponent={<EmptyState message={docs.length ? t('home.noMatch') : t('docs.empty')} icon={docs.length ? 'search-outline' : 'document-text-outline'} />}
         renderItem={({ item, index: i }) => {
           const missing = !documentExists(item.local_path);
           return (
@@ -151,7 +152,6 @@ const useStyles = themed(() => StyleSheet.create({
   chipTextOn: { color: colors.tintInk, fontWeight: '600' },
   indexText: { flex: 1, ...TYPE.body, color: colors.ink },
   indexActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, paddingHorizontal: 16, paddingBottom: 12 },
-  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 32 },
   card: { backgroundColor: colors.card },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },

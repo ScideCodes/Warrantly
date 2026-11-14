@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ScrollView, StyleSheet } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { SheetFrame } from '@/components/Sheet';
@@ -15,7 +15,7 @@ export function useDatePicker() {
   const [request, setRequest] = useState<(Request & { key: number }) | null>(null);
   const [open, setOpen] = useState(false);
   return {
-    pickDate: (next: Request) => { setRequest(previous => ({ ...next, key: (previous?.key ?? 0) + 1 })); setOpen(true); },
+    pickDate: (next: Request) => { Keyboard.dismiss(); setRequest(previous => ({ ...next, key: (previous?.key ?? 0) + 1 })); setOpen(true); },
     datePicker: request ? <Calendar key={request.key} request={request} open={open} close={() => setOpen(false)} /> : null,
   };
 }
@@ -80,15 +80,15 @@ const useStyles = themed(() => StyleSheet.create({
   scroll: { flexShrink: 1, minHeight: 0 },
   content: { paddingHorizontal: 16, paddingBottom: 8, gap: 8 },
   heading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  headingText: { flex: 1, minWidth: 0, alignItems: 'center', gap: 4, paddingVertical: 6 },
+  headingText: { flex: 1, minWidth: 0, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', alignItems: 'center', gap: 4, paddingVertical: 4 },
   month: { ...TYPE.headline, color: colors.ink, textTransform: 'capitalize', paddingHorizontal: 8, paddingVertical: 10 },
-  year: { ...TYPE.sub, color: colors.tint, paddingHorizontal: 12, paddingVertical: 8 },
+  year: { ...TYPE.sub, fontVariant: ['tabular-nums'], minHeight: 44, textAlignVertical: 'center', color: colors.tint, paddingHorizontal: 12, paddingVertical: 8 },
   grid: { flexDirection: 'row', flexWrap: 'wrap' },
   week: { flexDirection: 'row' },
   cell: { flex: 1, minHeight: 44, justifyContent: 'center', alignItems: 'center' },
   wide: { flex: undefined, width: '25%', minHeight: 54 },
   day: { minWidth: 36, minHeight: 40, paddingHorizontal: 3, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
-  dayText: { ...TYPE.body, color: colors.ink },
+  dayText: { fontVariant: ['tabular-nums'], ...TYPE.body, color: colors.ink },
   selected: { backgroundColor: colors.accent },
   selectedText: { color: colors.onAccent, fontWeight: '600' },
   disabled: { color: colors.ink2, opacity: 0.35 },

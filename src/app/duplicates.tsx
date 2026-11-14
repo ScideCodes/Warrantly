@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -12,13 +13,14 @@ import { dismissDuplicate, dismissedPairs, mergeWarranties } from '@/db/features
 import { listArchived, listAttachments, listWarranties, type Warranty } from '@/db/repo.ts';
 import { deleteDocuments } from '@/documents';
 import { duplicatePairs, type DuplicatePair } from '@/duplicates';
-import { colors, TYPE, themed } from '@/theme';
+import { colors, TYPE, themed, pairWidth, useRoom } from '@/theme';
 
 // Possible duplicates (shortlist 10): each pair with the reasons it was suggested. "Keep this one" merges
 // the other into it (documents, notes, claims and reminders move over); "Not the same" never asks again.
 export default function Duplicates() {
   const styles = useStyles();
   const { t, i18n } = useTranslation();
+  const sideBySide = useRoom()(pairWidth(t('dups.keepThis'), t('dups.keepThis'), 32));
   const [pairs, setPairs] = useState<(DuplicatePair<Warranty> & { docs: [number, number] })[]>([]);
   const reload = useCallback(() => {
     void getDb().then(async (db) => {
@@ -67,12 +69,12 @@ export default function Duplicates() {
       header={<View style={styles.gap} />}
       data={pairs}
       keyExtractor={(p) => `${p.a.id}:${p.b.id}`}
-      ListEmptyComponent={<Text style={styles.empty}>{t('dups.empty')}</Text>}
+      ListEmptyComponent={<EmptyState message={t('dups.empty')} icon="copy-outline" />}
       ItemSeparatorComponent={() => <View style={styles.gap} />}
       renderItem={({ item: p }) => (
         <Group style={styles.card}>
           <Text style={styles.why}>{t('dups.why', { reasons: p.reasons.map((r) => t(`dups.reason_${r}`)).join(', ') })}</Text>
-          <View style={styles.pair}>
+          <View style={[styles.pair, !sideBySide && { flexDirection: 'column' }]}>
             {side(p.a, p.docs[0], p.b)}
             {side(p.b, p.docs[1], p.a)}
           </View>
@@ -85,7 +87,6 @@ export default function Duplicates() {
 
 const useStyles = themed(() => StyleSheet.create({
   gap: { height: 16 },
-  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 32 },
   card: { padding: 16, gap: 12 },
   why: { ...TYPE.sub, color: colors.ink2 },
   pair: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },

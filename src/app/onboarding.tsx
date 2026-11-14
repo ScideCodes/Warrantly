@@ -1,6 +1,6 @@
 import { Text, View } from '@/components/themeMotion';
 import { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet } from 'react-native';
+import { KeyboardAvoidingView, ScrollView, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { useTranslation } from 'react-i18next';
@@ -52,7 +52,7 @@ export default function Onboarding() {
 
   return (
     <SafeAreaView style={styles.screen}>
-      <KeyboardAvoidingView style={styles.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.screen} behavior="padding">
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.intro}>
           <Text style={styles.title} accessibilityRole="header">
@@ -89,7 +89,7 @@ export default function Onboarding() {
 
 const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  body: { flexGrow: 1, paddingHorizontal: 20, paddingVertical: 24, justifyContent: 'center', gap: 28 },
+  body: { maxWidth: 520, width: '100%', alignSelf: 'center', flexGrow: 1, paddingHorizontal: 20, paddingVertical: 24, justifyContent: 'center', gap: 28 },
   intro: { gap: 2, paddingHorizontal: 4 },
   title: { ...TYPE.large, color: colors.ink },
   subtitle: { ...TYPE.sub, color: colors.ink2 },

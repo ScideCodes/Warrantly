@@ -1,7 +1,7 @@
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { StyleSheet } from 'react-native';
+import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
 import { Page } from '@/components/Page';
@@ -19,20 +19,34 @@ export default function BackupStatus() {
   const { t, i18n } = useTranslation();
   const [health, setHealth] = useState<BackupHealth | null>(null);
   const [busy, setBusy] = useState(false);
-  const reload = useCallback(() => void readBackupHealth().then(setHealth), []);
+  const [readError, setReadError] = useState(false);
+  const reload = useCallback(() => {
+    setReadError(false);
+    void readBackupHealth().then(setHealth).catch(() => setReadError(true));
+  }, []);
   useFocusEffect(reload);
   const when = (iso: string) => new Date(iso).toLocaleString(i18n.language);
 
   async function retry() {
     setBusy(true);
-    await runBackup(await getDb(), true).catch(() => {}); // the error is stored and shown here
-    setBusy(false);
-    reload();
+    try {
+      await runBackup(await getDb(), true);
+    } catch {
+      // Read the stored backup failure, including failures before the upload starts.
+    } finally {
+      setBusy(false);
+      reload();
+    }
   }
 
-  if (!health) return <Page title={t('health.title')}><View /></Page>;
+  if (!health) return <Page title={t('health.title')}>
+    <View style={styles.card}>
+      {readError ? <><Text style={styles.detail}>{t('health.readFailed')}</Text><Button kind="glass" title={t('home.retry')} onPress={reload} /></>
+        : <View style={styles.loading}><ActivityIndicator color={colors.ink2} /><Text style={styles.detail}>{t('health.loading')}</Text></View>}
+    </View>
+  </Page>;
   const good = health.state === 'ok';
-  const bad = health.state === 'failed' || health.state === 'overdue' || health.state === 'never';
+  const bad = health.state === 'failed' || health.state === 'overdue';
   const headline = t(`health.${health.state}`);
   const detail =
     health.state === 'failed' ? t('health.failedDetail', { detail: health.error, date: health.at ? when(health.at) : '' })
@@ -44,7 +58,7 @@ export default function BackupStatus() {
     <Page title={t('health.title')}>
       <Group style={styles.card}>
         <View style={styles.head} accessible accessibilityLiveRegion="polite">
-          <AppIcon name={good ? 'checkmark-circle' : bad ? 'alert-circle' : health.state === 'off' ? 'cloud-offline-outline' : 'time-outline'} size={36} color={good ? colors.ok : bad ? colors.bad : colors.warn} />
+          <AppIcon name={good ? 'checkmark-circle' : bad ? 'alert-circle' : health.state === 'off' ? 'cloud-offline-outline' : 'time-outline'} size={28} color={good ? colors.ok : health.state === 'failed' ? colors.bad : health.state === 'overdue' ? colors.warn : colors.ink2} />
           <Text style={styles.headline}>{headline}</Text>
           <Text style={styles.detail}>{detail}</Text>
         </View>
@@ -58,7 +72,8 @@ export default function BackupStatus() {
 
 const useStyles = themed(() => StyleSheet.create({
   card: { padding: 20, gap: 16, marginTop: 12 },
-  head: { alignItems: 'center', gap: 8 },
-  headline: { ...TYPE.title3, color: colors.ink, textAlign: 'center' },
-  detail: { ...TYPE.sub, color: colors.ink2, textAlign: 'center' },
+  loading: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  head: { alignItems: 'flex-start', gap: 8 },
+  headline: { ...TYPE.title3, color: colors.ink },
+  detail: { ...TYPE.sub, color: colors.ink2 },
 }));

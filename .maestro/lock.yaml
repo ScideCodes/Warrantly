@@ -3,7 +3,7 @@ appId: dev.warrantly.app
 ---
 - launchApp:
     clearState: true
-- extendedWaitUntil: { visible: "Welcome to Warrantly", timeout: 90000 }
+- extendedWaitUntil: { visible: "Your name", timeout: 90000 }
 - tapOn: "Your name"
 - inputText: "Tester"
 - hideKeyboard

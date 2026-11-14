@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -54,11 +55,11 @@ export default function Collections() {
         header={<View style={styles.head}><Button title={t('collections.new')} icon="add" onPress={() => setEditing({ id: null, name: '', kind: 'none' })} /></View>}
         data={list}
         keyExtractor={(c) => String(c.id)}
-        ListEmptyComponent={<Text style={styles.empty}>{t('collections.empty')}</Text>}
+        ListEmptyComponent={<EmptyState message={t('collections.empty')} icon="albums-outline" />}
         renderItem={({ item, index }) => (
           <Row separator={index > 0} style={[styles.card, index === 0 && styles.first, index === list.length - 1 && styles.last]} iconInset chevron
             onPress={() => setEditing({ id: item.id, name: item.name, kind: item.kind ?? 'none' })}>
-            <AppIcon name={item.kind === 'room' ? 'home-outline' : item.kind === 'owner' ? 'person-outline' : item.kind === 'purpose' ? 'briefcase-outline' : 'albums-outline'} size={22} color={colors.tint} />
+            <View style={styles.glyph}><AppIcon name={item.kind === 'room' ? 'home-outline' : item.kind === 'owner' ? 'person-outline' : item.kind === 'purpose' ? 'briefcase-outline' : 'albums-outline'} size={22} color={colors.tint} /></View>
             <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
             <Text style={styles.count}>{item.count}</Text>
           </Row>
@@ -69,7 +70,7 @@ export default function Collections() {
           {editing && (
             <View style={styles.form}>
               <Input inSheet value={editing.name} onChangeText={(name) => setEditing({ ...editing, name })} placeholder={t('collections.namePlaceholder')} accessibilityLabel={t('collections.name')} autoFocus maxLength={60} />
-              <Segmented
+              <Segmented large
                 options={[{ key: 'none' as const, label: t('collections.kind_none') }, ...COLLECTION_KINDS.map((k) => ({ key: k, label: t(`collections.kind_${k}`) }))]}
                 value={editing.kind}
                 onChange={(kind) => setEditing({ ...editing, kind })}
@@ -86,11 +87,11 @@ export default function Collections() {
 
 const useStyles = themed(() => StyleSheet.create({
   head: { marginTop: 12, marginBottom: 20 },
-  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 32 },
   card: { backgroundColor: colors.card },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },
+  glyph: { width: 29, alignItems: 'center', flexShrink: 0 },
   name: { flex: 1, ...TYPE.body, color: colors.ink },
-  count: { ...TYPE.body, color: colors.ink2 },
+  count: { ...TYPE.body, fontVariant: ['tabular-nums'], color: colors.ink2 },
   form: { gap: 12, paddingBottom: 8 },
 }));
