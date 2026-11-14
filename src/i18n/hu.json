@@ -269,6 +269,8 @@
     "widgetNames": "Nevek a widgeten",
     "widgetNamesHint": "A nevek a zárolt app mellett is látszanak a kezdőképernyőn.",
     "version": "Warrantly {{version}}",
+    "devModeGmailOn": "Fejlesztői mód: Gmail összekapcsolás bekapcsolva",
+    "devModeGmailOff": "Fejlesztői mód: Gmail összekapcsolás kikapcsolva",
     "returnReminders": "Elállási emlékeztető",
     "returnRemindersHint": "Online vásárlás: jelzés 2 nappal az EU-s 14 napos elállási idő vége előtt.",
     "reminderTime": "Időpont",
