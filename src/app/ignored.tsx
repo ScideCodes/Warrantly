@@ -1,3 +1,4 @@
+import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
@@ -32,7 +33,7 @@ export default function Ignored() {
       header={<View style={styles.gap} />}
       data={rows}
       keyExtractor={(r) => String(r.id)}
-      ListEmptyComponent={<Text style={styles.empty}>{t('ignored.empty')}</Text>}
+      ListEmptyComponent={<EmptyState message={t('ignored.empty')} icon="mail-outline" />}
       renderItem={({ item, index }) => (
         <Row separator={index > 0} style={[styles.card, index === 0 && styles.first, index === rows.length - 1 && styles.last]}>
           <View style={styles.text}>
@@ -52,7 +53,6 @@ export default function Ignored() {
 
 const useStyles = themed(() => StyleSheet.create({
   gap: { height: 20 },
-  empty: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', marginTop: 32 },
   card: { backgroundColor: colors.card, paddingVertical: 8 },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },

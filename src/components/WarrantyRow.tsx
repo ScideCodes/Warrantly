@@ -144,7 +144,7 @@ export const WarrantyRow = memo(function WarrantyRow({ warranty: w, to, style, s
           accessibilityLabel={docs ? t('row.openDocuments', { count: docs, product }) : t('row.addDocument', { product })}
           hitSlop={4}
         >
-          <AppIcon name={docs ? 'document-text-outline' : 'document-attach-outline'} size={21} color={docs ? colors.tint : colors.ink3} />
+          <AppIcon name={docs ? 'document-text-outline' : 'document-attach-outline'} size={21} color={docs ? colors.tint : colors.ink2} />
           {docs > 1 && <Text style={styles.docCount}>{docs}</Text>}
         </Pressable>
       )}
@@ -168,7 +168,7 @@ const useStyles = themed(() => StyleSheet.create({
   rowCompact: { paddingVertical: 5, minHeight: 44 },
   pin: { paddingTop: 3 },
   metaCompact: { flexWrap: 'nowrap' },
-  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
+  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink2, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   checkOn: { backgroundColor: colors.tint, borderColor: colors.tint },
   docButton: { width: 44, height: 44, marginRight: -8, borderRadius: 22, alignItems: 'center', justifyContent: 'center', alignSelf: 'center' },
   docPressed: { backgroundColor: colors.press },
@@ -185,6 +185,6 @@ const useStyles = themed(() => StyleSheet.create({
   meta: { ...TYPE.foot, color: colors.ink2 },
   store: { flexShrink: 1 },
   badge: { flexShrink: 0, maxWidth: '65%', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, marginTop: 1 },
-  badgeText: { ...TYPE.foot, fontWeight: '600' },
+  badgeText: { fontVariant: ['tabular-nums'], ...TYPE.foot, fontWeight: '600' },
   quietBadge: { fontWeight: '400' },
 }));

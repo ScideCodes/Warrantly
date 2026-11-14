@@ -1,6 +1,6 @@
 {
   "onboarding": {
-    "title": "Üdvözöl a Warrantly",
+    "title": "Warrantly",
     "subtitle": "Minden garanciád, a hátralévő napokkal.",
     "nameLabel": "Hogyan szólítsunk?",
     "namePlaceholder": "A neved",
@@ -291,7 +291,8 @@
     "remindersSection": "Emlékeztetők",
     "density": "Lista sűrűsége",
     "density_comfortable": "Kényelmes",
-    "density_compact": "Tömör"
+    "density_compact": "Tömör",
+    "reminderFailed": "Nem sikerült frissíteni az emlékeztetőket"
   },
   "backup": {
     "section": "Mentés",
@@ -322,7 +323,8 @@
     "errMatch": "A két jelszó nem egyezik.",
     "save": "Mentés bekapcsolása",
     "working": "Mentés beállítása…",
-    "saveOnly": "Jelszó mentése"
+    "saveOnly": "Jelszó mentése",
+    "failed": "Nem sikerült menteni a jelszót. Próbáld újra."
   },
   "restore": {
     "title": "Visszaállítás mentésből",
@@ -540,20 +542,42 @@
         "q": "Hogyan tilthatom le, hogy a Warrantly olvassa a Gmailemet?",
         "a": "Beállítások > Leválasztás a fiók mellett. A hozzáférést a myaccount.google.com/permissions oldalon is visszavonhatod."
       }
+    ],
+    "faqPublic": [
+      {
+        "q": "Hogyan adok hozzá vásárlást?",
+        "a": "A Hozzáadás gombbal kitöltheted az adatokat, a Beolvasással pedig beolvashatsz egy blokkot. Mentés előtt ellenőrizd az adatokat."
+      },
+      {
+        "q": "Hozzáadhatok blokkot e-mailből?",
+        "a": "Oszd meg a levél szövegét, PDF-mellékletét vagy az elmentett .eml fájlt a Warrantlyval. A Beérkezett listából hozzáadhatod vagy csatolhatod."
+      },
+      {
+        "q": "Csatlakoztathatom a Gmailt?",
+        "a": "A Gmail-import a Google engedélyezési vizsgálata alatt átmenetileg nem érhető el. A kézi bevitel, a beolvasás és a fájlmegosztás továbbra is működik."
+      },
+      {
+        "q": "Hogyan működik a mentés?",
+        "a": "A telefon a jelszavaddal titkosítja a mentést, majd a Google Drive-odra menti. A visszaállításhoz kell a jelszó; nem lehet visszaszerezni."
+      },
+      {
+        "q": "Elfelejtettem a PIN-kódot.",
+        "a": "A zárképernyőn koppints az Elfelejtetted a PIN-t gombra. Igazold magad a telefon képernyőzárával, majd válassz új PIN-t."
+      },
+      {
+        "q": "Hogyan költözöm új telefonra?",
+        "a": "Készíts mentést a régi telefonon. Telepítsd a Warrantlyt az újra, majd állítsd vissza a Beállításokban ugyanazzal a Drive-fiókkal és mentési jelszóval."
+      }
     ]
   },
   "whatsNew": {
     "title": "Újdonságok",
     "ok": "Rendben",
     "notes": [
-      "Több dokumentum garanciánként, és PDF-nézegető.",
-      "Elállási határidő emlékeztető: online rendelést 14 napig küldhetsz vissza.",
-      "Ár, kategória és összérték; szűrés kategóriára.",
-      "Több garancia egy vásárláshoz (alap, bolti, kiterjesztett).",
-      "Javítási és reklamációs előzmények, és a gyártó ügyfélszolgálata egy koppintással.",
-      "Exportálás PDF-be vagy táblázatba, összes adat exportálása és törlése.",
-      "Kiválaszthatod, milyen emlékeztetőket kapsz és mikor.",
-      "Nyelvválasztó, súgó, visszajelzés és adatvédelmi tájékoztató."
+      "Áttekinthetőbb űrlapok, egységes dátum- és időválasztóval.",
+      "Kompakt listaszűrők és egységes dokumentumlisták.",
+      "Jobb elrendezés nagyobb betűkhöz és szélesebb kijelzőkhöz.",
+      "Érthetőbb mentési visszajelzések és magyar/angol feliratok."
     ]
   },
   "share": {
@@ -570,8 +594,8 @@
   },
   "summary": {
     "covered": "érvényes",
-    "expiring": "lejár hamarosan",
-    "noDocs": "dokumentum nélkül"
+    "expiring": "lejáró",
+    "noDocs": "irat nélkül"
   },
   "row": {
     "pinned": "Kitűzve",
@@ -761,7 +785,9 @@
     "col_contact_email": "Bolt e-mail",
     "col_contact_phone": "Bolt telefon",
     "col_website_url": "Weboldal",
-    "col_notes": "Jegyzetek"
+    "col_notes": "Jegyzetek",
+    "loading": "Garancia betöltése…",
+    "unavailable": "Ez a garancia nem érhető el. Lépj vissza, és próbáld újra."
   },
   "health": {
     "title": "Mentés állapota",
@@ -778,7 +804,9 @@
     "pendingChanges": "Módosítások a legutóbbi mentés óta",
     "pendingDocs_one": "{{count}} dokumentum még nincs a Drive-on",
     "pendingDocs_other": "{{count}} dokumentum még nincs a Drive-on",
-    "turnOn": "Beállítások megnyitása"
+    "turnOn": "Beállítások megnyitása",
+    "loading": "Mentés ellenőrzése…",
+    "readFailed": "Nem sikerült ellenőrizni a mentést. Próbáld újra."
   },
   "recent": {
     "title": "Előzmények",
@@ -825,6 +853,8 @@
     "done": "Kész",
     "today": "Ma",
     "previousYear": "Előző év",
-    "nextYear": "Következő év"
+    "nextYear": "Következő év",
+    "hours": "Óra",
+    "minutes": "Perc"
   }
 }

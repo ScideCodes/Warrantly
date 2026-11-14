@@ -3,7 +3,7 @@ appId: dev.warrantly.app
 # Disposable emulator only. run.sh supplies the PDF and an empty export folder.
 - launchApp:
     clearState: true
-- extendedWaitUntil: { visible: "Welcome to Warrantly", timeout: 90000 }
+- extendedWaitUntil: { visible: "Your name", timeout: 90000 }
 - tapOn: "Your name"
 - inputText: "UI review"
 - hideKeyboard

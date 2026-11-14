@@ -2,7 +2,7 @@ import { Pressable, Text, View } from '@/components/themeMotion';
 import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { Platform, StyleSheet } from 'react-native';
-import { DateTimePickerAndroid } from '@react-native-community/datetimepicker';
+import { useTimePicker } from '@/components/TimePicker';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -25,7 +25,7 @@ import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
-import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed } from '@/theme';
+import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed, useRoom } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
 import { GMAIL_IMPORT } from '@/features';
 
@@ -118,19 +118,13 @@ export default function Settings() {
     void getDb().then(updateWidget).catch(() => {}); // the widget follows the app's appearance
   }
 
-  // Reminder time: Android's own clock picker; elsewhere (web preview) 9:00 and 18:00 alternate.
+  const { pickTime: openTime, timePicker } = useTimePicker();
   function pickTime() {
-    const save = async (minutes: number) => {
+    openTime({ value: time, onPick: (minutes) => {
       setReminderTime(minutes);
       setTime(minutes);
-      await rescheduleReminders(await getDb());
-    };
-    if (Platform.OS !== 'android') return void save(time === 540 ? 1080 : 540);
-    DateTimePickerAndroid.open({
-      value: new Date(2026, 0, 1, Math.floor(time / 60), time % 60),
-      mode: 'time',
-      onValueChange: (_e, d) => void save(d.getHours() * 60 + d.getMinutes()),
-    });
+      void getDb().then(rescheduleReminders).catch((error) => showAlert(t('settings.reminderFailed'), error instanceof Error ? error.message : String(error)));
+    } });
   }
   const timeLabel = new Date(2026, 0, 1, Math.floor(time / 60), time % 60).toLocaleTimeString(i18n.language, { hour: 'numeric', minute: '2-digit' });
 
@@ -279,16 +273,29 @@ export default function Settings() {
     await backupNow();
   }
 
+  const narrowRows = !useRoom()(320);
+
   // The reference's settings rows (`.settings-group`): a 29dp colour tile with a white glyph, the label, then a
   // switch, a value or a chevron. Separators start at 59, after the tile.
   const row = (icon: Icon, tint: string, label: string, hint: string | null, value: boolean, onChange: (v: boolean) => void) => (
-    <Row key={label} iconInset style={styles.row}>
-      <IconTile name={icon} color={tint} />
-      <View style={styles.rowText}>
-        <Text style={styles.label}>{label}</Text>
-        {hint && <Text style={styles.hint}>{hint}</Text>}
-      </View>
-      <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
+    <Row key={label} iconInset style={narrowRows ? styles.block : styles.row}>
+      {narrowRows ? <>
+        <View style={styles.blockHead}>
+          <IconTile name={icon} color={tint} />
+          <Text style={[styles.label, styles.rowText]}>{label}</Text>
+        </View>
+        <View style={styles.switchDetail}>
+          {hint && <Text style={[styles.hint, styles.rowText]}>{hint}</Text>}
+          <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
+        </View>
+      </> : <>
+        <IconTile name={icon} color={tint} />
+        <View style={styles.rowText}>
+          <Text style={styles.label}>{label}</Text>
+          {hint && <Text style={styles.hint}>{hint}</Text>}
+        </View>
+        <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
+      </>}
     </Row>
   );
   const link = (icon: Icon, tint: string, label: string, onPress: () => void, opts: { hint?: string; danger?: boolean; value?: string } = {}) => (
@@ -525,6 +532,7 @@ export default function Settings() {
       <Text style={styles.version} selectable>
         {t('settings.version', { version: versionLine(i18n.language) })}
       </Text>
+      {timePicker}
     </Page>
   );
 }
@@ -537,6 +545,7 @@ const useStyles = themed(() => StyleSheet.create({
   profileName: { ...TYPE.title3, color: colors.ink },
   profileHint: { ...TYPE.sub, color: colors.ink2 },
   row: { gap: 15 },
+  switchDetail: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 12, paddingLeft: 44 },
   rowText: { flex: 1, minWidth: 0 },
   tileSpace: { width: 29, alignItems: 'center' },
   label: { ...TYPE.body, color: colors.ink, flexShrink: 1 },
@@ -546,7 +555,7 @@ const useStyles = themed(() => StyleSheet.create({
   nameButton: { flexGrow: 1, flexBasis: 120 },
   inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4, marginTop: 4 },
   linkSmall: { ...TYPE.sub, color: colors.link },
-  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink3, alignItems: 'center', justifyContent: 'center' },
+  check: { width: 22, height: 22, borderRadius: 11, borderWidth: 1.5, borderColor: colors.ink2, alignItems: 'center', justifyContent: 'center' },
   checkOn: { backgroundColor: colors.tint, borderColor: colors.tint },
   block: { flexDirection: 'column', alignItems: 'stretch', gap: 10 },
   blockHead: { flexDirection: 'row', alignItems: 'center', gap: 15 },

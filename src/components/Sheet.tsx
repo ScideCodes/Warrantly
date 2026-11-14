@@ -1,10 +1,10 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import AppIcon from '@/components/Icon';
-import { Animated, Modal, PanResponder, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, Keyboard, Modal, PanResponder, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
-import { colors, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
+import { colors, MAX_WIDTH, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
 import { GlassButton, Group, reduceMotion, Row, type IconName } from '@/components/ui';
 
 export type { IconName };
@@ -29,9 +29,19 @@ export interface SheetSection {
 export function SheetFrame({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const styles = useStyles();
   const { t } = useTranslation();
-  const { height: screenH } = useWindowDimensions();
+  const { height: screenH, width: screenW } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [shown, setShown] = useState(open);
+  // The translucent Modal can be taller than the activity window on three-button navigation.
+  // Measure that actual viewport and use the keyboard's screen position, not its reported height.
+  const [modalHeight, setModalHeight] = useState(screenH);
+  const [keyboardTop, setKeyboardTop] = useState<number | null>(null);
+  const keyboardHeight = keyboardTop === null ? 0 : Math.max(0, modalHeight - keyboardTop);
+  useEffect(() => {
+    const shown = Keyboard.addListener('keyboardDidShow', e => setKeyboardTop(e.endCoordinates.screenY));
+    const hidden = Keyboard.addListener('keyboardDidHide', () => setKeyboardTop(null));
+    return () => { shown.remove(); hidden.remove(); };
+  }, []);
   const height = useRef(600); // for the drag handlers
   const [panelH, setPanelH] = useState(600); // for the scrim
   const y = useState(() => new Animated.Value(screenH))[0];
@@ -81,7 +91,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const dim = y.interpolate({ inputRange: [0, Math.max(panelH, 1)], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
     <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
-      <Animated.View style={[styles.backdrop, { opacity: dim }]}>
+      <Animated.View style={[styles.backdrop, { opacity: dim }]} onLayout={e => setModalHeight(e.nativeEvent.layout.height)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('sheet.close')} />
       </Animated.View>
       <Animated.View
@@ -89,7 +99,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
           height.current = e.nativeEvent.layout.height;
           setPanelH(e.nativeEvent.layout.height);
         }}
-        style={[styles.panel, { maxHeight: screenH - insets.top - 12, paddingBottom: Math.max(0, insets.bottom - 6), transform: [{ translateY: y }] }]}
+        style={[styles.panel, { width: Math.min(screenW - 12, MAX_WIDTH), left: (screenW - Math.min(screenW - 12, MAX_WIDTH)) / 2, right: undefined, bottom: keyboardHeight + 6, maxHeight: Math.max(150, modalHeight - insets.top - keyboardHeight - 12), paddingBottom: keyboardHeight ? 8 : Math.max(0, insets.bottom - 6), transform: [{ translateY: y }] }]}
         accessibilityViewIsModal
       >
         <View {...drag.panHandlers}>

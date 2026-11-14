@@ -380,6 +380,7 @@ export default function WarrantyDetail() {
       sections: [
         {
           options: [
+            { key: 'pin', icon: w.favorite ? 'star' : 'star-outline', label: t(w.favorite ? 'detail.unpin' : 'detail.pin'), onPress: () => void toggleFavorite() },
             {
               key: 'share',
               icon: 'share-outline',
@@ -469,7 +470,6 @@ export default function WarrantyDetail() {
         title={w.product_name ?? product}
         trailing={
           <>
-            <GlassButton icon={w.favorite ? 'star' : 'star-outline'} label={t(w.favorite ? 'detail.unpin' : 'detail.pin')} color={w.favorite ? colors.warn : colors.ink} selected={!!w.favorite} onPress={() => void toggleFavorite()} />
             <GlassButton icon="create-outline" label={t('detail.edit')} onPress={() => router.push({ pathname: '/warranty/edit', params: { id: String(w.id) } })} />
             <GlassButton icon="ellipsis-horizontal" label={t('detail.more')} onPress={() => setSheet('more')} />
           </>
@@ -689,7 +689,7 @@ const useStyles = themed(() => StyleSheet.create({
   store: { ...TYPE.sub, color: colors.ink2 },
   status: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 8, rowGap: 4 },
   badge: { borderRadius: 7, paddingHorizontal: 6, paddingVertical: 1 },
-  badgeText: { ...TYPE.foot, fontWeight: '600' },
+  badgeText: { fontVariant: ['tabular-nums'], ...TYPE.foot, fontWeight: '600' },
   note: { ...TYPE.sub, color: colors.warn },
   empty: { ...TYPE.sub, color: colors.ink2, paddingVertical: 12, paddingHorizontal: ROW_X },
   doc: { paddingVertical: 10, paddingHorizontal: ROW_X, gap: 10 },

@@ -1,10 +1,10 @@
 import { Text, View, useThemeTransition } from '@/components/themeMotion';
 import { forwardRef, useState, type ComponentRef, type ReactNode } from 'react';
-import { Animated, ScrollView, StyleSheet, useWindowDimensions, type FlatListProps, type ScrollViewProps } from 'react-native';
+import { Animated, KeyboardAvoidingView, ScrollView, StyleSheet, useWindowDimensions, type FlatListProps, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { goBack } from '@/nav';
-import { BAR_H, colors, gutter, isDarkNow, TYPE, themed } from '@/theme';
+import { BAR_H, colors, gutter, isDarkNow, MAX_WIDTH, TYPE, themed } from '@/theme';
 import { GlassButton } from '@/components/ui';
 import Reanimated from 'react-native-reanimated';
 
@@ -96,18 +96,20 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
   const edge = useScrollEdge();
   return (
     <View style={styles.screen}>
+      <KeyboardAvoidingView style={styles.keyboard} behavior="padding">
       <Animated.ScrollView
         ref={ref as never}
         onScroll={edge.onScroll}
         scrollEventThrottle={16}
         keyboardShouldPersistTaps="handled"
         {...scroll}
-        contentContainerStyle={[{ paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (footer ? 0 : insets.bottom) + 32 }, contentContainerStyle]}
+        contentContainerStyle={[{ maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (footer ? 0 : insets.bottom) + 32 }, contentContainerStyle]}
       >
         {head ? <View onLayout={(e) => edge.onTitleLayout(e.nativeEvent.layout.height)}>{head}</View> : <LargeTitle title={title} lead={lead} onLayout={edge.onTitleLayout} />}
         {children}
       </Animated.ScrollView>
       {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + 12, paddingHorizontal: gutter(width) }]}>{footer}</View> : null}
+      </KeyboardAvoidingView>
       <NavBar title={title} t={edge.t} back={back} trailing={trailing} />
     </View>
   );
@@ -115,9 +117,10 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
 
 const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  keyboard: { flex: 1 },
   bar: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 30 },
   edge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: -EDGE },
-  barIn: { height: BAR_H, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  barIn: { maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', height: BAR_H, flexDirection: 'row', alignItems: 'center', gap: 8 },
   side: { flex: 1, flexDirection: 'row', alignItems: 'center', minWidth: 44 },
   trail: { justifyContent: 'flex-end', gap: 8 },
   sideContent: { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -125,7 +128,7 @@ const useStyles = themed(() => StyleSheet.create({
   head: { paddingTop: 4, paddingBottom: 8 },
   large: { ...TYPE.large, color: colors.ink },
   lead: { ...TYPE.sub, color: colors.ink2, marginTop: 2 },
-  footer: { paddingTop: 12, backgroundColor: colors.bg },
+  footer: { maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: 12, backgroundColor: colors.bg },
 }));
 
 // A page whose body is a long list: the same bar and large title over a FlatList.
@@ -148,7 +151,7 @@ export function ListPage<T>({ title, lead, header, contentContainerStyle, ...lis
             {header}
           </>
         }
-        contentContainerStyle={[{ paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: insets.bottom + 32 }, contentContainerStyle]}
+        contentContainerStyle={[{ maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: insets.bottom + 32 }, contentContainerStyle]}
       />
       <NavBar title={title} t={edge.t} />
     </View>

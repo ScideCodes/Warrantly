@@ -9,6 +9,7 @@ import { sendClaim } from '@/documents';
 import { readErrorLog } from '@/errorLog';
 import { FEEDBACK_EMAIL } from '@/support';
 import { Page } from '@/components/Page';
+import { GMAIL_IMPORT } from '@/features';
 import { showAlert } from '@/components/Dialog';
 import { Button, Group, Row, SectionHeader, Switch } from '@/components/ui';
 import { colors, ROW_X, TYPE, themed } from '@/theme';
@@ -18,7 +19,7 @@ import { colors, ROW_X, TYPE, themed } from '@/theme';
 export default function Help() {
   const styles = useStyles();
   const { t, i18n } = useTranslation();
-  const faq = t('help.faq', { returnObjects: true }) as { q: string; a: string }[];
+  const faq = t(GMAIL_IMPORT ? 'help.faq' : 'help.faqPublic', { returnObjects: true }) as { q: string; a: string }[];
   const [open, setOpen] = useState<number | null>(null);
   const [withLog, setWithLog] = useState(true);
   const errors = readErrorLog();

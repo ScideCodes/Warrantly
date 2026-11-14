@@ -32,7 +32,7 @@ import { forgetRecent, readRecent } from '@/recentStore';
 import { rescheduleReminders } from '@/reminders';
 import { readBackupHealth } from '@/backupStatus';
 import { getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
-import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
+import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
@@ -366,9 +366,9 @@ export default function Home() {
       {counts.covered > 0 && filter.kind !== 'archived' && !selecting && (
         // Shortlist 1: one slim line of counts; each count is a button for its results.
         <View style={[styles.summary, (width - 2 * gutter(width)) / fontScale < 280 && { flexDirection: 'column' }]} accessibilityRole="toolbar">
-          <SummaryItem value={counts.covered} label={t('summary.covered')} on={!quick} onPress={() => { setQuick(null); setFilter(all); scrollTop(); }} />
+          <SummaryItem value={counts.covered} label={t('summary.covered')} on={!quick && filter.kind === 'all'} onPress={() => { setQuick(null); setFilter(all); scrollTop(); }} />
           <SummaryItem value={counts.expiring} label={t('summary.expiring')} on={quick === 'expiring'} tone={counts.expiring ? colors.warn : undefined} onPress={() => chooseQuick('expiring')} />
-          <SummaryItem value={counts.noDocs} label={t('summary.noDocs')} on={quick === 'nodocs'} tone={counts.noDocs ? colors.bad : undefined} onPress={() => chooseQuick('nodocs')} />
+          <SummaryItem value={counts.noDocs} label={t('summary.noDocs')} on={quick === 'nodocs'} onPress={() => chooseQuick('nodocs')} />
         </View>
       )}
       {sync.kind === 'syncing' && (
@@ -531,7 +531,7 @@ export default function Home() {
         ListEmptyComponent={empty}
         ListFooterComponent={footer}
         extraData={selected}
-        contentContainerStyle={[styles.list, { paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (selecting ? 160 : 88) + insets.bottom }]}
+        contentContainerStyle={[styles.list, { maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (selecting ? 160 : 88) + insets.bottom }]}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
         onScroll={edge.onScroll}
@@ -578,15 +578,15 @@ export default function Home() {
   );
 }
 
-// One count in the summary line: the number large enough to scan, its words below; 44dp tall.
+// Compact quick filters: counts support the warranty list, rather than acting as dashboard tiles.
 function SummaryItem({ value, label, on, tone, onPress }: { value: number; label: string; on: boolean; tone?: string; onPress: () => void }) {
   const styles = useStyles();
   const { width, fontScale } = useWindowDimensions();
-  const stacked = (width - 2 * gutter(width)) / fontScale < 280;
+  const stacked = (Math.min(width, MAX_WIDTH) - 2 * gutter(width)) / fontScale < 280;
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.sumItem, stacked && { flex: 0, width: '100%' }, on && styles.sumOn, pressed && styles.sumPressed]} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} accessibilityState={{ selected: on }}>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.sumItem, stacked && styles.sumStack, on && styles.sumOn, pressed && styles.sumPressed]} accessibilityRole="button" accessibilityLabel={`${value} ${label}`} accessibilityState={{ selected: on }}>
       <Text style={[styles.sumValue, tone ? { color: tone } : null]}>{value}</Text>
-      <Text style={styles.sumLabel}>{label}</Text>
+      <Text style={[styles.sumLabel, on && styles.sumLabelOn]}>{label}</Text>
     </Pressable>
   );
 }
@@ -664,13 +664,15 @@ const useStyles = themed(() => StyleSheet.create({
   header: { gap: 12 },
   flex: { flex: 1 },
   chips: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  // Summary line (shortlist 1): three equal buttons on one card.
+  // One quiet filter strip; each option keeps a full touch target.
   summary: { flexDirection: 'row', gap: 4, padding: 4, borderRadius: RADIUS, backgroundColor: colors.card },
   // Align the counts even when one translated label needs another line.
-  sumItem: { flex: 1, minHeight: 56, borderRadius: RADIUS - 4, alignItems: 'center', justifyContent: 'flex-start', paddingVertical: 6, paddingHorizontal: 4 },
+  sumItem: { flex: 1, minHeight: 44, borderRadius: RADIUS - 4, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', columnGap: 4, paddingVertical: 8, paddingHorizontal: 6 },
   sumOn: { backgroundColor: colors.select },
   sumPressed: { opacity: 0.6 },
-  sumValue: { ...TYPE.title3, color: colors.ink, fontVariant: ['tabular-nums'] },
+  sumStack: { flex: 0, width: '100%', justifyContent: 'flex-start', paddingHorizontal: 12 },
+  sumValue: { ...TYPE.headline, color: colors.ink, fontVariant: ['tabular-nums'] },
+  sumLabelOn: { color: colors.ink },
   sumLabel: { ...TYPE.foot, color: colors.ink2, textAlign: 'center' },
   bulkBar: { position: 'absolute', left: 16, right: 16, flexDirection: 'row' },
   // Search: the reference's page search field (`input.quick-search`, ios.css line 943): the standard 44dp

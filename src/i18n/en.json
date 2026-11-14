@@ -1,6 +1,6 @@
 {
   "onboarding": {
-    "title": "Welcome to Warrantly",
+    "title": "Warrantly",
     "subtitle": "All your warranties. Days left at a glance.",
     "nameLabel": "What should we call you?",
     "namePlaceholder": "Your name",
@@ -291,7 +291,8 @@
     "remindersSection": "Reminders",
     "density": "List density",
     "density_comfortable": "Comfortable",
-    "density_compact": "Compact"
+    "density_compact": "Compact",
+    "reminderFailed": "Could not update reminders"
   },
   "backup": {
     "section": "Backup",
@@ -322,7 +323,8 @@
     "errMatch": "The passwords don't match.",
     "save": "Turn on backup",
     "working": "Setting up backup…",
-    "saveOnly": "Save password"
+    "saveOnly": "Save password",
+    "failed": "Could not save the password. Try again."
   },
   "restore": {
     "title": "Restore from backup",
@@ -540,20 +542,42 @@
         "q": "How do I stop Warrantly reading my Gmail?",
         "a": "Settings > Disconnect next to the account. You can also remove access at myaccount.google.com/permissions."
       }
+    ],
+    "faqPublic": [
+      {
+        "q": "How do I add a purchase?",
+        "a": "Tap Add to enter the details, or Scan to read a receipt. Check the details before saving."
+      },
+      {
+        "q": "Can I add a receipt from an email?",
+        "a": "Share the email text, PDF attachment or saved .eml file to Warrantly. Open it in Inbox to add or attach it."
+      },
+      {
+        "q": "Can I connect Gmail?",
+        "a": "Gmail import is temporarily unavailable during Google’s permission review. Manual entry, scanning and shared files still work."
+      },
+      {
+        "q": "How do backups work?",
+        "a": "Your phone encrypts the backup with your password, then saves it to your Google Drive. You need that password to restore; it cannot be recovered."
+      },
+      {
+        "q": "I forgot my PIN.",
+        "a": "Tap Forgot PIN on the lock screen. Verify with your phone’s screen lock, then choose a new PIN."
+      },
+      {
+        "q": "How do I move to a new phone?",
+        "a": "Back up on the old phone. Install Warrantly on the new one, then restore in Settings with the same Drive account and backup password."
+      }
     ]
   },
   "whatsNew": {
     "title": "What's new",
     "ok": "Got it",
     "notes": [
-      "Several documents per warranty, and the PDF viewer.",
-      "Return-window reminders: online orders can be returned within 14 days.",
-      "Price, category and total value; filter the list by category.",
-      "Several warranties for one purchase (standard, store, extended plan).",
-      "Repair and claim history, and a shortcut to the brand's support.",
-      "Export to PDF or a spreadsheet, export all data, delete all data.",
-      "Choose which reminders you get and at what time.",
-      "Language picker, help, feedback and the privacy policy."
+      "Clearer warranty forms with matching date and time pickers.",
+      "Compact library filters and consistent document lists.",
+      "Better layouts for larger text and wider screens.",
+      "Clearer backup feedback and English/Hungarian labels."
     ]
   },
   "share": {
@@ -761,7 +785,9 @@
     "col_contact_email": "Store email",
     "col_contact_phone": "Store phone",
     "col_website_url": "Website",
-    "col_notes": "Notes"
+    "col_notes": "Notes",
+    "loading": "Loading warranty…",
+    "unavailable": "This warranty is unavailable. Go back and try again."
   },
   "health": {
     "title": "Backup status",
@@ -778,7 +804,9 @@
     "pendingChanges": "Edits since the last backup",
     "pendingDocs_one": "{{count}} document not on Drive yet",
     "pendingDocs_other": "{{count}} documents not on Drive yet",
-    "turnOn": "Open Settings"
+    "turnOn": "Open Settings",
+    "loading": "Checking backup…",
+    "readFailed": "Could not check your backup. Try again."
   },
   "recent": {
     "title": "Recent",
@@ -825,6 +853,8 @@
     "done": "Done",
     "today": "Today",
     "previousYear": "Previous year",
-    "nextYear": "Next year"
+    "nextYear": "Next year",
+    "hours": "Hours",
+    "minutes": "Minutes"
   }
 }

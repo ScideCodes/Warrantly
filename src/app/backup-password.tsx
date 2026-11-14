@@ -28,12 +28,18 @@ export default function BackupPassword() {
     if (password.length < MIN_PASSWORD) return setError(t('backupPassword.errShort'));
     if (password !== repeat) return setError(t('backupPassword.errMatch'));
     setBusy(true);
-    await setBackupPassword(password); // a few seconds: the key is derived with scrypt
-    if (purpose !== 'disconnect') {
-      setSetting('backup_enabled', '1');
-      await runBackup(await getDb(), true).catch(() => {}); // a failure shows in Settings; backup stays on
+    try {
+      await setBackupPassword(password);
+      if (purpose !== 'disconnect') {
+        setSetting('backup_enabled', '1');
+        await runBackup(await getDb(), true).catch(() => {}); // Settings shows a backup failure.
+      }
+      goBack();
+    } catch {
+      setError(t('backupPassword.failed'));
+    } finally {
+      setBusy(false);
     }
-    goBack();
   }
 
   // Form fields as in the reference's panels: a Footnote label above a filled field.
