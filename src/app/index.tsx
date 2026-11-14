@@ -32,7 +32,7 @@ import { liveRecent } from '@/recent';
 import { forgetRecent, readRecent } from '@/recentStore';
 import { rescheduleReminders } from '@/reminders';
 import { readBackupHealth } from '@/backupStatus';
-import { getBundleLead, getDensity, getListSort, getUsername, hasBundleLead, setListSort, type Density } from '@/settings';
+import { getBundleLead, getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
@@ -48,7 +48,7 @@ type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email
 type Filter =
   | { kind: 'all' } | { kind: 'account'; id: number } | { kind: 'manual' } | { kind: 'category'; key: string } | { kind: 'store'; name: string }
   | { kind: 'collection'; id: number } | { kind: 'archived' };
-type GroupKey = 'pinned' | 'soon' | 'covered' | 'expired' | 'archived';
+type GroupKey = 'pinned' | 'soon' | 'covered' | 'hidden' | 'expired' | 'archived';
 type WarrantySection = { key: GroupKey; data: Warranty[] };
 const AnimatedSectionList = Animated.createAnimatedComponent(SectionList<Warranty, WarrantySection>);
 
@@ -68,6 +68,7 @@ export default function Home() {
   const [sort, setSort] = useState<SortKey>(() => (SORT_KEYS.includes(getListSort() as SortKey) ? getListSort() as SortKey : 'expiry'));
   const [density, setDensityState] = useState<Density>(getDensity);
   const [showExpired, setShowExpired] = useState(false);
+  const [showHidden, setShowHidden] = useState(false);
   const [query, setQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
   const [warranties, setWarranties] = useState<Warranty[]>([]);
@@ -206,21 +207,15 @@ export default function Home() {
         bundleMap.set(item.bundle_id, arr);
       }
     }
-    const hasSearch = searchQuery.trim() !== '';
-    const hasFilter = filter.kind !== 'all' || quick !== null;
     const isBundleLead = (item: Warranty): boolean => {
-      if (hasSearch || hasFilter) return true;
       if (!item.bundle_id) return true;
-      if (!hasBundleLead(item.bundle_id)) return true;
       const group = bundleMap.get(item.bundle_id);
       if (!group || group.length <= 1) return true;
       const leadId = getBundleLead(item.bundle_id, group);
-      if (item.id === leadId) return true;
-      const lead = group.find((m) => m.id === leadId);
-      if (lead && daysUntil(lead.end_date, today) < 0 && daysUntil(item.end_date, today) >= 0) return true;
-      return false;
+      return item.id === leadId;
     };
     const leadBase = base.filter(isBundleLead);
+    const hiddenBase = base.filter((item) => !isBundleLead(item));
     const common = {
       query: '',
       account: filter.kind === 'account' ? filter.id : filter.kind === 'manual' ? 'manual' as const : 'all' as const,
@@ -230,21 +225,36 @@ export default function Home() {
     };
     const inCollection = filter.kind === 'collection' ? members.get(filter.id) ?? new Set<number>() : null;
     const pick = (list: Warranty[]) => sortWarranties(quickFilter(list.filter((w) => matches(w) && (!inCollection || inCollection.has(w.id))), quick, today), sort);
-    if (filter.kind === 'archived') return { pinned: [], soon: [], covered: [], expired: [], archived: pick(leadBase) };
+    const filterHidden = (list: Warranty[]) => list.filter((w) => {
+      if (common.account !== 'all' && (common.account === 'manual' ? w.account_id !== null : w.account_id !== common.account)) return false;
+      if (common.store && w.store_name !== common.store) return false;
+      if (common.category && w.category !== common.category) return false;
+      return true;
+    });
+    if (filter.kind === 'archived') return { pinned: [], soon: [], covered: [], hidden: [], expired: [], archived: pick(base) };
     const active = pick(filterWarranties(leadBase, { ...common, tab: 'active' }, today));
     const { pinned, rest } = splitPinned(active, today);
     const soon: Warranty[] = [], covered: Warranty[] = [];
     for (const w of rest) (daysUntil(w.end_date, today) <= 30 ? soon : covered).push(w);
-    return { pinned, soon, covered, expired: pick(filterWarranties(leadBase, { ...common, tab: 'expired' }, today)), archived: [] as Warranty[] };
-  }, [warranties, archived, filter, quick, sort, matches, members, today, searchQuery]);
+    return {
+      pinned,
+      soon,
+      covered,
+      hidden: pick(filterHidden(hiddenBase)),
+      expired: pick(filterWarranties(leadBase, { ...common, tab: 'expired' }, today)),
+      archived: [] as Warranty[],
+    };
+  }, [warranties, archived, filter, quick, sort, matches, members, today]);
+  const hiddenOpen = showHidden || searchQuery.trim() !== '';
   const expiredOpen = showExpired || searchQuery.trim() !== '' || quick === 'nodocs'; // search includes expired items
   const sections = useMemo(() => [
     { key: 'pinned' as const, data: visible.pinned },
     { key: 'soon' as const, data: visible.soon },
     { key: 'covered' as const, data: visible.covered },
+    { key: 'hidden' as const, data: hiddenOpen ? visible.hidden : [] },
     { key: 'expired' as const, data: expiredOpen ? visible.expired : [] },
     { key: 'archived' as const, data: visible.archived },
-  ].filter((s) => s.data.length > 0), [visible, expiredOpen]);
+  ].filter((s) => s.data.length > 0), [visible, hiddenOpen, expiredOpen]);
   const shownIds = useMemo(() => sections.flatMap((s) => s.data.map((w) => w.id)), [sections]);
   const counts = useMemo(() => {
     const bundleMap = new Map<number, Warranty[]>();
@@ -257,18 +267,14 @@ export default function Home() {
     }
     const leadWarranties = warranties.filter((item) => {
       if (!item.bundle_id) return true;
-      if (!hasBundleLead(item.bundle_id)) return true;
       const group = bundleMap.get(item.bundle_id);
       if (!group || group.length <= 1) return true;
       const leadId = getBundleLead(item.bundle_id, group);
-      if (item.id === leadId) return true;
-      const lead = group.find((m) => m.id === leadId);
-      if (lead && daysUntil(lead.end_date, today) < 0 && daysUntil(item.end_date, today) >= 0) return true;
-      return false;
+      return item.id === leadId;
     });
     return summary(leadWarranties, today);
   }, [warranties, today]);
-  const total = useMemo(() => Object.entries(totalValue([...visible.pinned, ...visible.soon, ...visible.covered])).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + '), [visible, i18n.language]);
+  const total = useMemo(() => Object.entries(totalValue([...visible.pinned, ...visible.soon, ...visible.covered, ...visible.hidden])).map(([cur, sum]) => formatMoney(sum, cur, i18n.language)).join(' + '), [visible, i18n.language]);
   const facets = useMemo(() => warrantyFacets(warranties), [warranties]);
   const docHits = useMemo(() => {
     if (!words.length) return [];
@@ -481,7 +487,7 @@ export default function Home() {
     </View>
   );
 
-  const groupTitle = { pinned: 'home.sectionPinned', soon: 'home.sectionSoon', covered: 'home.sectionCovered', expired: 'home.sectionExpired', archived: 'home.sectionArchived' } as const;
+  const groupTitle = { pinned: 'home.sectionPinned', soon: 'home.sectionSoon', covered: 'home.sectionCovered', hidden: 'home.sectionHidden', expired: 'home.sectionExpired', archived: 'home.sectionArchived' } as const;
 
   const clearSearchAndFilters = () => { setQuery(''); setFilter(all); setQuick(null); Keyboard.dismiss(); };
   const hasSearch = searchQuery.trim() !== '' || filter.kind !== 'all' || quick !== null;
@@ -499,15 +505,28 @@ export default function Home() {
     </View>
   );
 
-  const footer =
-    visible.expired.length > 0 && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' && !showExpired ? (
-      <Group style={styles.expiredToggle}>
-        <Row onPress={() => setShowExpired(true)} accessibilityState={{ expanded: false }}>
-          <Text style={styles.expiredToggleText}>{t('home.showExpired', { count: visible.expired.length })}</Text>
-          <AppIcon name="chevron-down" size={16} color={colors.chevron} />
-        </Row>
-      </Group>
-    ) : undefined;
+  const showHiddenToggleInFooter = visible.hidden.length > 0 && searchQuery.trim() === '' && filter.kind !== 'archived' && !showHidden && !expiredOpen;
+  const showExpiredToggleInFooter = visible.expired.length > 0 && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' && !showExpired;
+  const footer = (showHiddenToggleInFooter || showExpiredToggleInFooter) ? (
+    <View>
+      {showHiddenToggleInFooter && (
+        <Group style={[styles.expiredToggle, showExpiredToggleInFooter ? { marginBottom: 10 } : null]}>
+          <Row onPress={() => setShowHidden(true)} accessibilityState={{ expanded: false }}>
+            <Text style={styles.expiredToggleText}>{t('home.showHidden', { count: visible.hidden.length })}</Text>
+            <AppIcon name="chevron-down" size={16} color={colors.chevron} />
+          </Row>
+        </Group>
+      )}
+      {showExpiredToggleInFooter && (
+        <Group style={styles.expiredToggle}>
+          <Row onPress={() => setShowExpired(true)} accessibilityState={{ expanded: false }}>
+            <Text style={styles.expiredToggleText}>{t('home.showExpired', { count: visible.expired.length })}</Text>
+            <AppIcon name="chevron-down" size={16} color={colors.chevron} />
+          </Row>
+        </Group>
+      )}
+    </View>
+  ) : undefined;
 
   // --- Bulk actions (shortlist 5) on the current selection ---
   const chosen = selected ? [...selected] : [];
@@ -575,14 +594,38 @@ export default function Home() {
         keyExtractor={(w: Warranty) => String(w.id)}
         renderItem={renderWarranty}
         renderSectionHeader={({ section }: { section: { key: GroupKey; data: readonly Warranty[] } }) => {
-          if (section.key === 'expired' && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived') {
+          if (section.key === 'hidden' && searchQuery.trim() === '' && filter.kind !== 'archived') {
             return (
               <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
-                <Row onPress={() => setShowExpired(false)} accessibilityState={{ expanded: true }}>
-                  <Text style={styles.expiredToggleText}>{t('home.hideExpired')}</Text>
+                <Row onPress={() => setShowHidden(false)} accessibilityState={{ expanded: true }}>
+                  <Text style={styles.expiredToggleText}>{t('home.hideHidden')}</Text>
                   <AppIcon name="chevron-up" size={16} color={colors.chevron} />
                 </Row>
               </Group>
+            );
+          }
+          if (section.key === 'expired') {
+            return (
+              <View>
+                {visible.hidden.length > 0 && searchQuery.trim() === '' && filter.kind !== 'archived' && !showHidden && (
+                  <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
+                    <Row onPress={() => setShowHidden(true)} accessibilityState={{ expanded: false }}>
+                      <Text style={styles.expiredToggleText}>{t('home.showHidden', { count: visible.hidden.length })}</Text>
+                      <AppIcon name="chevron-down" size={16} color={colors.chevron} />
+                    </Row>
+                  </Group>
+                )}
+                {searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' ? (
+                  <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
+                    <Row onPress={() => setShowExpired(false)} accessibilityState={{ expanded: true }}>
+                      <Text style={styles.expiredToggleText}>{t('home.hideExpired')}</Text>
+                      <AppIcon name="chevron-up" size={16} color={colors.chevron} />
+                    </Row>
+                  </Group>
+                ) : (
+                  <SectionHeader title={t(groupTitle.expired, { count: section.data.length })} />
+                )}
+              </View>
             );
           }
           return <SectionHeader title={t(groupTitle[section.key], { count: section.data.length })} />;
