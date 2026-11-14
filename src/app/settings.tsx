@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { Children, cloneElement, Fragment, isValidElement, useCallback, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { SheetFrame, SheetBody } from '@/components/Sheet';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
@@ -263,6 +263,7 @@ export default function Settings() {
 
   // Section 17: which Google account's Drive holds the backups. The next backup goes there in full.
   async function changeBackupAccount() {
+    setBackupBusy(true);
     try {
       const email = await chooseBackupAccount();
       if (!email) return;
@@ -270,6 +271,8 @@ export default function Settings() {
       if (backup) await backupNow();
     } catch (e) {
       setBackupError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBackupBusy(false);
     }
   }
 
@@ -496,7 +499,7 @@ export default function Settings() {
               </Text>
             </View>
             <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>
-              <Text style={styles.linkSmall}>{t('backup.change')}</Text>
+              {backupBusy ? <ActivityIndicator size="small" color={colors.tint} /> : <Text style={styles.linkSmall}>{t('backup.change')}</Text>}
             </Pressable>
           </Row>
           {link('pulse-outline', TILE.green, t('health.title'), () => router.push('/backup-status'))}

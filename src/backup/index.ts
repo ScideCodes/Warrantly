@@ -48,13 +48,19 @@ export async function runBackup(db: Db, interactive: boolean, now = new Date()):
     // Documents first, each uploaded once: a backup never points at a document Drive does not have.
     const onDrive = new Set((await d.list()).map((f) => f.name));
     const safe: string[] = [];
+    const needed: string[] = [];
     for (const path of filesOf(data)) {
       const name = docBackupName(path);
       if (onDrive.has(name)) safe.push(path);
-      if (onDrive.has(name) || !documentExists(path)) continue;
-      await d.upload(name, await sealBytes(aead, key, await readDocument(path)));
-      safe.push(path);
+      else if (documentExists(path)) needed.push(path);
     }
+    await Promise.all(
+      needed.map(async (path) => {
+        const name = docBackupName(path);
+        await d.upload(name, await sealBytes(aead, key, await readDocument(path)));
+        safe.push(path);
+      }),
+    );
     await uploadAndPrune(d, `${BACKUP_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}.json`, await seal(aead, key, stored.kdf, data));
     await markBackedUp(db, changes, safe); // only after the backup file itself is on Drive
     setSetting('last_backup_at', now.toISOString());

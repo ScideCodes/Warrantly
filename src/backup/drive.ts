@@ -25,16 +25,23 @@ export function driveClient(getToken: () => Promise<string>, fetchFn: typeof fet
     return res;
   }
   const q = (query: string) => encodeURIComponent(query);
+  let cachedFolderId: string | null = null;
 
   async function folderId(): Promise<string> {
+    if (cachedFolderId) return cachedFolderId;
     const found = await (await call(`${API}/files?q=${q(`name = '${FOLDER_NAME}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`)}&fields=files(id)`)).json();
-    if (found.files?.length) return found.files[0].id;
+    if (found.files?.length && typeof found.files[0].id === 'string') {
+      const id = found.files[0].id;
+      cachedFolderId = id;
+      return id;
+    }
     const created = await call(`${API}/files?fields=id`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder' }),
     });
-    return (await created.json()).id;
+    cachedFolderId = (await created.json()).id;
+    return cachedFolderId!;
   }
 
   // shortcut: one page of 1000 files (5 backups + one file per document); page through when a user can have more.
