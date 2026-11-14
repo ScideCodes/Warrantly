@@ -58,7 +58,7 @@ test('parseScanText suggests store, product, date, warranty and order number', (
 
 test('parseScanText leaves unknown fields empty', () => {
   assert.deepEqual(parseScanText('Köszönjük a vásárlást!', '2026-11-11'), {
-    storeName: 'Köszönjük a vásárlást!',
+    storeName: null,
     productName: null,
     purchaseDate: null,
     warrantyStartDate: null,
@@ -96,4 +96,76 @@ test('scanning a mixed-warranty receipt does not give the first product the seco
   const result = parseScanText('Acme Store\n1 × Acme Mouse\nAcme Kettle | 12 months warranty', '2026-11-11');
   assert.equal(result.productName, 'Acme Mouse');
   assert.equal(result.warrantyMonths, null);
+});
+
+test('parseScanText skips mail greeting and extracts company from next-line Szállító and multi-word product', () => {
+  const mailPdf = `Kedves Bence!
+Köszönjük a megrendelést!
+Rendelésszám: 2026-987654
+
+Szállító:
+Alza.cz a.s. Magyarországi Fióktelepe
+1134 Budapest, Róbert Károly körút 54-58.
+Adószám: 24738520-2-41
+
+Vevő:
+Kovács János
+Budapest
+
+Megnevezés
+1 db Apple iPhone 15 Pro 128GB Fekete Titán
+Jótállás: 36 hó garancia
+Fizetendő összeg: 389 990 Ft
+Dátum: 2026.03.15`;
+
+  const result = parseScanText(mailPdf, '2026-11-11');
+  assert.equal(result.storeName, 'Alza');
+  assert.equal(result.productName, 'Apple iPhone 15 Pro 128GB Fekete Titán');
+  assert.equal(result.warrantyMonths, 36);
+  assert.equal(result.purchaseDate, '2026-03-15');
+  assert.equal(result.orderNumber, '2026-987654');
+  assert.equal(result.price, 389990);
+  assert.equal(result.currency, 'HUF');
+});
+
+test('parseScanText detects company by legal form and numbered product line', () => {
+  const invoice = `ELEKTRONIKUS SZÁMLA
+Sorszám: INV-2026-0042
+Extreme Digital-eMAG Kft.
+1097 Budapest, Könyves Kálmán krt. 34.
+Adószám: 10831696-2-44
+
+1. Logitech MX Master 3S vezeték nélküli egér 1 db 39 990 Ft
+Jótállási idő: 24 hónap
+Végösszeg: 39 990 Ft
+Kelt: 2026.04.10`;
+
+  const result = parseScanText(invoice, '2026-11-11');
+  assert.equal(result.storeName, 'Extreme Digital-eMAG Kft.');
+  assert.equal(result.productName, 'Logitech MX Master 3S vezeték nélküli egér');
+  assert.equal(result.warrantyMonths, 24);
+  assert.equal(result.purchaseDate, '2026-04-10');
+  assert.equal(result.price, 39990);
+  assert.equal(result.currency, 'HUF');
+});
+
+test('parseScanText handles multi-space OCR tokens and seller anchor', () => {
+  const ocrInvoice = `Invoice
+Seller: Cyberport GmbH
+Am Brauhaus 5, 01099 Dresden
+
+Customer: John Doe
+Date: 2026.05.20
+
+Items:
+Sony  WH-1000XM5  Noise  Canceling  Headphones 24 months warranty 1 pcs 349.00 EUR
+Total: 349.00 EUR`;
+
+  const result = parseScanText(ocrInvoice, '2026-11-11');
+  assert.equal(result.storeName, 'Cyberport GmbH');
+  assert.equal(result.productName, 'Sony WH-1000XM5 Noise Canceling Headphones');
+  assert.equal(result.warrantyMonths, 24);
+  assert.equal(result.purchaseDate, '2026-05-20');
+  assert.equal(result.price, 349);
+  assert.equal(result.currency, 'EUR');
 });

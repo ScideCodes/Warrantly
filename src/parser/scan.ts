@@ -109,14 +109,134 @@ function findScanWarrantyMonths(text: string): number | null {
   return null;
 }
 
-// The shop's name is usually printed first; skip lines that are only numbers, dates or addresses.
+const KNOWN_RETAILERS: [RegExp, string][] = [
+  [/\b(?:alza(?:\.hu|\.cz|\.sk)?)\b/i, 'Alza'],
+  [/\b(?:emag(?:\.hu|\.ro)?)\b/i, 'eMAG'],
+  [/\b(?:media\s*markt)\b/i, 'MediaMarkt'],
+  [/\b(?:istyle(?:\.hu)?)\b/i, 'iStyle'],
+  [/\b(?:euronics(?:\.hu)?)\b/i, 'Euronics'],
+  [/\b(?:aqua(?:\s*optima|\.hu)?)\b/i, 'Aqua'],
+  [/\b(?:pcx(?:\.hu)?)\b/i, 'PCX'],
+  [/\b(?:praktiker(?:\.hu)?)\b/i, 'Praktiker'],
+  [/\b(?:ikea(?:\.com|\.hu)?)\b/i, 'IKEA'],
+  [/\b(?:tesco(?:\.hu)?)\b/i, 'Tesco'],
+  [/\b(?:auchan(?:\.hu)?)\b/i, 'Auchan'],
+  [/\b(?:lidl(?:\.hu)?)\b/i, 'Lidl'],
+  [/\b(?:aldi(?:\.hu)?)\b/i, 'Aldi'],
+  [/\b(?:amazon(?:\.com|\.de|\.co\.uk)?)\b/i, 'Amazon'],
+  [/\b(?:apple(?:\.com)?)\b/i, 'Apple'],
+  [/\b(?:conrad(?:\.hu|\.de)?)\b/i, 'Conrad'],
+  [/\b(?:notino(?:\.hu)?)\b/i, 'Notino'],
+  [/\b(?:zalando(?:\.hu)?)\b/i, 'Zalando'],
+  [/\b(?:pepita(?:\.hu)?)\b/i, 'Pepita'],
+  [/\b(?:ipon(?:\.hu)?)\b/i, 'iPon'],
+  [/\b(?:extreme\s*digital)\b/i, 'Extreme Digital'],
+];
+
+const SELLER_LABEL = /^(?:eladó|forgalmazó|kereskedő|szállító|kibocsátó|értékesítő|seller|vendor|store|merchant|sold\s*by|issued\s*by)\b\s*[:：-]?\s*(.*)$/i;
+const LEGAL_FORM = /\b(?:kft|zrt|nyrt|bt|kkt|e\.v\.|egyéni vállalkozó|gmbh|ag|ltd|llc|inc|corp|s\.r\.o\.|b\.v\.|s\.a\.|sp\.\s*z\s*o\.o\.)\.?\b/i;
+const NOISE_START = /^(?:kedves|tisztelt|üdvözöl|dear|hello|hi|köszönjük|thank\s*you|rendelés|megrendelés|order|szállítás|értesítés|számla|nyugta|invoice|receipt|garanciajegy|jótállási|szállítólevél|eredeti|másolat|díjbekérő|vevő|vásárló|customer|buyer|bill\s+to|ship\s+to|gls|dpd|foxpost|packeta|magyar\s+posta|mpl|express\s+one|dhl|ups|fedex)\b/i;
+const METADATA_CONTENT = /(?:adószám|adoszam|tax|vat|bankszámla|iban|swift|bic|cégjegyzék|tel:|telefon|email|e-mail|honlap|web:|\d{4}\s+[A-ZÁÉÍÓÖŐÚÜŰ][a-záéíóöőúüű]+|(?:utca|út|tér|krt|körút|sor|dűlő|street|road|ave)\b)/i;
+
+function cleanStoreCandidate(raw: string): string | null {
+  let s = raw.trim();
+  s = s.replace(/^(?:cégnév|eladó|forgalmazó|kereskedő|szállító|kibocsátó|értékesítő|seller|vendor|store|merchant|sold\s*by|issued\s*by)\s*[:：-]\s*/i, '');
+  s = s.split(/(?:,|\s+-\s+|;|\s+adószám|\s+adoszam|\s+tax|\s+cím:)/i)[0].trim();
+  if (s.length < 3 || s.length > 60 || NOISE_START.test(s) || METADATA_CONTENT.test(s)) return null;
+  if (!/\p{L}{2}/u.test(s)) return null;
+  return s;
+}
+
+// Multi-stage merchant extraction:
+// 1. Email From / Feladó header
+// 2. Explicit seller anchor block (same line or next lines)
+// 3. Official corporate entity detection (Kft, Zrt, GmbH, Ltd, etc.)
+// 4. Known retailer matching
+// 5. Domain heuristic
+// 6. Strict noise-filtered fallback
 function findStore(lines: string[]): string | null {
-  const sellerLine = lines.find((l) => /^(?:eladó|forgalmazó|kereskedő|szállító|seller|vendor|store)\s*[:：-]\s*(.+)$/i.test(l));
-  if (sellerLine) {
-    const m = sellerLine.match(/^(?:eladó|forgalmazó|kereskedő|szállító|seller|vendor|store)\s*[:：-]\s*(.+)$/i);
-    if (m && m[1].trim().length >= 3) return m[1].trim();
+  // 1. Email sender header
+  for (const line of lines.slice(0, 15)) {
+    const fromMatch = line.match(/^(?:from|feladó)\s*[:：]\s*(?:(?:"?([^"<>\n]+)"?\s*)?<[^>]+>|([^\n<]+))/i);
+    if (fromMatch) {
+      const sender = (fromMatch[1] || fromMatch[2] || '').trim();
+      const cleaned = cleanStoreCandidate(sender);
+      if (cleaned) {
+        for (const [re, canonical] of KNOWN_RETAILERS) {
+          if (re.test(cleaned)) return canonical;
+        }
+        return cleaned;
+      }
+    }
   }
-  return lines.find((l) => /\p{L}{3}/u.test(l) && l.length <= 40 && !/\d{4}\s+\p{L}+,|adószám|tax|nyugta|számla|invoice|receipt/iu.test(l)) ?? null;
+
+  // 2. Explicit seller anchor block (same line or next line)
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const m = line.match(SELLER_LABEL);
+    if (m) {
+      if (m[1] && m[1].trim().length >= 3) {
+        const cleaned = cleanStoreCandidate(m[1]);
+        if (cleaned) return cleaned;
+      }
+      for (let j = i + 1; j <= Math.min(i + 3, lines.length - 1); j++) {
+        const next = lines[j];
+        if (NOISE_START.test(next) || METADATA_CONTENT.test(next)) continue;
+        const cleaned = cleanStoreCandidate(next);
+        if (cleaned) return cleaned;
+      }
+    }
+  }
+
+  // 3. Corporate legal entities in document header (before Buyer section)
+  let pastBuyer = false;
+  for (let i = 0; i < Math.min(lines.length, 25); i++) {
+    const line = lines[i];
+    if (/^(?:vevő|vásárló|customer|buyer|bill\s+to|ship\s+to)\b/i.test(line)) {
+      pastBuyer = true;
+      continue;
+    }
+    if (!pastBuyer && LEGAL_FORM.test(line)) {
+      const cleaned = cleanStoreCandidate(line);
+      if (cleaned) return cleaned;
+    }
+  }
+
+  // 4. Known retailer matching across top 20 lines
+  for (let i = 0; i < Math.min(lines.length, 20); i++) {
+    const line = lines[i];
+    for (const [re, canonical] of KNOWN_RETAILERS) {
+      if (re.test(line)) {
+        const cleaned = cleanStoreCandidate(line);
+        return cleaned && cleaned.length <= canonical.length + 6 ? cleaned : canonical;
+      }
+    }
+  }
+
+  // 5. Web domain or email domain in top 25 lines
+  for (let i = 0; i < Math.min(lines.length, 25); i++) {
+    const domainMatch = lines[i].match(/(?:www\.|@)([a-z0-9-]+(?:\.[a-z0-9-]+)+)/i);
+    if (domainMatch) {
+      const dom = domainMatch[1].toLowerCase();
+      for (const [re, canonical] of KNOWN_RETAILERS) {
+        if (re.test(dom)) return canonical;
+      }
+    }
+  }
+
+  // 6. Strict fallback on top lines (no greetings, no dates, no sentences)
+  for (let i = 0; i < Math.min(lines.length, 8); i++) {
+    const line = lines[i];
+    if (NOISE_START.test(line) || METADATA_CONTENT.test(line)) continue;
+    if (/[.!?]$/.test(line.trim())) continue;
+    if (/\d/.test(line)) continue;
+    const cleaned = cleanStoreCandidate(line);
+    if (cleaned && cleaned.split(/\s+/).length <= 4) {
+      return cleaned;
+    }
+  }
+
+  return null;
 }
 
 export function parseScanText(text: string, today: string): ScanResult {

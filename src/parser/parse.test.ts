@@ -70,3 +70,15 @@ test('the purchase date is the calendar day on the phone, not in UTC', () => {
     else process.env.TZ = tz;
   }
 });
+
+test('findItems captures multi-word products from quantity prefixes, numbers and labels', () => {
+  assert.deepEqual(findItems('1 db Apple iPhone 15 Pro 128GB Fekete Titán 379 990 Ft'), [
+    { name: 'Apple iPhone 15 Pro 128GB Fekete Titán', months: null },
+  ]);
+  assert.deepEqual(findItems('1. Logitech MX Master 3S vezeték nélküli egér'), [
+    { name: 'Logitech MX Master 3S vezeték nélküli egér', months: null },
+  ]);
+  assert.deepEqual(findItems('Termék megnevezése: Sony WH-1000XM4 vezeték nélküli fejhallgató'), [
+    { name: 'Sony WH-1000XM4 vezeték nélküli fejhallgató', months: null },
+  ]);
+});
