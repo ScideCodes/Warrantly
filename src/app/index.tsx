@@ -40,7 +40,7 @@ import { showAlert } from '@/components/Dialog';
 import { finishPendingDeletes, showUndo } from '@/undo';
 import { CATEGORIES, daysUntil, filterWarranties, plain, todayYmd, totalValue, warrantyFacets } from '@/warranty';
 import { updateWidget } from '@/widget';
-import { GMAIL_IMPORT } from '@/features';
+import { isGmailImportEnabled, useGmailImport } from '@/features';
 
 type SyncState = { kind: 'idle'; problems: string[] } | { kind: 'syncing'; email: string; done: number; total: number };
 // What the filter sheet narrows the list to; one at a time, so it is always clear what is shown.
@@ -86,6 +86,7 @@ export default function Home() {
   const [docSheet, setDocSheet] = useState<{ w: Warranty; docs: Attachment[] } | null>(null);
   const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
   const updateReady = useUpdateReady();
+  const gmailImport = useGmailImport();
   const syncing = useRef(false);
   const listRef = useRef<SectionList<Warranty, WarrantySection>>(null);
   const searchRef = useRef<React.ComponentRef<typeof TextInput>>(null);
@@ -153,7 +154,7 @@ export default function Home() {
     }, [load]),
   );
   useEffect(() => {
-    if (name && GMAIL_IMPORT) void Promise.resolve().then(runSync);
+    if (name && isGmailImportEnabled()) void Promise.resolve().then(runSync);
     if (name && shouldShowWhatsNew()) router.push('/whats-new');
     else if (name) void getDb().then((db) => listWarranties(db, 'complete')).then((l) => maybeAskReview(l.length)).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -447,7 +448,7 @@ export default function Home() {
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
       <Text style={styles.connectBody}>{t('home.emptyBody')}</Text>
       <Button title={t('home.addLong')} onPress={() => router.push('/warranty/edit')} />
-      {GMAIL_IMPORT && <Button title={t('home.connectGmail')} onPress={connect} kind="glass" />}
+      {gmailImport && <Button title={t('home.connectGmail')} onPress={connect} kind="glass" />}
     </View>
   );
 
@@ -543,7 +544,7 @@ export default function Home() {
             onRefresh={() => {
               void runSync();
             }}
-            enabled={GMAIL_IMPORT && !!accounts?.length && !selecting}
+            enabled={gmailImport && !!accounts?.length && !selecting}
             colors={[colors.tint]}
             progressViewOffset={insets.top + BAR_H}
           />

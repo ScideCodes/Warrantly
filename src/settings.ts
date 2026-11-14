@@ -45,7 +45,7 @@ export const getWidgetNames = (): boolean | null => {
 export const setWidgetNames = (on: boolean | null): void => void (on === null ? Storage.removeItemSync('widget_names') : Storage.setItemSync('widget_names', on ? '1' : '0'));
 
 // Backup settings (section 17). The backup password's key lives in SecureStore, not here.
-type SettingKey = 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'last_backup_error_at' | 'backup_account';
+type SettingKey = 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'last_backup_error_at' | 'backup_account' | 'gmail_import_enabled';
 export const getSetting = (key: SettingKey): string | null => Storage.getItemSync(key);
 export const setSetting = (key: SettingKey, value: string): void => Storage.setItemSync(key, value);
 // What a backup carries besides the database.

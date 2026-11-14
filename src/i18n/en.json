@@ -269,6 +269,8 @@
     "widgetNames": "Names on the widget",
     "widgetNamesHint": "Names are visible on your home screen, even when the app is locked.",
     "version": "Warrantly {{version}}",
+    "devModeGmailOn": "Developer mode: Gmail connect enabled",
+    "devModeGmailOff": "Developer mode: Gmail connect disabled",
     "returnReminders": "Return reminders",
     "returnRemindersHint": "Online orders: reminder 2 days before the EU 14-day return window ends.",
     "reminderTime": "Time",
