@@ -209,5 +209,5 @@ const useStyles = themed(() => StyleSheet.create({
   glyph: { width: 29, alignItems: 'center' },
   label: { ...TYPE.body, flex: 1, color: colors.ink },
   labelSelected: { color: colors.tintInk, fontWeight: '600' },
-  count: { ...TYPE.body, color: colors.ink2 },
+  count: { ...TYPE.body, fontVariant: ['tabular-nums'], color: colors.ink2 },
 }));

@@ -594,7 +594,7 @@ export default function Settings() {
                     {defaultCurrency === code && <AppIcon name="checkmark" size={15} color="#fff" />}
                   </View>
                 </View>
-                <Text style={[styles.label, styles.rowText]}>{code} · {currencyName(code, i18n.language)}</Text>
+                <Text style={[styles.label, styles.rowText]}><Text style={styles.currencyCode}>{code}</Text> · {currencyName(code, i18n.language)}</Text>
               </Row>
             ))}
           </Group>
@@ -617,7 +617,8 @@ const useStyles = themed(() => StyleSheet.create({
   tileSpace: { width: 29, alignItems: 'center' },
   label: { ...TYPE.body, color: colors.ink, flexShrink: 1 },
   hint: { ...TYPE.foot, color: colors.ink2 },
-  value: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%', textAlign: 'right' },
+  value: { ...TYPE.body, color: colors.ink2, flexShrink: 1, maxWidth: '45%', textAlign: 'right', fontVariant: ['tabular-nums'] },
+  currencyCode: { fontVariant: ['tabular-nums'], fontWeight: '600' },
   nameButtons: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   nameButton: { flexGrow: 1, flexBasis: 120 },
   inlineLinks: { flexDirection: 'row', flexWrap: 'wrap', columnGap: 20, rowGap: 4, marginTop: 4 },
