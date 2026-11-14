@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { glass, reduceMotion } from '@/components/ui';
-import { colors, CONTROL_H, EASE, TYPE, themed } from '@/theme';
+import { colors, CONTROL_H, EASE, isDarkNow, TYPE, themed } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -24,11 +24,23 @@ function PinKey({ size, label, onPress, disabled, children, plain, testID }: { s
     if (reduceMotion()) return;
     Animated.timing(scale, { toValue: v, duration: 110, easing: Easing.bezier(...EASE), useNativeDriver: true }).start();
   };
+  const dark = isDarkNow();
   return (
     <Animated.View style={[{ transform: [{ scale }] }, disabled && styles.disabled]}>
       <Pressable
         testID={testID}
-        style={({ pressed }) => [styles.key, { width: size, height: size, borderRadius: size / 2 }, !plain && glass(), pressed && { backgroundColor: colors.select }]}
+        style={({ pressed }) => [
+          styles.key,
+          { width: size, height: size, borderRadius: size / 2 },
+          !plain && (dark
+            ? {
+                backgroundColor: 'rgba(255, 255, 255, 0.11)',
+                borderWidth: StyleSheet.hairlineWidth,
+                borderColor: 'rgba(255, 255, 255, 0.15)',
+              }
+            : glass(false)),
+          pressed && { backgroundColor: colors.select },
+        ]}
         onPress={onPress}
         onPressIn={() => to(0.96)}
         onPressOut={() => to(1)}
@@ -124,7 +136,19 @@ export function PinLayout({ icon, title, message, error, pad, footer, top = 0, s
       <View style={styles.head}>
         {/* Decorative: short phones drop it so the keys and the button fit without scrolling. */}
         {!compact && (
-          <View style={[styles.tile, glass()]} importantForAccessibility="no-hide-descendants">
+          <View
+            style={[
+              styles.tile,
+              isDarkNow()
+                ? {
+                    backgroundColor: colors.card2,
+                    borderWidth: StyleSheet.hairlineWidth,
+                    borderColor: colors.line,
+                  }
+                : glass(false),
+            ]}
+            importantForAccessibility="no-hide-descendants"
+          >
             <AppIcon name={icon} size={28} color={colors.tint} />
           </View>
         )}
