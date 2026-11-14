@@ -93,3 +93,6 @@ preview build, then the matching OTA and GitHub release with the APK attached.
   `npx tsc --noEmit` clean. `npx expo lint` 0 errors (1 existing warning in `src/i18n/index.ts`).
 - 14 Nov 2026: email share import (`.eml` and shared text into the inbox). `npm test` 149 pass, 0 fail. tsc clean,
   lint 0 errors. Not yet run on a device: the new share filters need a native build.
+- 14 Nov 2026, emulator (debug build, `dev.warrantly.app`): shared text and an `.eml` shared from Files land in the
+  Inbox and fill the form (store, date, warranty length). Files shared from Downloads failed before with "Missing
+  READ permission": the share module passed a raw storage path; it now passes the granted `content://` URI.
