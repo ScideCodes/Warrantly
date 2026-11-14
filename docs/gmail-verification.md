@@ -15,7 +15,7 @@ read 14 Nov 2026.
 | Privacy policy on the same domain as the homepage, linked on the OAuth consent screen, following the User Data Policy and Limited Use | Text ready: `docs/privacy.md` (has the Limited Use sentence). Needs hosting. |
 | Domain ownership in Google Search Console, by an Owner/Editor of the Cloud project | To do. Check that the chosen domain is accepted as an authorized domain. |
 | Justification: how the scope is used and why a narrower one is not enough | Draft below. |
-| Unlisted YouTube demo video, in English | Script below. |
+| Unlisted YouTube demo video, in English | Done 14 Nov 2026: https://www.youtube.com/watch?v=J82HG2bCe4U (staging build, test account). Shows the OAuth clients and scopes, the unverified-app warning, Gmail and Drive consent, an imported test mail with its PDF. |
 | Security assessment (CASA), yearly | Possibly not required. See "CASA" below. |
 
 ## Justification (draft)
