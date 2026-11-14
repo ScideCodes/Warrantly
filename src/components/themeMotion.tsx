@@ -3,16 +3,16 @@ import {
   AccessibilityInfo,
   Pressable as NativePressable,
   TextInput as NativeTextInput,
+  View as NativeView,
+  Text as NativeText,
   type PressableProps,
   type TextInputProps,
   type TextProps,
   type ViewProps,
 } from 'react-native';
-import Animated from 'react-native-reanimated';
 
 // One preference listener for the app, including changes made while it is open.
-// Start with motion disabled until the asynchronous accessibility query resolves.
-let reduced = true;
+let reduced = false;
 let preferenceVersion = 0;
 const listeners = new Set<() => void>();
 function setReduced(value: boolean) {
@@ -33,11 +33,8 @@ const subscribe = (notify: () => void) => {
 };
 export const reduceMotion = () => reduced;
 
-// CSS colour transitions run on the UI thread. No palette updates every frame,
-// screenshots, overlays or remounting: forms, scroll positions and dialogs survive.
-// Explicit properties keep layout, press scales and scrolling out of the transition.
 export function useThemeTransition() {
-  const reduce = useSyncExternalStore(subscribe, reduceMotion, () => true);
+  const reduce = useSyncExternalStore(subscribe, reduceMotion, () => false);
   return {
     transitionProperty: ['backgroundColor', 'borderColor', 'borderTopColor', 'borderBottomColor', 'borderLeftColor', 'borderRightColor'],
     transitionDuration: reduce ? '0ms' : '220ms',
@@ -45,42 +42,31 @@ export function useThemeTransition() {
   };
 }
 
-export const View = forwardRef<ComponentRef<typeof Animated.View>, ViewProps>(function ThemeView({ style, ...props }, ref) {
-  const transition = useThemeTransition();
-  return <Animated.View {...props} ref={ref} style={[style, transition]} />;
+export const View = forwardRef<ComponentRef<typeof NativeView>, ViewProps>(function ThemeView({ style, ...props }, ref) {
+  return <NativeView {...props} ref={ref} style={style} />;
 });
 
-export const Text = forwardRef<ComponentRef<typeof Animated.Text>, TextProps>(function ThemeText({ style, ...props }, ref) {
-  const transition = useThemeTransition();
-  return <Animated.Text {...props} ref={ref} style={[{ includeFontPadding: false }, style, transition, { transitionProperty: [...transition.transitionProperty, 'color'] }]} />;
+export const Text = forwardRef<ComponentRef<typeof NativeText>, TextProps>(function ThemeText({ style, ...props }, ref) {
+  return <NativeText {...props} ref={ref} style={[{ includeFontPadding: false }, style]} />;
 });
 
-const AnimatedPressable = Animated.createAnimatedComponent(NativePressable);
 export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, PressableProps & { pressScale?: number }>(function ThemePressable({ style, pressScale, ...props }, ref) {
-  const transition = useThemeTransition();
   const [pressed, setPressed] = useState(false);
-  // Static controls have no pressed style to evaluate. Updating their React state
-  // and CSS duration on touch needlessly rewrites the animated native surface.
-  // No hover state: a phone has no hover, and a finger sliding over controls must not trigger anything.
   const tracksPress = typeof style === 'function' || pressScale !== undefined;
-  // Reanimated needs a concrete style array; passing Pressable's style callback
-  // through it discards the button's layout and fill on native.
-  return <AnimatedPressable {...props} ref={ref}
-    onPressIn={(event) => { if (tracksPress) setPressed(true); props.onPressIn?.(event); }}
-    onPressOut={(event) => { if (tracksPress) setPressed(false); props.onPressOut?.(event); }}
-    style={[typeof style === 'function' ? style({ pressed, hovered: false }) : style, transition,
-      pressed && { transitionDuration: '0ms' },
-      pressScale !== undefined && {
-        transform: [{ scale: pressed && !reduceMotion() ? pressScale : 1 }],
-        transitionProperty: [...transition.transitionProperty, 'transform'],
-        transitionDuration: [...transition.transitionProperty.map(() => pressed ? '0ms' : transition.transitionDuration), reduceMotion() ? '0ms' : '110ms'],
-      },
-    ]}
-  />;
+  return (
+    <NativePressable
+      {...props}
+      ref={ref}
+      onPressIn={(event) => { if (tracksPress) setPressed(true); props.onPressIn?.(event); }}
+      onPressOut={(event) => { if (tracksPress) setPressed(false); props.onPressOut?.(event); }}
+      style={[
+        typeof style === 'function' ? style({ pressed, hovered: false }) : style,
+        pressScale !== undefined && pressed && !reduceMotion() && { transform: [{ scale: pressScale }] },
+      ]}
+    />
+  );
 });
 
-const AnimatedInput = Animated.createAnimatedComponent(NativeTextInput);
 export const TextInput = forwardRef<ComponentRef<typeof NativeTextInput>, TextInputProps>(function ThemeInput({ style, ...props }, ref) {
-  const transition = useThemeTransition();
-  return <AnimatedInput {...props} ref={ref} style={[style, transition, { transitionProperty: [...transition.transitionProperty, 'color'] }]} />;
+  return <NativeTextInput {...props} ref={ref} style={style} />;
 });

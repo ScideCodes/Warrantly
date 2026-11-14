@@ -775,17 +775,22 @@ export default function WarrantyDetail() {
                   />
                 )}
               />
-              <Animated.View
-                pointerEvents={selectedBundleIds.size > 0 ? 'auto' : 'none'}
-                style={[styles.bundleFloatingBar, { transform: [{ translateY: floatY }], opacity: floatOpacity }]}
-              >
-                <Button
-                  title={t('bundle.addSelected', { count: selectedBundleIds.size })}
-                  icon="checkmark-circle-outline"
-                  onPress={onAddBundle}
-                  style={styles.bundleFloatingBtn}
-                />
-              </Animated.View>
+              {selectedBundleIds.size > 0 && (
+                <Animated.View
+                  style={[styles.dockWrapper, { transform: [{ translateY: floatY }], opacity: floatOpacity }]}
+                >
+                  <Pressable
+                    pressScale={0.96}
+                    style={styles.dockPill}
+                    onPress={onAddBundle}
+                    accessibilityRole="button"
+                    accessibilityLabel={t('bundle.addSelected', { count: selectedBundleIds.size })}
+                  >
+                    <AppIcon name="checkmark-circle" size={20} color={colors.onAccent} />
+                    <Text style={styles.dockText}>{t('bundle.addSelected', { count: selectedBundleIds.size })}</Text>
+                  </Pressable>
+                </Animated.View>
+              )}
             </>
           )}
         </View>
@@ -868,8 +873,24 @@ const useStyles = themed(() => StyleSheet.create({
   bundleLabelSelected: { color: colors.tintInk, fontWeight: '600' },
   bundleSheetContainer: { paddingHorizontal: 16, paddingBottom: 8, flexShrink: 1, minHeight: 0, maxHeight: 520, position: 'relative' },
   bundleList: { backgroundColor: colors.sheetGroup, borderRadius: RADIUS, overflow: 'hidden', flexGrow: 0, flexShrink: 1 },
-  bundleFloatingBar: { position: 'absolute', bottom: 12, left: 20, right: 20, zIndex: 20 },
-  bundleFloatingBtn: { height: 50, borderRadius: 25, boxShadow: colors.shadow },
+  dockWrapper: { position: 'absolute', bottom: 20, left: 0, right: 0, alignItems: 'center', zIndex: 100 },
+  dockPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    height: 52,
+    paddingHorizontal: 24,
+    borderRadius: 26,
+    backgroundColor: colors.accent,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.3)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 14,
+    elevation: 12,
+  },
+  dockText: { ...TYPE.headline, color: colors.onAccent, fontWeight: '700', letterSpacing: 0.2 },
   noteRowLine: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, marginHorizontal: ROW_X, paddingHorizontal: 0 },
   noteInput: { flex: 1, minWidth: 0 },
 }));
