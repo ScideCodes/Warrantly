@@ -1,7 +1,7 @@
 import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
@@ -92,7 +92,10 @@ export default function Transfer() {
         <>
           <SectionHeader title={t('transfer.documents')} />
           <Group>
-            {item.documents.map((d, i) => check(docs.has(i), d.filename, () => setDocs((s) => toggle(s, i)), i > 0, d.label ? t(`docLabel.${d.label}`) : undefined))}
+            {item.documents.map((d, i) => <View key={i}>
+              {check(docs.has(i), d.filename, () => setDocs((s) => toggle(s, i)), i > 0, d.label ? t(`docLabel.${d.label}`) : undefined)}
+              {d.local_path && <Button kind="glass" title={t('redact.title')} onPress={() => router.push({ pathname: '/redact', params: { path: d.local_path! } })} />}
+            </View>)}
           </Group>
         </>
       )}
