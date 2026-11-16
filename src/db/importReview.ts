@@ -1,3 +1,4 @@
+import { encodeSerialEntries } from '../serialNumbers.ts';
 import { addAttachment, addManual, type Db } from './repo.ts';
 import { reviewValid, type ReviewDraft } from '../importReview.ts';
 import { getInboxItem } from './features.ts';
@@ -16,7 +17,7 @@ export async function saveReviewedImport(db: Db, inboxId: number, draft: ReviewD
     for (const p of chosen) {
       const id = await addManual(db, { account_id: null, product_name: p.name.trim(), store_name: draft.store.trim(), purchase_date: draft.date,
         warranty_start_date: draft.date, warranty_months: Number(p.months), order_number: draft.order.trim() || null,
-        serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null }, 'scan');
+        coverage: p.coverage ?? null, serial_numbers: encodeSerialEntries(p.serials ?? []), serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null }, 'scan');
       await addAttachment(db, id, item.filename, item.local_path);
       if (bundle) await db.runAsync('UPDATE warranties SET bundle_id = ? WHERE id = ?', [bundle, id]);
       ids.push(id);

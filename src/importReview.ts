@@ -1,8 +1,9 @@
 import { findItems, cleanText } from './parser/parse.ts';
 import { parseScanText } from './parser/scan.ts';
+import { validSerialEntries, type SerialEntry } from './serialNumbers.ts';
 import { formErrors } from './warranty.ts';
 
-export type ReviewProduct = { original: string; name: string; months: string; selected: boolean; remembered?: boolean };
+export type ReviewProduct = { original: string; name: string; months: string; selected: boolean; remembered?: boolean; coverage?: 'store' | 'extended' | null; serials?: SerialEntry[] };
 export type ReviewDraft = { store: string; date: string; order: string; products: ReviewProduct[] };
 export type ShopChoices = Record<string, { name: string; months?: string }>;
 export const shopKey = (name: string) => name.normalize('NFC').trim().toLocaleLowerCase().replace(/\s+/g, ' ');
@@ -25,7 +26,7 @@ export function reviewDraft(text: string, today: string, choices: ShopChoices = 
 
 export function reviewValid(draft: ReviewDraft): boolean {
   const chosen = draft.products.filter(p => p.selected);
-  return chosen.length > 0 && chosen.length <= 100 && chosen.every(p => /^(?:[1-9]|[1-9]\d|1[01]\d|120)$/.test(p.months) && formErrors({ product_name: p.name, store_name: draft.store, purchase_date: draft.date, warranty_start_date: '', warranty_months: p.months }).length === 0);
+  return chosen.length > 0 && chosen.length <= 100 && chosen.every(p => (p.coverage == null || p.coverage === 'store' || p.coverage === 'extended') && validSerialEntries(p.serials ?? []) && /^(?:[1-9]|[1-9]\d|1[01]\d|120)$/.test(p.months) && formErrors({ product_name: p.name, store_name: draft.store, purchase_date: draft.date, warranty_start_date: '', warranty_months: p.months }).length === 0);
 }
 
 // Only explicit, confirmed product corrections; never extrapolate one item's length to the whole shop.

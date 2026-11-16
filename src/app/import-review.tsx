@@ -1,6 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import ChoicePills from '@/components/ChoicePills';
+import SerialNumbersEditor from '@/components/SerialNumbersEditor';
+import { validSerialEntries } from '@/serialNumbers';
+import { takeScannedSerial } from '@/serial';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { Page } from '@/components/Page';
@@ -31,6 +35,15 @@ export default function ImportReview() {
   const [attempt, setAttempt] = useState(0);
   const [sourceModal, setSourceModal] = useState<{ value: string; label: string; mode: 'excerpt' | 'full' } | null>(null);
   const saving = useRef(false);
+  const scanTarget = useRef<{ product: number; serial: number } | null>(null);
+  useFocusEffect(useCallback(() => {
+    const serial = takeScannedSerial();
+    const target = scanTarget.current;
+    scanTarget.current = null;
+    if (serial && target) setDraft(d => d && ({ ...d, products: d.products.map((p, index) => index === target.product
+      ? { ...p, serials: (p.serials ?? [{ label: '', value: '' }]).map((entry, i) => i === target.serial ? { ...entry, value: serial } : entry) }
+      : p) }));
+  }, []));
   const { pickDate, datePicker } = useDatePicker();
   useEffect(() => {
     let active = true;
@@ -103,6 +116,16 @@ export default function ImportReview() {
             <Input accessibilityLabel={`${t('form.product')} ${index + 1}`} value={product.name} placeholder={t('importReview.required')} onChangeText={name => update(index, { name })} editable={!busy} />
             <View style={styles.heading}><Text style={styles.label}>{t('importReview.months')}</Text>{sourceButton(product.original || product.months, t('importReview.months'))}</View>
             <Input accessibilityLabel={`${t('importReview.months')} ${index + 1}`} keyboardType="number-pad" value={product.months} placeholder={t('importReview.enterMonths')} onChangeText={months => update(index, { months })} editable={!busy} />
+            <View style={styles.field}>
+              <Text style={styles.label}>{t('form.coverage')}</Text>
+              <ChoicePills disabled={busy} options={([null, 'store', 'extended'] as const).map(coverage => ({
+                key: String(coverage), label: t(`coverage.${coverage ?? 'standard'}`), selected: (product.coverage ?? null) === coverage,
+                onPress: () => update(index, { coverage }),
+              }))} />
+            </View>
+            <SerialNumbersEditor entries={product.serials ?? [{ label: '', value: '' }]} onChange={serials => update(index, { serials })}
+              disabled={busy} showErrors={!validSerialEntries(product.serials ?? [])}
+              onScan={serial => { scanTarget.current = { product: index, serial }; router.push('/scan-serial'); }} />
             {(!product.name.trim() || !/^(?:[1-9]|[1-9]\d|1[01]\d|120)$/.test(product.months)) && <Text style={styles.hint}>{t('importReview.checkMissing')}</Text>}
           </View>}
         </Group>)}
