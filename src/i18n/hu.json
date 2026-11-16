@@ -107,7 +107,10 @@
     "applyTitle_other": "{{months}} hónap legyen {{count}} további tételnél is ({{store}})?",
     "applyYes": "Mindegyiknél",
     "applyNo": "Csak ennél",
-    "lead": "Ellenőrizendő bizonylatok, sorozatszámok és dátumok. Nyisd meg a terméket a pótláshoz."
+    "lead": "Ellenőrizendő bizonylatok, sorozatszámok és dátumok. Nyisd meg a terméket a pótláshoz.",
+    "dismiss": "Hiányzó adatok elrejtése",
+    "restore": "Hiányzó adatok újbóli megjelenítése",
+    "dismissProduct": "{{product}} hiányzó adatainak elrejtése"
   },
   "form": {
     "titleAdd": "Garancia hozzáadása",

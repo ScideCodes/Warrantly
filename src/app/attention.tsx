@@ -5,12 +5,12 @@ import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { formatDate, WarrantyRow } from '@/components/WarrantyRow';
+import { displayName, formatDate, WarrantyRow } from '@/components/WarrantyRow';
 import { ListPage } from '@/components/Page';
-import { Button, Group, SectionHeader } from '@/components/ui';
+import { Button, GlassButton, Group, SectionHeader } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { answerReturn, deleteWarranty, listReturnPrompts, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
-import { missingDetails } from '@/db/productTools';
+import { dismissMissingDetails, missingDetails } from '@/db/productTools';
 import { deleteDocuments } from '@/documents';
 import { colors, RADIUS, TYPE, themed } from '@/theme';
 
@@ -64,12 +64,14 @@ export default function Attention() {
       data={items}
       keyExtractor={(w) => String(w.id)}
       renderItem={({ item, index }) => (
-        <WarrantyRow
-          warranty={item}
-          separator={index > 0}
-          style={[styles.row, index === 0 && styles.first, index === items.length - 1 && styles.last]}
-          to={{ pathname: '/warranty/[id]', params: { id: String(item.id) } }}
-        />
+        <View style={[styles.row, styles.item, index === 0 && styles.first, index === items.length - 1 && styles.last]}>
+          <WarrantyRow warranty={item} separator={index > 0} style={styles.warranty}
+            to={{ pathname: '/warranty/[id]', params: { id: String(item.id) } }} />
+          <View style={styles.dismiss}>
+            <GlassButton icon="close" label={t('attention.dismissProduct', { product: displayName(t, item) })}
+              onPress={() => void getDb().then(db => dismissMissingDetails(db, item.id, true)).then(reload).catch(e => showAlert(String(e)))} />
+          </View>
+        </View>
       )}
       ListEmptyComponent={returns.length ? undefined : <EmptyState message={t('attention.empty')} icon="checkmark-circle-outline" />}
     />
@@ -83,6 +85,8 @@ const useStyles = themed(() => StyleSheet.create({
   action: { flexGrow: 1, flexBasis: 120 },
   gap: { height: 28 },
   top: { height: 20 },
+  item: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
+  warranty: { flex: 1, minWidth: 0 }, dismiss: { paddingRight: 12 },
   row: { backgroundColor: colors.card },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },
