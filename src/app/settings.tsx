@@ -14,7 +14,7 @@ import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBi
 import { rescheduleReminders } from '@/reminders';
 import { restartIntoUpdate, versionLine } from '@/appUpdate';
 import { openStorePage } from '@/rate';
-import { deleteAllData, importSharedFile, sharePdf, shareText, shareWarranties } from '@/dataTools';
+import { deleteAllData, importSharedFile, sharePdf, shareText } from '@/dataTools';
 import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount, configureGoogleSignIn } from '@/google';
 import { appLanguage, resources } from '@/i18n';
@@ -227,16 +227,6 @@ export default function Settings() {
     try {
       const data = await dumpDb(await getDb(), settingsSnapshot());
       await shareText(`warrantly-all-data-${data.createdAt.slice(0, 10)}.json`, JSON.stringify(data, null, 2), 'application/json');
-    } catch (e) {
-      showAlert(e instanceof Error ? e.message : String(e));
-    }
-  }
-
-  async function shareAll() {
-    try {
-      const db = await getDb();
-      const ids = (await listWarranties(db, 'complete')).map((w) => w.id);
-      await shareWarranties(db, ids, `warrantly-shared-${new Date().toISOString().slice(0, 10)}.json`);
     } catch (e) {
       showAlert(e instanceof Error ? e.message : String(e));
     }
@@ -521,7 +511,7 @@ export default function Settings() {
         <>
           {link('document-text-outline', TILE.red, t('data.exportPdf'), () => exportList('pdf'))}
           {link('grid-outline', TILE.green, t('data.exportCsv'), () => exportList('csv'))}
-          {link('share-social-outline', TILE.blue, t('data.share'), shareAll, { hint: t('data.shareHint') })}
+          {link('share-social-outline', TILE.blue, t('household.title'), () => router.push('/household'), { hint: t('data.shareHint') })}
           {link('download-outline', TILE.teal, t('data.import'), importShared)}
           {link('archive-outline', TILE.orange, t('data.exportAll'), exportEverything, { hint: t('data.exportAllHint') })}
           {link('trash-outline', TILE.red, t('data.delete'), confirmDeleteAll, { danger: true })}

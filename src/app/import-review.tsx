@@ -1,6 +1,9 @@
+import { duplicatePairs } from '@/duplicates';
+import { listWarranties, listArchived } from '@/db/repo';
+import { showAlert } from '@/components/Dialog';
 import ChoicePills from '@/components/ChoicePills';
 import SerialNumbersEditor from '@/components/SerialNumbersEditor';
-import { validSerialEntries } from '@/serialNumbers';
+import { serialFields, validSerialEntries } from '@/serialNumbers';
 import { takeScannedSerial } from '@/serial';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet } from 'react-native';
@@ -69,11 +72,25 @@ export default function ImportReview() {
   function showSource(value: string, label: string) {
     setSourceModal({ value, label, mode: 'excerpt' });
   }
-  async function save() {
+  async function save(confirmed = false) {
     if (!draft || !item || saving.current || !reviewValid(draft)) return;
     saving.current = true; setBusy(true); setError(null);
     try {
-      await saveReviewedImport(await getDb(), item.id, draft);
+      const db = await getDb();
+      if (!confirmed) {
+        const existing = [...await listWarranties(db, 'complete'), ...await listWarranties(db, 'needs_input'), ...await listArchived(db)];
+        const candidates = draft.products.filter(p => p.selected).map((p, i) => ({ id: -(i + 1), product_name: p.name, store_name: draft.store, purchase_date: draft.date, order_number: draft.order || null, ...serialFields({ serial_numbers: JSON.stringify(p.serials ?? []) }), coverage: p.coverage ?? null, bundle_id: null, status: 'complete' }));
+        const matches = duplicatePairs([...existing, ...candidates], new Set()).filter(p => (p.a.id < 0) !== (p.b.id < 0));
+        if (matches.length) {
+          saving.current = false; setBusy(false);
+          showAlert(t('duplicateImport.title'), t('duplicateImport.body', { products: [...new Set(matches.map(p => (p.a.id > 0 ? p.a : p.b).product_name))].join(', ') }), [
+            { text: t('detail.cancel'), style: 'cancel' },
+            { text: t('duplicateImport.save'), onPress: () => void save(true) },
+          ]);
+          return;
+        }
+      }
+      await saveReviewedImport(db, item.id, draft);
       // Corrections are optional convenience. Failure here must never invite a second import.
       if (remember) { try { rememberChoices(reviewDraft(item.text, todayYmd()).store, correctedChoices(draft.products)); } catch { /* records already saved */ } }
       router.replace('/');

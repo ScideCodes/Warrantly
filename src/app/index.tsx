@@ -23,6 +23,7 @@ import {
   collectionMembers, dismissedPairs, listAllDocuments, listCollections, listInbox, setArchived, setCategory, setMembership, restoreCategories,
   warrantiesWithText, type Collection, type DocumentRow,
 } from '@/db/features.ts';
+import { missingDetails } from '@/db/productTools';
 import { duplicatePairs } from '@/duplicates';
 import { exportDocuments } from '@/documents';
 import { openViewer } from '@/docOpen';
@@ -107,15 +108,15 @@ export default function Home() {
       await finishPendingDeletes().catch((e) => console.warn('undo', e)); // a delete whose undo window ended while closed
     }
     const version = ++loadVersion.current;
-    const [nextAccounts, nextWarranties, needsInput, returns, nextArchived, nextInbox, nextCollections, nextMembers, dismissed, docs] = await Promise.all([
+    const [nextAccounts, nextWarranties, needsInput, returns, nextArchived, nextInbox, nextCollections, nextMembers, dismissed, docs, missingItems] = await Promise.all([
       listAccounts(db), listWarranties(db, 'complete'), listWarranties(db, 'needs_input'), listReturnPrompts(db), listArchived(db), listInbox(db),
-      listCollections(db), collectionMembers(db), dismissedPairs(db), listAllDocuments(db),
+      listCollections(db), collectionMembers(db), dismissedPairs(db), listAllDocuments(db), missingDetails(db),
     ]);
     if (version !== loadVersion.current) return;
     setAccounts(nextAccounts);
     setWarranties(nextWarranties);
     setArchivedList(nextArchived);
-    setAttention(needsInput.length + returns.length);
+    setAttention(missingItems.length + returns.length);
     setInbox(nextInbox.length);
     setCollections(nextCollections);
     setMembers(nextMembers);
@@ -372,6 +373,9 @@ export default function Home() {
     {
       options: [
         { key: 'select', icon: 'checkmark-circle-outline' as const, label: t('bulk.select'), onPress: () => startSelect() },
+        { key: 'household', icon: 'people-outline' as const, label: t('household.title'), onPress: () => router.push('/household') },
+        { key: 'attention', icon: 'list-outline' as const, label: t('attention.title'), onPress: () => router.push('/attention') },
+        { key: 'duplicates', icon: 'copy-outline' as const, label: t('dups.review'), onPress: () => router.push('/duplicates') },
         { key: 'documents', icon: 'documents-outline' as const, label: t('docs.title'), onPress: () => router.push('/documents') },
       ],
     },

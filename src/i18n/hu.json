@@ -46,7 +46,7 @@
     "menuAccounts": "E-mail fiókok",
     "menuStores": "Boltok",
     "addLong": "Garancia hozzáadása",
-    "attentionRow": "Figyelmet igényel",
+    "attentionRow": "Hiányzó adatok",
     "syncFailed_one": "{{count}} fiókot nem sikerült ellenőrizni",
     "syncFailed_other": "{{count}} fiókot nem sikerült ellenőrizni",
     "details": "Részletek",
@@ -101,12 +101,13 @@
     "endedOn": "Lejárt: {{date}}"
   },
   "attention": {
-    "title": "Figyelmet igényel",
-    "empty": "Minden rendben",
+    "title": "Hiányzó adatok",
+    "empty": "Minden adat megvan",
     "applyTitle_one": "{{months}} hónap legyen {{count}} további tételnél is ({{store}})?",
     "applyTitle_other": "{{months}} hónap legyen {{count}} további tételnél is ({{store}})?",
     "applyYes": "Mindegyiknél",
-    "applyNo": "Csak ennél"
+    "applyNo": "Csak ennél",
+    "lead": "Ellenőrizendő bizonylatok, sorozatszámok és dátumok. Nyisd meg a terméket a pótláshoz."
   },
   "form": {
     "titleAdd": "Garancia hozzáadása",
@@ -276,7 +277,7 @@
     "devModeGmailOn": "Fejlesztői mód: Gmail összekapcsolás bekapcsolva",
     "devModeGmailOff": "Fejlesztői mód: Gmail összekapcsolás kikapcsolva",
     "returnReminders": "Elállási emlékeztető",
-    "returnRemindersHint": "Online vásárlás: jelzés 2 nappal az EU-s 14 napos elállási idő vége előtt.",
+    "returnRemindersHint": "Értesítés a visszaküldési határidő előtt 2 nappal.",
     "reminderTime": "Időpont",
     "group_90": "90 nappal előtte",
     "group_60": "60 nappal előtte",
@@ -601,10 +602,10 @@
     "title": "Újdonságok",
     "ok": "Rendben",
     "notes": [
-      "Áttekinthetőbb űrlapok, egységes dátum- és időválasztóval.",
-      "Kompakt listaszűrők és egységes dokumentumlisták.",
-      "Jobb elrendezés nagyobb betűkhöz és szélesebb kijelzőkhöz.",
-      "Érthetőbb mentési visszajelzések és magyar/angol feliratok."
+      "Igények előkészítése és teljes dokumentumcsomag megosztása.",
+      "Visszaküldési határidők és kapcsolt cseretermékek.",
+      "Hiányzó adatok és ismételt importok felismerése.",
+      "Kijelölt garanciák megosztása a családdal."
     ]
   },
   "share": {
@@ -957,5 +958,59 @@
   "money": {
     "search": "Keresés név vagy kód alapján",
     "none": "Nincs ilyen pénznem"
+  },
+  "assistant": {
+    "title": "Garanciális ügyintézés",
+    "email": "E-mail előkészítése",
+    "recipient": "Üzlet e-mail-címe (opcionális)",
+    "subject": "Tárgy",
+    "body": "Üzenet",
+    "noDocs": "Még nincs dokumentum. Csatolj bizonylatot a termék oldalán.",
+    "package": "Igénycsomag megosztása",
+    "packageHint": "A ZIP összefoglaló PDF-et, üzenetet és kijelölt dokumentumokat tartalmaz. Küldés előtt ellenőrizd az üzenetet. Ha az e-mailhez nem csatolhatók fájlok, oszd meg a ZIP-et.",
+    "summaryNote": "A tulajdonos által rögzített garanciaadatok. A feltételeket az eladóval egyeztesd.",
+    "failed": "Az igény nem készíthető elő",
+    "missingDocument": "Egy kijelölt dokumentum hiányzik. Töröld a kijelölést, vagy csatold újra.",
+    "tooLarge": "Válassz kevesebb dokumentumot (legfeljebb 50 MB)."
+  },
+  "productTools": {
+    "title": "Visszaküldés és csere",
+    "returnTitle": "Visszaküldési határidő",
+    "returnDate": "Határidő",
+    "noDeadline": "Nincs megadva",
+    "removeDeadline": "Határidő törlése",
+    "resetDeadline": "Eredeti becslés használata",
+    "returnHint": "Az eladó feltételei szerinti dátumot add meg. Bekapcsolt visszaküldési emlékeztetőnél két nappal előtte értesítünk.",
+    "history": "Csereelőzmények",
+    "replaces": "Ezt helyettesíti",
+    "replacedBy": "Erre cserélték",
+    "noHistory": "Nincs kapcsolt cseretermék",
+    "historyHint": "Őrizd meg az eredeti bizonylatot, és kapcsold hozzá a csereterméket. Mindkét termék saját garanciaidővel rendelkezik.",
+    "link": "Meglévő termék kapcsolása",
+    "add": "Cseretermék hozzáadása",
+    "selectHint": "Válaszd ki a csereként kapott terméket.",
+    "noCandidates": "Nincs kapcsolható termék. Előbb adj hozzá egy csereterméket.",
+    "failed": "A módosítás nem menthető",
+    "cycle": "Ezek a termékek nem kapcsolhatók össze. A csere nem vezethet vissza önmagához.",
+    "unlink": "Kapcsolatok törlése",
+    "unlinkHint": "Törlöd a termék cserekapcsolatait? A termékek és dokumentumaik megmaradnak."
+  },
+  "household": {
+    "title": "Családi megosztás",
+    "lead": "Válassz garanciákat, majd importáld a fájlt a másik telefonon. Nincs automatikus szinkron.",
+    "receive": "Megosztott garanciák importálása",
+    "choose": "Termékek kiválasztása",
+    "include": "Megosztott adatok",
+    "private": "Személyes részletekkel",
+    "privacy": "A bizonylatok és sorozatszámok szerepelnek a csomagban. A személyes részletek az árat, rendelési számot, jegyzeteket és javítási előzményeket is hozzáadják. A dokumentumok változatlanul kerülnek át, személyes adatokat is tartalmazhatnak.",
+    "send": "Kijelöltek megosztása ({{count}})",
+    "empty": "Nincs megfelelő termék",
+    "failed": "A garanciák nem oszthatók meg"
+  },
+  "duplicateImport": {
+    "title": "Lehetséges ismétlődés",
+    "body": "Ezek a termékek már szerepelhetnek a listában:\n{{products}}",
+    "review": "Meglévők áttekintése",
+    "save": "Hozzáadás mégis"
   }
 }

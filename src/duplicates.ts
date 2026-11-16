@@ -15,6 +15,7 @@ interface Item {
   serial_number: string | null;
   serial_numbers?: string | null;
   coverage: string | null;
+  replacement_of?: number | null;
   bundle_id: number | null;
   status: string;
 }
@@ -30,9 +31,17 @@ export function duplicatePairs<W extends Item>(list: W[], dismissed: Set<string>
   const out: DuplicatePair<W>[] = [];
   const items = list.filter((w) => w.status !== 'ignored');
   const serialCodes = new Map(items.map(w => [w.id, new Set(serialEntries(w).map(e => code(e.value)).filter(value => value.length >= 4))]));
+  const parents = new Map(items.map(w => [w.id, w.replacement_of]));
+  const ancestor = (child: number, parent: number) => {
+    const seen = new Set<number>();
+    let cursor: number | null | undefined = parents.get(child);
+    while (cursor && !seen.has(cursor)) { if (cursor === parent) return true; seen.add(cursor); cursor = parents.get(cursor); }
+    return false;
+  };
   for (let i = 0; i < items.length; i++) {
     for (let j = i + 1; j < items.length; j++) {
       const [a, b] = items[i].id < items[j].id ? [items[i], items[j]] : [items[j], items[i]];
+      if (ancestor(a.id, b.id) || ancestor(b.id, a.id)) continue;
       if (dismissed.has(`${a.id}:${b.id}`)) continue;
       if ((a.coverage ?? null) !== (b.coverage ?? null)) continue;
       if (a.bundle_id !== null && a.bundle_id === b.bundle_id) continue;

@@ -48,7 +48,7 @@ async function reschedule(db: Db): Promise<void> {
   const custom = await plannedCustomReminders(db);
   const notes = new Map(custom.map((c) => [`${c.warranty_id}:${c.date}`, c.note]));
   const groups = getRemindersEnabled() ? reminderDays(getReminderGroups()) : [];
-  const jobs = reminderPlan(getRemindersEnabled() ? items : items.map((w) => ({ ...w, return_by: null })), todayYmd(now), 60, groups, custom.map((c) => ({ warrantyId: c.warranty_id, date: c.date })))
+  const jobs = reminderPlan(items, todayYmd(now), 60, groups, custom.map((c) => ({ warrantyId: c.warranty_id, date: c.date })))
     .map((r) => {
       const [y, m, d] = r.date.split('-').map(Number);
       const w = byId.get(r.warrantyId)!;

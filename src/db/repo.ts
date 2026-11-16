@@ -1,6 +1,6 @@
 import type { ParseResult, StoreRules } from '../parser/types.ts';
 import { DEFAULT_WARRANTY_MONTHS, IGNORED_SENDERS } from '../parser/keywords.ts';
-import { endDate } from '../warranty.ts';
+import { endDate, returnDeadline } from '../warranty.ts';
 import { serialFields } from '../serialNumbers.ts';
 
 type Param = string | number | null;
@@ -196,6 +196,13 @@ const MIGRATIONS = [
    ${CHANGE_TABLES.map((t) => ['INSERT', 'UPDATE', 'DELETE'].map((op) => `CREATE TRIGGER ${t}_${op.toLowerCase()}_changes AFTER ${op} ON ${t} BEGIN UPDATE meta SET value = value + 1 WHERE key = 'changes'; END;`).join('\n')).join('\n')}`,
   // v14: labeled component serials. The legacy scalar stays intact and mirrors the first value.
   `ALTER TABLE warranties ADD COLUMN serial_numbers TEXT;`,
+  // v15: explicit return policy and linked replacements; existing dates remain unchanged.
+  `ALTER TABLE warranties ADD COLUMN return_by TEXT;
+   ALTER TABLE warranties ADD COLUMN replacement_of INTEGER;
+   CREATE INDEX warranties_replacement ON warranties(replacement_of);
+   CREATE TRIGGER warranties_unlink_replacements AFTER DELETE ON warranties BEGIN
+     UPDATE warranties SET replacement_of = NULL WHERE replacement_of = OLD.id;
+   END;`,
 ];
 
 export const MIGRATIONS_FOR_TEST: readonly string[] = MIGRATIONS;
@@ -339,6 +346,8 @@ export interface WarrantyRow {
   website_url: string | null;
   serial_number: string | null;
   serial_numbers: string | null;
+  return_by?: string | null;
+  replacement_of?: number | null;
   notes: string | null;
   price: number | null;
   currency: string | null;
@@ -441,10 +450,12 @@ export async function addManual(db: Db, w: WarrantyInput, origin: 'manual' | 'sc
 }
 
 // A new warranty and its scanned/imported PDF are one save: failure leaves neither database row.
-export async function addManualWithDocument(db: Db, w: WarrantyInput, localPath: string | null): Promise<number> {
+export async function addManualWithDocument(db: Db, w: WarrantyInput, localPath: string | null, replacementOf?: number): Promise<number> {
   let id = 0;
   await db.withTransactionAsync(async () => {
+    if (replacementOf !== undefined && !(await getWarranty(db, replacementOf))) throw new Error('Original warranty not found');
     id = await addManual(db, w, localPath ? 'scan' : 'manual');
+    if (replacementOf !== undefined) await db.runAsync('UPDATE warranties SET replacement_of = ? WHERE id = ?', [replacementOf, id]);
     if (localPath) await addAttachment(db, id, `${w.product_name}.pdf`, localPath);
   });
   return id;
@@ -514,7 +525,7 @@ export interface SharedWarranty {
 }
 
 const SHARED_COLUMNS = ['product_name', 'store_name', 'store_domain', 'purchase_date', 'warranty_start_date', 'warranty_months', 'order_number',
-  'serial_number', 'serial_numbers', 'notes', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'coverage'] as const;
+  'serial_number', 'serial_numbers', 'notes', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'coverage', 'return_by'] as const;
 
 export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWarranty[]> {
   const out: SharedWarranty[] = [];
@@ -522,7 +533,7 @@ export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWar
     const w = await db.getFirstAsync<Record<string, unknown>>('SELECT * FROM warranties WHERE id = ? AND deleted_at IS NULL', [id]);
     if (!w) continue;
     out.push({
-      warranty: Object.fromEntries(SHARED_COLUMNS.map((c) => [c, w[c] ?? null])),
+      warranty: Object.fromEntries(SHARED_COLUMNS.map((c) => [c, c === 'return_by' ? returnDeadline(w as unknown as Warranty) : w[c] ?? null])),
       history: await db.getAllAsync('SELECT date, note FROM history WHERE warranty_id = ? ORDER BY id', [id]),
       documents: await db.getAllAsync('SELECT filename, local_path, label FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL ORDER BY id', [id]),
     });
@@ -689,7 +700,10 @@ export async function restoreAccount(db: Db, accountId: number, rows: AccountRow
     const bundles = new Set((await db.getAllAsync<{ id: number }>('SELECT id FROM bundles', [])).map((b) => b.id));
     for (const { id, ...w } of rows.warranties) {
       // A bundle that no longer exists on this phone is dropped rather than left dangling.
-      ids.set(id, await insert('warranties', { ...w, account_id: accountId, ...('bundle_id' in w ? { bundle_id: bundles.has(Number(w.bundle_id)) ? w.bundle_id : null } : {}) }));
+      ids.set(id, await insert('warranties', { ...w, replacement_of: null, account_id: accountId, ...('bundle_id' in w ? { bundle_id: bundles.has(Number(w.bundle_id)) ? w.bundle_id : null } : {}) }));
+    }
+    for (const row of rows.warranties) {
+      if (row.replacement_of && ids.has(row.replacement_of)) await db.runAsync('UPDATE warranties SET replacement_of = ? WHERE id = ?', [ids.get(row.replacement_of)!, ids.get(row.id)!]);
     }
     for (const { id: _id, ...src } of rows.sources) {
       await insert('sources', { ...src, account_id: accountId, warranty_id: src.warranty_id == null ? null : (ids.get(src.warranty_id) ?? null) });

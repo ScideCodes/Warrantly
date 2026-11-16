@@ -46,7 +46,7 @@
     "menuAccounts": "Email accounts",
     "menuStores": "Stores",
     "addLong": "Add a warranty",
-    "attentionRow": "Needs your attention",
+    "attentionRow": "Missing details",
     "syncFailed_one": "Couldn't check {{count}} account",
     "syncFailed_other": "Couldn't check {{count}} accounts",
     "details": "Details",
@@ -101,12 +101,13 @@
     "endedOn": "Ended {{date}}"
   },
   "attention": {
-    "title": "Needs your attention",
-    "empty": "All caught up",
+    "title": "Missing details",
+    "empty": "Everything is ready",
     "applyTitle_one": "Use {{months}} months for {{count}} more item from {{store}}?",
     "applyTitle_other": "Use {{months}} months for {{count}} more items from {{store}}?",
     "applyYes": "Apply to all",
-    "applyNo": "Only this one"
+    "applyNo": "Only this one",
+    "lead": "Receipts, serial numbers and dates to check. Open a product to finish its details."
   },
   "form": {
     "titleAdd": "Add warranty",
@@ -276,7 +277,7 @@
     "devModeGmailOn": "Developer mode: Gmail connect enabled",
     "devModeGmailOff": "Developer mode: Gmail connect disabled",
     "returnReminders": "Return reminders",
-    "returnRemindersHint": "Online orders: reminder 2 days before the EU 14-day return window ends.",
+    "returnRemindersHint": "Remind me 2 days before a return deadline.",
     "reminderTime": "Time",
     "group_90": "90 days before",
     "group_60": "60 days before",
@@ -601,10 +602,10 @@
     "title": "What's new",
     "ok": "Got it",
     "notes": [
-      "Clearer warranty forms with matching date and time pickers.",
-      "Compact library filters and consistent document lists.",
-      "Better layouts for larger text and wider screens.",
-      "Clearer backup feedback and English/Hungarian labels."
+      "Prepare claim emails and share a complete document package.",
+      "Set return deadlines and link replacement products.",
+      "Find missing details and catch duplicate imports.",
+      "Share selected warranties with family."
     ]
   },
   "share": {
@@ -957,5 +958,59 @@
   "money": {
     "search": "Search name or code",
     "none": "No matching currency"
+  },
+  "assistant": {
+    "title": "Claim assistant",
+    "email": "Prepare email",
+    "recipient": "Store email (optional)",
+    "subject": "Subject",
+    "body": "Claim message",
+    "noDocs": "No documents yet. Attach a receipt from the product page.",
+    "package": "Share claim package",
+    "packageHint": "ZIP includes a PDF summary, your message and selected documents. Review the message before sending. If email attachments are unavailable, share the ZIP instead.",
+    "summaryNote": "Warranty details recorded by the owner. Confirm the terms with the seller.",
+    "failed": "Could not prepare claim",
+    "missingDocument": "A selected document is missing. Remove it or attach it again.",
+    "tooLarge": "Choose fewer documents (maximum 50 MB)."
+  },
+  "productTools": {
+    "title": "Returns & replacements",
+    "returnTitle": "Return window",
+    "returnDate": "Return deadline",
+    "noDeadline": "Not set",
+    "removeDeadline": "Remove deadline",
+    "resetDeadline": "Use original estimate",
+    "returnHint": "Set the date from your seller’s policy. Reminders arrive two days before this deadline when return reminders are enabled.",
+    "history": "Replacement history",
+    "replaces": "Replaces",
+    "replacedBy": "Replaced by",
+    "noHistory": "No linked replacements",
+    "historyHint": "Keep the original receipt and link a replacement. Each product keeps its own warranty dates.",
+    "link": "Link existing product",
+    "add": "Add replacement product",
+    "selectHint": "Choose the product you received as a replacement.",
+    "noCandidates": "No unlinked products. Add a replacement first.",
+    "failed": "Could not save change",
+    "cycle": "These products cannot be linked. A replacement cannot lead back to itself.",
+    "unlink": "Remove links",
+    "unlinkHint": "Remove this product’s replacement links? Both products and their documents stay saved."
+  },
+  "household": {
+    "title": "Family sharing",
+    "lead": "Choose warranties to send. Import the file on the other phone; changes won’t sync.",
+    "receive": "Import shared warranties",
+    "choose": "Choose products",
+    "include": "Details to include",
+    "private": "Include private details",
+    "privacy": "Receipts and serial numbers are included. Private details adds price, order number, notes and repair history. Documents are shared unchanged and may contain personal information.",
+    "send": "Share selected ({{count}})",
+    "empty": "No matching products",
+    "failed": "Could not share warranties"
+  },
+  "duplicateImport": {
+    "title": "Possible duplicate",
+    "body": "These products may already be saved:\n{{products}}",
+    "review": "Review existing",
+    "save": "Add anyway"
   }
 }

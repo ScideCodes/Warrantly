@@ -1,3 +1,4 @@
+import { showAlert } from '@/components/Dialog';
 import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
 import { useCallback, useState } from 'react';
@@ -8,7 +9,8 @@ import { formatDate, WarrantyRow } from '@/components/WarrantyRow';
 import { ListPage } from '@/components/Page';
 import { Button, Group, SectionHeader } from '@/components/ui';
 import { getDb } from '@/db/client';
-import { answerReturn, deleteWarranty, listReturnPrompts, listWarranties, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
+import { answerReturn, deleteWarranty, listReturnPrompts, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
+import { missingDetails } from '@/db/productTools';
 import { deleteDocuments } from '@/documents';
 import { colors, RADIUS, TYPE, themed } from '@/theme';
 
@@ -21,8 +23,8 @@ export default function Attention() {
   const reload = useCallback(() => {
     void getDb().then(async (db) => {
       setReturns(await listReturnPrompts(db));
-      setItems((await listWarranties(db, 'needs_input')).sort((a, b) => b.purchase_date.localeCompare(a.purchase_date)));
-    });
+      setItems((await missingDetails(db)).sort((a, b) => b.purchase_date.localeCompare(a.purchase_date)));
+    }).catch(e => showAlert(String(e)));
   }, []);
   useFocusEffect(reload);
 
@@ -57,6 +59,7 @@ export default function Attention() {
   return (
     <ListPage
       title={t('attention.title')}
+      lead={t('attention.lead')}
       header={header}
       data={items}
       keyExtractor={(w) => String(w.id)}
@@ -65,7 +68,7 @@ export default function Attention() {
           warranty={item}
           separator={index > 0}
           style={[styles.row, index === 0 && styles.first, index === items.length - 1 && styles.last]}
-          to={{ pathname: '/warranty/edit', params: { id: String(item.id) } }}
+          to={{ pathname: '/warranty/[id]', params: { id: String(item.id) } }}
         />
       )}
       ListEmptyComponent={returns.length ? undefined : <EmptyState message={t('attention.empty')} icon="checkmark-circle-outline" />}
