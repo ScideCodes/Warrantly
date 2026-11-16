@@ -105,3 +105,42 @@ Thank you for your purchase!`;
   assert.match(excerpt, /Item: Philips Series 5000 Electric Shaver/);
   assert.doesNotMatch(excerpt, /\b(hilips|have)\b/); // no chopped partial words
 });
+
+test('review saves each product coverage and labeled serials with the shared PDF', async () => {
+  const db = nodeDb(); await migrate(db);
+  await addInbox(db, { local_path: 'receipt.pdf', filename: 'receipt.pdf', text, source_key: 'details' });
+  const draft = reviewDraft(text, '2026-11-14');
+  draft.products[0].coverage = 'extended';
+  draft.products[0].serials = [{ label: ' Kettle ', value: ' SN-123 ' }, { label: 'Base', value: 'BASE-456' }];
+  draft.products[1].coverage = 'store';
+  draft.products[1].serials = [{ label: '', value: 'MOUSE-789' }];
+  const ids = await saveReviewedImport(db, (await listInbox(db))[0].id, draft);
+  const rows = await listWarranties(db, 'complete');
+  const kettle = rows.find(r => r.id === ids[0])!;
+  const mouse = rows.find(r => r.id === ids[1])!;
+  assert.equal(kettle.coverage, 'extended');
+  assert.equal(kettle.serial_number, 'SN-123');
+  assert.deepEqual(JSON.parse(kettle.serial_numbers!), [{ label: 'Kettle', value: 'SN-123' }, { label: 'Base', value: 'BASE-456' }]);
+  assert.equal(mouse.coverage, 'store');
+  assert.equal(mouse.serial_number, 'MOUSE-789');
+  for (const id of ids) assert.equal((await listAttachments(db, id))[0].local_path, 'receipt.pdf');
+  assert.equal((await listInbox(db)).length, 0);
+  db.raw.close();
+});
+
+test('incomplete serial labels block saving only for selected products and are never remembered', async () => {
+  const draft = reviewDraft(text, '2026-11-14');
+  draft.products[0].serials = [{ label: 'Device', value: '' }];
+  assert.equal(reviewValid(draft), false);
+  const db = nodeDb(); await migrate(db);
+  await addInbox(db, { local_path: 'receipt.pdf', filename: 'receipt.pdf', text, source_key: 'invalid-details' });
+  await assert.rejects(saveReviewedImport(db, (await listInbox(db))[0].id, draft));
+  assert.equal((await listWarranties(db, 'complete')).length, 0);
+  assert.equal((await listInbox(db)).length, 1);
+  draft.products[0].selected = false;
+  assert.equal(reviewValid(draft), true);
+  draft.products[1].serials = [{ label: '', value: 'PRIVATE-SERIAL' }];
+  draft.products[1].coverage = 'extended';
+  assert.deepEqual(correctedChoices(draft.products), { mouse: { name: 'Mouse', months: '12' } });
+  db.raw.close();
+});
