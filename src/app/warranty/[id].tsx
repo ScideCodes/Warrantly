@@ -1,3 +1,4 @@
+import { dismissMissingDetails } from '@/db/productTools';
 import { serialEntries } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
@@ -466,6 +467,12 @@ export default function WarrantyDetail() {
         : null;
   const openSheet = sheet === null || sheet === 'bundle' ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet ?? extraSheet;
   const issues = completeness(w, docs);
+  const toggleMissingDetails = () => {
+    const dismissed = !w.details_dismissed;
+    void getDb().then(db => dismissMissingDetails(db, w.id, dismissed))
+      .then(() => setW(current => current && ({ ...current, details_dismissed: dismissed ? 1 : 0 })))
+      .catch(e => showAlert(String(e)));
+  };
   const fixIssue = (iss: Issue) => {
     if (iss.fix === 'attach') return setSheet('add');
     if (iss.fix === 'label') return setSheet({ label: docs[0] });
@@ -576,7 +583,7 @@ export default function WarrantyDetail() {
         </Section>
 
         {/* Shortlist 15: what is missing for a smooth claim, each with its fix. */}
-        {issues.length > 0 && (
+        {(issues.length > 0 || !!w.details_dismissed) && (
           <Section title={t('complete.title')}>
             {issues.map((iss, i) => (
               <Row key={iss.key} separator={i > 0} iconInset onPress={() => fixIssue(iss)} chevron>
@@ -587,6 +594,9 @@ export default function WarrantyDetail() {
                 </View>
               </Row>
             ))}
+            <Row separator={issues.length > 0} onPress={toggleMissingDetails}>
+              <Text style={styles.addText}>{t(w.details_dismissed ? 'attention.restore' : 'attention.dismiss')}</Text>
+            </Row>
           </Section>
         )}
 

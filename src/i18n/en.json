@@ -107,7 +107,10 @@
     "applyTitle_other": "Use {{months}} months for {{count}} more items from {{store}}?",
     "applyYes": "Apply to all",
     "applyNo": "Only this one",
-    "lead": "Receipts, serial numbers and dates to check. Open a product to finish its details."
+    "lead": "Receipts, serial numbers and dates to check. Open a product to finish its details.",
+    "dismiss": "Dismiss missing details",
+    "restore": "Show missing details again",
+    "dismissProduct": "Dismiss missing details for {{product}}"
   },
   "form": {
     "titleAdd": "Add warranty",

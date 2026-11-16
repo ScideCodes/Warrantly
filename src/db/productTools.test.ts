@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { nodeDb } from './testDb.ts';
 import { migrate, addManualWithDocument, addManual, addAttachment, getWarranty, updateWarranty, sharedWarranties, importShared, deleteWarranty } from './repo.ts';
-import { missingDetails, linkReplacement, replacementHistory, setReturnDeadline } from './productTools.ts';
+import { dismissMissingDetails, missingDetails, linkReplacement, replacementHistory, setReturnDeadline } from './productTools.ts';
 import { duplicatePairs } from '../duplicates.ts';
 import { returnDeadline, reminderPlan } from '../warranty.ts';
 import { dumpDb, restoreDb } from '../backup/format.ts';
@@ -69,4 +69,22 @@ test('adding a replacement and linking it is atomic when its original disappeare
   const child = await addManualWithDocument(db, input, null, original);
   assert.equal((await getWarranty(db, child))!.replacement_of, original);
   db.raw.close();
+});
+
+test('missing-details dismissal persists through edits and backups, can be restored, never changes warranty status or shared records', async () => {
+  const db = await fresh(); const id = await addManual(db, { ...input, serial_number: null });
+  await dismissMissingDetails(db, id, true);
+  await updateWarranty(db, id, { ...input, serial_number: null });
+  assert.equal((await missingDetails(db)).length, 0);
+  assert.equal((await getWarranty(db, id))!.status, 'complete');
+  assert.equal((await sharedWarranties(db, [id]))[0].warranty.details_dismissed, undefined);
+  const restored = await fresh(); await restoreDb(restored, await dumpDb(db, {}));
+  assert.equal((await missingDetails(restored)).length, 0);
+  await dismissMissingDetails(restored, id, false);
+  assert.equal((await missingDetails(restored)).length, 1);
+  await restored.runAsync("UPDATE warranties SET status = 'needs_input' WHERE id = ?", [id]);
+  await dismissMissingDetails(restored, id, true);
+  assert.equal((await missingDetails(restored)).length, 0);
+  assert.equal((await getWarranty(restored, id))!.status, 'needs_input');
+  db.raw.close(); restored.raw.close();
 });

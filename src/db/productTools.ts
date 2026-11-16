@@ -6,7 +6,7 @@ export async function missingDetails(db: Db): Promise<Warranty[]> {
   const [complete, incomplete, docs] = await Promise.all([listWarranties(db, 'complete'), listWarranties(db, 'needs_input'), db.getAllAsync<{ warranty_id: number; label: string }>('SELECT warranty_id, label FROM attachments WHERE deleted_at IS NULL', [])]);
   const labels = new Map<number, { label: string }[]>();
   for (const doc of docs) { const group = labels.get(doc.warranty_id) ?? []; group.push(doc); labels.set(doc.warranty_id, group); }
-  return [...incomplete, ...complete.filter(w => completeness(w, labels.get(w.id) ?? []).length > 0)];
+  return [...incomplete.filter(w => !w.details_dismissed), ...complete.filter(w => completeness(w, labels.get(w.id) ?? []).length > 0)];
 }
 
 export async function setReturnDeadline(db: Db, id: number, date: string | null): Promise<void> {
@@ -45,4 +45,8 @@ export async function replacementHistory(db: Db, id: number): Promise<{ original
 
 export async function unlinkReplacements(db: Db, id: number): Promise<void> {
   await db.runAsync('UPDATE warranties SET replacement_of = NULL, updated_at = ? WHERE id = ? OR replacement_of = ?', [new Date().toISOString(), id, id]);
+}
+
+export async function dismissMissingDetails(db: Db, id: number, dismissed: boolean): Promise<void> {
+  await db.runAsync('UPDATE warranties SET details_dismissed = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL', [dismissed ? 1 : 0, new Date().toISOString(), id]);
 }

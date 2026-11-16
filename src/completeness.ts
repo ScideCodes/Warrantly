@@ -5,9 +5,10 @@ export type IssueKey = 'no_document' | 'no_receipt_label' | 'length_unconfirmed'
 export interface Issue { key: IssueKey; level: 'needed' | 'suggested'; fix: 'attach' | 'label' | 'edit' | 'serial' }
 
 export function completeness(
-  w: { length_is_suggested: number; start_is_suggested: number; serial_number: string | null; serial_numbers?: string | null; status: string },
+  w: { length_is_suggested: number; start_is_suggested: number; serial_number: string | null; serial_numbers?: string | null; status: string; details_dismissed?: number },
   docs: { label: string }[],
 ): Issue[] {
+  if (w.details_dismissed) return [];
   const issues: Issue[] = [];
   if (!docs.length) issues.push({ key: 'no_document', level: 'needed', fix: 'attach' });
   else if (!docs.some((d) => d.label === 'receipt' || d.label === 'warranty_card')) issues.push({ key: 'no_receipt_label', level: 'suggested', fix: 'label' });

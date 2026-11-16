@@ -203,6 +203,8 @@ const MIGRATIONS = [
    CREATE TRIGGER warranties_unlink_replacements AFTER DELETE ON warranties BEGIN
      UPDATE warranties SET replacement_of = NULL WHERE replacement_of = OLD.id;
    END;`,
+  // v16: hide optional missing-detail prompts without changing warranty data.
+  `ALTER TABLE warranties ADD COLUMN details_dismissed INTEGER NOT NULL DEFAULT 0;`,
 ];
 
 export const MIGRATIONS_FOR_TEST: readonly string[] = MIGRATIONS;
@@ -348,6 +350,7 @@ export interface WarrantyRow {
   serial_numbers: string | null;
   return_by?: string | null;
   replacement_of?: number | null;
+  details_dismissed?: number;
   notes: string | null;
   price: number | null;
   currency: string | null;
