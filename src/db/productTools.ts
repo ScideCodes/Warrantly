@@ -50,3 +50,8 @@ export async function unlinkReplacements(db: Db, id: number): Promise<void> {
 export async function dismissMissingDetails(db: Db, id: number, dismissed: boolean): Promise<void> {
   await db.runAsync('UPDATE warranties SET details_dismissed = ?, updated_at = ? WHERE id = ? AND deleted_at IS NULL', [dismissed ? 1 : 0, new Date().toISOString(), id]);
 }
+
+export async function dismissedMissingDetails(db: Db): Promise<Warranty[]> {
+  const [complete, incomplete] = await Promise.all([listWarranties(db, 'complete'), listWarranties(db, 'needs_input')]);
+  return [...complete, ...incomplete].filter(w => !!w.details_dismissed);
+}

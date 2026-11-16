@@ -110,7 +110,11 @@
     "lead": "Ellenőrizendő bizonylatok, sorozatszámok és dátumok. Nyisd meg a terméket a pótláshoz.",
     "dismiss": "Hiányzó adatok elrejtése",
     "restore": "Hiányzó adatok újbóli megjelenítése",
-    "dismissProduct": "{{product}} hiányzó adatainak elrejtése"
+    "dismissProduct": "{{product}} hiányzó adatainak elrejtése",
+    "showDismissed": "Elrejtettek megjelenítése ({{count}})",
+    "showActive": "Hiányzó adatok megjelenítése",
+    "restoreProduct": "{{product}} hiányzó adatainak visszaállítása",
+    "emptyDismissed": "Nincs elrejtett elem"
   },
   "form": {
     "titleAdd": "Garancia hozzáadása",

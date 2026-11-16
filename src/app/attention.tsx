@@ -10,7 +10,7 @@ import { ListPage } from '@/components/Page';
 import { Button, GlassButton, Group, SectionHeader } from '@/components/ui';
 import { getDb } from '@/db/client';
 import { answerReturn, deleteWarranty, listReturnPrompts, type ReturnPrompt, type Warranty } from '@/db/repo.ts';
-import { dismissMissingDetails, missingDetails } from '@/db/productTools';
+import { dismissedMissingDetails, dismissMissingDetails, missingDetails } from '@/db/productTools';
 import { deleteDocuments } from '@/documents';
 import { colors, RADIUS, TYPE, themed } from '@/theme';
 
@@ -19,10 +19,13 @@ export default function Attention() {
   const styles = useStyles();
   const { t, i18n } = useTranslation();
   const [items, setItems] = useState<Warranty[]>([]);
+  const [dismissed, setDismissed] = useState<Warranty[]>([]);
+  const [showDismissed, setShowDismissed] = useState(false);
   const [returns, setReturns] = useState<ReturnPrompt[]>([]);
   const reload = useCallback(() => {
     void getDb().then(async (db) => {
       setReturns(await listReturnPrompts(db));
+      setDismissed(await dismissedMissingDetails(db));
       setItems((await missingDetails(db)).sort((a, b) => b.purchase_date.localeCompare(a.purchase_date)));
     }).catch(e => showAlert(String(e)));
   }, []);
@@ -36,9 +39,13 @@ export default function Attention() {
     reload();
   }
 
+  const visible = showDismissed ? dismissed : items;
   const header = (
     <>
-      {returns.map((p) => (
+      {(dismissed.length > 0 || showDismissed) && <View style={styles.toggle}>
+        <Button kind="glass" title={t(showDismissed ? 'attention.showActive' : 'attention.showDismissed', { count: dismissed.length })} onPress={() => setShowDismissed(value => !value)} />
+      </View>}
+      {!showDismissed && returns.map((p) => (
         <View key={p.id}>
           <SectionHeader title={t('returns.title')} />
           <Group style={styles.card}>
@@ -61,19 +68,19 @@ export default function Attention() {
       title={t('attention.title')}
       lead={t('attention.lead')}
       header={header}
-      data={items}
+      data={visible}
       keyExtractor={(w) => String(w.id)}
       renderItem={({ item, index }) => (
-        <View style={[styles.row, styles.item, index === 0 && styles.first, index === items.length - 1 && styles.last]}>
+        <View style={[styles.row, styles.item, index === 0 && styles.first, index === visible.length - 1 && styles.last]}>
           <WarrantyRow warranty={item} separator={index > 0} style={styles.warranty}
             to={{ pathname: '/warranty/[id]', params: { id: String(item.id) } }} />
           <View style={styles.dismiss}>
-            <GlassButton icon="close" label={t('attention.dismissProduct', { product: displayName(t, item) })}
-              onPress={() => void getDb().then(db => dismissMissingDetails(db, item.id, true)).then(reload).catch(e => showAlert(String(e)))} />
+            <GlassButton icon={showDismissed ? "arrow-undo-outline" : "close"} label={t(showDismissed ? 'attention.restoreProduct' : 'attention.dismissProduct', { product: displayName(t, item) })}
+              onPress={() => void getDb().then(db => dismissMissingDetails(db, item.id, !showDismissed)).then(reload).catch(e => showAlert(String(e)))} />
           </View>
         </View>
       )}
-      ListEmptyComponent={returns.length ? undefined : <EmptyState message={t('attention.empty')} icon="checkmark-circle-outline" />}
+      ListEmptyComponent={!showDismissed && returns.length ? undefined : <EmptyState message={t(showDismissed ? 'attention.emptyDismissed' : 'attention.empty')} icon="checkmark-circle-outline" />}
     />
   );
 }
@@ -85,6 +92,7 @@ const useStyles = themed(() => StyleSheet.create({
   action: { flexGrow: 1, flexBasis: 120 },
   gap: { height: 28 },
   top: { height: 20 },
+  toggle: { marginTop: 16, marginBottom: 8 },
   item: { flexDirection: 'row', alignItems: 'center', overflow: 'hidden' },
   warranty: { flex: 1, minWidth: 0 }, dismiss: { paddingRight: 12 },
   row: { backgroundColor: colors.card },
