@@ -23,7 +23,7 @@ out=$(npx eas-cli@latest update --channel preview --environment preview --platfo
   --non-interactive --json --message "$msg")
 group=$(printf '%s' "$out" | node -e "process.stdout.write(JSON.parse(require('fs').readFileSync(0,'utf8'))[0].group)")
 
-max=$(git tag -l "v${version}-ota.*" | sed -n "s/^v${version}-ota\.//p" | sort -n | tail -1 || true)
+max=$(git ls-remote --tags origin "refs/tags/v${version}-ota.*" | sed -n "s/.*refs\/tags\/v${version}-ota\.\([0-9]*\)$/\1/p" | sort -n | tail -1 || true)
 n=$(( ${max:-0} + 1 ))
 tag="v${version}-ota.${n}"
 notes=$(mktemp)

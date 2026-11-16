@@ -65,7 +65,7 @@ export default function EditWarranty() {
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
   // inbox: a file waiting in the document inbox becomes this warranty's document.
   // scan: opened from the app icon's "Scan receipt" shortcut.
-  const { id, copyFrom, inbox, scan: scanNow, more: moreParam, focus } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string; focus?: string }>();
+  const { id, copyFrom, inbox, scan: scanNow, more: moreParam, focus, replacementFor } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string; focus?: string; replacementFor?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
   const [form, setForm] = useState<Form>(fromWarranty(null));
@@ -232,7 +232,7 @@ export default function EditWarranty() {
     const saved = await draft.current.save(async (localPath) => {
       if (id && !savedId.current) throw new Error(t('form.missingTitle')); // never turn a lost edit into a new warranty
       if (savedId.current) await updateWarranty(db, savedId.current, input);
-      else savedId.current = await addManualWithDocument(db, input, localPath);
+      else savedId.current = await addManualWithDocument(db, input, localPath, replacementFor ? Number(replacementFor) : undefined);
     });
     if (saved && inbox) {
       const gone = await discardInbox(db, Number(inbox)); // its copy now belongs to this warranty

@@ -10,3 +10,6 @@ export async function deleteAllData(db: Db, _drive: boolean): Promise<void> {
   await wipeDb(db);
   localStorage.clear();
 }
+
+export const shareClaimPackage = async (_html: string, _text: string, _docs: { local_path: string; filename: string }[]): Promise<void> => { throw new Error('Use the mobile app to share files'); };
+export const shareHousehold = async (_db: Db, _ids: number[], _private: boolean): Promise<void> => { throw new Error('Use the mobile app to share files'); };

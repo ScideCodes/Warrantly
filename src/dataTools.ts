@@ -1,3 +1,6 @@
+import i18n from '@/i18n';
+import { zipFiles } from './zip';
+import { transferItem, DEFAULT_FIELDS } from './transfer';
 import { Directory, File, Paths } from 'expo-file-system';
 import * as Notifications from 'expo-notifications';
 import * as Print from 'expo-print';
@@ -23,7 +26,7 @@ export async function shareText(name: string, content: string, mimeType: string)
   const file = new File(Paths.cache, name);
   if (file.exists) file.delete();
   file.create();
-  file.write(content);
+  await file.write(content);
   await share(file, mimeType);
 }
 
@@ -90,4 +93,28 @@ export async function deleteAllData(db: Db, drive: boolean): Promise<void> {
   await Notifications.cancelAllScheduledNotificationsAsync();
   await GoogleOneTapSignIn.signOut().catch(() => {});
   await updateWidget(db).catch(() => {});
+}
+
+// One file containing the claim draft, printable summary and untouched selected receipts.
+export async function shareClaimPackage(html: string, text: string, docs: { local_path: string; filename: string }[]): Promise<void> {
+  const total = docs.reduce((n, d) => {
+    if (!documentExists(d.local_path)) throw new Error(i18n.t('assistant.missingDocument'));
+    return n + new File(Paths.document, 'attachments', d.local_path).size;
+  }, 0);
+  if (total > 50 * 1024 * 1024) throw new Error(i18n.t('assistant.tooLarge'));
+  const summary = await Print.printToFileAsync({ html });
+  const pdf = new File(summary.uri);
+  const file = new File(Paths.cache, `warrantly-claim-${Date.now()}.zip`);
+  try {
+    const files: { name: string; data: Uint8Array }[] = [{ name: 'claim.txt', data: new TextEncoder().encode(text) }, { name: 'summary.pdf', data: await pdf.bytes() }];
+    for (const [i, doc] of docs.entries()) files.push({ name: `${i + 1}-${doc.filename}`, data: await readDocument(doc.local_path) });
+    file.create(); await file.write(zipFiles(files));
+    await share(file, 'application/zip');
+  } finally { if (pdf.exists) pdf.delete(); }
+}
+
+export async function shareHousehold(db: Db, ids: number[], includePrivate: boolean): Promise<void> {
+  const items = (await sharedWarranties(db, ids)).map(item => includePrivate ? item :
+    transferItem(item, new Set(DEFAULT_FIELDS), new Set(item.documents.map((_, i) => i))));
+  await shareText(`warrantly-household-${Date.now()}.warrantly.json`, JSON.stringify({ format: SHARE_FORMAT, v: 1, items: await embedDocuments(items) }), 'application/json');
 }

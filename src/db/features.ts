@@ -265,7 +265,7 @@ export async function dismissDuplicate(db: Db, a: number, b: number): Promise<vo
   await db.runAsync('INSERT OR IGNORE INTO duplicate_dismissals (a, b) VALUES (?, ?)', [Math.min(a, b), Math.max(a, b)]);
 }
 
-const MERGE_FILL = ['order_number', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'store_domain', 'account_id'] as const;
+const MERGE_FILL = ['order_number', 'contact_email', 'contact_phone', 'website_url', 'price', 'currency', 'category', 'store_domain', 'account_id', 'return_by'] as const;
 
 // `drop` goes into `keep`: its documents, photo, notes, claims, reminders, collections and mail markers move;
 // empty fields of `keep` are filled from it. Different covers (standard vs extended) are never merged.

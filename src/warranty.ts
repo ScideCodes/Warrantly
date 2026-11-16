@@ -97,8 +97,9 @@ export interface Reminder {
 // their start date is the delivery day when the mail says so, else the order day.
 export const RETURN_DAYS = 14;
 const RETURN_WARNING = 2; // days before the window closes
-export const returnDeadline = (w: { origin: string; warranty_start_date: string }): string | null =>
-  w.origin === 'gmail' ? addDays(w.warranty_start_date, RETURN_DAYS) : null;
+export const returnDeadline = (w: { origin: string; warranty_start_date: string; return_by?: string | null }): string | null =>
+  w.return_by === '' ? null : w.return_by && isValidYmd(w.return_by) ? w.return_by :
+    w.origin === 'gmail' ? addDays(w.warranty_start_date, RETURN_DAYS) : null;
 
 // The nearest `limit` reminders from today on, over all warranties. Only these are scheduled, because iOS
 // keeps at most 64 pending notifications; the plan is rebuilt on every app open, sync and edit (rolling

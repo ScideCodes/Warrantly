@@ -1,4 +1,4 @@
-import { serialEntries, serialSummary } from '@/serialNumbers';
+import { serialEntries } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import AppIcon, { ProductIcon } from '@/components/Icon';
@@ -25,16 +25,15 @@ import { useDatePicker } from '@/components/DatePicker';
 import { DocThumb } from '@/components/DocThumb';
 import { completeness, type Issue } from '@/completeness';
 import { daysUntil, productIcon, returnDeadline, todayYmd, urgency } from '@/warranty';
-import { getUsername, setBundleLead } from '@/settings';
+import { setBundleLead } from '@/settings';
 import { WarrantyDetailSkeleton } from '@/components/Skeleton';
 import { saveKnownText } from '@/docIndex';
 import { recordWarranty } from '@/recentStore';
 import { purgeBefore, showUndo } from '@/undo';
 import { shareWarranties } from '@/dataTools';
-import { deleteDocuments, documentExists, importDocument, openDocument, pickPhoto, saveDocument, scanDocument, sendClaim } from '@/documents';
+import { deleteDocuments, documentExists, importDocument, openDocument, pickPhoto, saveDocument, scanDocument } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
 import { useProductPhoto } from '@/components/useProductPhoto';
-import { claimEmail } from '@/claim';
 import { rescheduleReminders, sendTestReminder } from '@/reminders';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
@@ -392,18 +391,6 @@ export default function WarrantyDetail() {
     showAlert(t('bundle.shared', { count: n }));
   }
 
-  function claim() {
-    const { subject, body } = claimEmail(t, {
-      product: w!.product_name ?? t('warranty.unknownProduct'),
-      purchaseDate: date(w!.purchase_date),
-      endDate: date(w!.end_date),
-      orderNumber: w!.order_number,
-      serialNumber: serialSummary(w!),
-      name: getUsername(),
-    });
-    sendClaim(w!.contact_email!, subject, body, docs.map((d) => d.local_path)).catch(() => showAlert(t('detail.noMailApp')));
-  }
-
   const sheets: Record<'more' | 'add', { title: string; sections: SheetSection[] }> = {
     add: {
       title: t('detail.addDocument'),
@@ -700,15 +687,12 @@ export default function WarrantyDetail() {
 
         {/* 4. Support and claims. */}
         <Section title={t('detail.support')}>
-          {days >= 0 &&
-            // Section 20: not offered once the warranty has expired.
-            (w.contact_email ? (
-              <View style={styles.claim}>
-                <Button title={t('detail.claim')} icon="mail-outline" onPress={claim} />
-              </View>
-            ) : (
-              <Text style={styles.empty}>{t('detail.claimNoEmail')}</Text>
-            ))}
+          <View style={styles.claim}>
+            <Button title={t('assistant.title')} icon="document-text-outline" onPress={() => router.push({ pathname: '/claim-assistant', params: { id: String(w.id) } })} />
+          </View>
+          <Row onPress={() => router.push({ pathname: '/product-tools', params: { id: String(w.id) } })} chevron>
+            <Text style={styles.noteText}>{t('productTools.title')}</Text>
+          </Row>
           {contacts.map((c, i) => (
             <Field key={c.url} label={c.label} value={c.value} onPress={() => void Linking.openURL(c.url)} last={!brand && i === contacts.length - 1} />
           ))}
