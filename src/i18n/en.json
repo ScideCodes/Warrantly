@@ -110,7 +110,11 @@
     "lead": "Receipts, serial numbers and dates to check. Open a product to finish its details.",
     "dismiss": "Dismiss missing details",
     "restore": "Show missing details again",
-    "dismissProduct": "Dismiss missing details for {{product}}"
+    "dismissProduct": "Dismiss missing details for {{product}}",
+    "showDismissed": "Show dismissed ({{count}})",
+    "showActive": "Show missing details",
+    "restoreProduct": "Restore missing details for {{product}}",
+    "emptyDismissed": "No dismissed items"
   },
   "form": {
     "titleAdd": "Add warranty",

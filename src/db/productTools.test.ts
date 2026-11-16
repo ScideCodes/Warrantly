@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { nodeDb } from './testDb.ts';
 import { migrate, addManualWithDocument, addManual, addAttachment, getWarranty, updateWarranty, sharedWarranties, importShared, deleteWarranty } from './repo.ts';
-import { dismissMissingDetails, missingDetails, linkReplacement, replacementHistory, setReturnDeadline } from './productTools.ts';
+import { dismissedMissingDetails, dismissMissingDetails, missingDetails, linkReplacement, replacementHistory, setReturnDeadline } from './productTools.ts';
 import { duplicatePairs } from '../duplicates.ts';
 import { returnDeadline, reminderPlan } from '../warranty.ts';
 import { dumpDb, restoreDb } from '../backup/format.ts';
@@ -86,5 +86,6 @@ test('missing-details dismissal persists through edits and backups, can be resto
   await dismissMissingDetails(restored, id, true);
   assert.equal((await missingDetails(restored)).length, 0);
   assert.equal((await getWarranty(restored, id))!.status, 'needs_input');
+  assert.deepEqual((await dismissedMissingDetails(restored)).map(w => w.id), [id]);
   db.raw.close(); restored.raw.close();
 });
