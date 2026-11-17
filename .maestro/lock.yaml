@@ -33,15 +33,15 @@ appId: dev.warrantly.app
 - tapOn: "60 days before"
 - takeScreenshot: L3-after-reminder-day
 - assertNotVisible: "Enter your PIN"
-- scrollUntilVisible: { element: "Warranty end reminders", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Warranty end reminders" }
+- scrollUntilVisible: { element: "Expiry reminders", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Expiry reminders" }
 - waitForAnimationToEnd
-- tapOn: { text: "Warranty end reminders", index: 0 }
+- tapOn: { text: "Expiry reminders", index: 0 }
 - takeScreenshot: L4-after-reminders-toggle
 - assertNotVisible: "Enter your PIN"
-- scrollUntilVisible: { element: "Show names on the widget", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Show names on the widget" }
-- tapOn: "Show names on the widget"
+- scrollUntilVisible: { element: "Names on widget", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Names on widget" }
+- tapOn: "Names on widget"
 - takeScreenshot: L5-after-widget-toggle
 - assertNotVisible: "Enter your PIN"
 - back
