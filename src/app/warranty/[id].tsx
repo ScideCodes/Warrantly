@@ -37,6 +37,8 @@ import { DocumentDraft } from '@/documentDraft';
 import { useProductPhoto } from '@/components/useProductPhoto';
 import { rescheduleReminders, sendTestReminder } from '@/reminders';
 import { Page } from '@/components/Page';
+import * as Print from 'expo-print';
+import { stickerHtml } from '@/sticker';
 import { showAlert } from '@/components/Dialog';
 import { Button, GlassButton, Input, reduceMotion, Row, TILE } from '@/components/ui';
 import { colors, pairWidth, RADIUS, ROW_X, TONE, TYPE, themed, useRoom } from '@/theme';
@@ -420,6 +422,12 @@ export default function WarrantyDetail() {
             { key: 'bundle', icon: 'cube-outline', label: t('bundle.add'), onPress: () => void openBundlePicker() },
             { key: 'collections', icon: 'albums-outline', label: t('collections.title'), onPress: () => setTimeout(() => setSheet('collections'), 250) },
             { key: 'transfer', icon: 'swap-horizontal-outline', label: t('transfer.title'), onPress: () => router.push({ pathname: '/transfer', params: { id: String(w.id) } }) },
+            {
+              key: 'sticker',
+              icon: 'qr-code-outline',
+              label: t('sticker.print'),
+              onPress: () => void Print.printAsync({ html: stickerHtml(w.id, w.product_name ?? product, t('warranty.endsOn', { date: date(w.end_date) }), t('sticker.printHint')) }).catch((e) => showAlert(String(e))),
+            },
             { key: 'archive', icon: 'archive-outline', label: t(w.archived_at ? 'bulk.unarchive' : 'bulk.archive'), onPress: () => void archiveToggle() },
             {
               key: 'test',
@@ -535,6 +543,7 @@ export default function WarrantyDetail() {
               <Text style={styles.store}>{t(days < 0 ? 'warranty.endedOn' : 'warranty.endsOn', { date: date(w.end_date) })}</Text>
             </View>
             {w.status === 'needs_input' && <Text style={styles.note}>{t('warranty.needsInput')}</Text>}
+            <Button kind="glass" title={t('counter.open')} icon="storefront-outline" onPress={() => router.push({ pathname: '/counter', params: { id: String(w.id) } })} />
           </View>
         }
       >

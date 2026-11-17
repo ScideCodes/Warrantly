@@ -12,6 +12,7 @@ import { getDb } from '@/db/client';
 import { listAccounts, listWarranties, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
 import { rescheduleReminders } from '@/reminders';
+import { disableCalendarSync, enableCalendarSync, getCalendarSync } from '@/calendarSync';
 import { restartIntoUpdate, versionLine } from '@/appUpdate';
 import { openStorePage } from '@/rate';
 import { deleteAllData, importSharedFile, sharePdf, shareText } from '@/dataTools';
@@ -55,6 +56,7 @@ export default function Settings() {
   const glassOn = useGlassEnabled();
   const [density, setDensityState] = useState<Density>(getDensity);
   const [groups, setGroups] = useState(getReminderGroups);
+  const [calendarOn, setCalendarOn] = useState(getCalendarSync);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
@@ -124,6 +126,13 @@ export default function Settings() {
     setWidgetNames(on);
     setWidgetNamesState(on);
     await updateWidget(await getDb());
+  }
+
+  async function toggleCalendar(on: boolean) {
+    if (on && !(await enableCalendarSync())) { showAlert(t('calendarSync.denied')); return; }
+    if (!on) await disableCalendarSync();
+    setCalendarOn(on);
+    await rescheduleReminders(await getDb()); // also writes the calendar
   }
 
   async function toggleReturnReminders(on: boolean) {
@@ -428,6 +437,7 @@ export default function Settings() {
           {row('notifications-outline', TILE.red, t('settings.reminders'), null, reminders, toggleReminders)}
           {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => setReminderMenu(true), { hint: reminderSummary(groups, (k, o) => t(k, o ?? {})) || t('settings.noReminderDates') })}
           {reminders && row('return-down-back-outline', TILE.purple, t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
+          {Platform.OS === 'android' && row('today-outline', TILE.blue, t('calendarSync.title'), t('calendarSync.hint'), calendarOn, (on) => void toggleCalendar(on).catch((e) => showAlert(String(e))))}
         </>,
       )}
 

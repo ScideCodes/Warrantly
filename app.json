@@ -3,7 +3,7 @@
     "name": "Warrantly",
     "slug": "warrantly",
     "scheme": "warrantly",
-    "version": "1.1.4",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -46,6 +46,7 @@
       "react-native-document-scanner-plugin",
       "expo-sharing",
       "expo-mail-composer",
+      "expo-calendar",
       [
         "react-native-android-widget",
         {

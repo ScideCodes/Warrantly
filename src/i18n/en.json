@@ -1021,5 +1021,29 @@
     "body": "These products may already be saved:\n{{products}}",
     "review": "Review existing",
     "save": "Add anyway"
+  },
+  "counter": {
+    "title": "Counter mode",
+    "open": "Show at the counter",
+    "bought": "Bought {{date}}",
+    "details": "Details",
+    "receipt": "Receipt",
+    "noReceipt": "No receipt attached yet.",
+    "failed": "Couldn't open this warranty."
+  },
+  "sticker": {
+    "scan": "Scan sticker",
+    "print": "Print QR sticker",
+    "printHint": "Scan with Warrantly",
+    "hint": "Point the camera at a Warrantly sticker.",
+    "notOurs": "This is not a Warrantly sticker.",
+    "notHere": "This item is not on this phone."
+  },
+  "calendarSync": {
+    "title": "Add to calendar",
+    "hint": "End and return dates",
+    "denied": "Allow calendar access in Android settings.",
+    "warrantyEnds": "Warranty ends: {{name}}",
+    "returnBy": "Last day to return: {{name}}"
   }
 }
