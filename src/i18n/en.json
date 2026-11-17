@@ -454,7 +454,8 @@
     "scan": "Scan",
     "add": "Add",
     "search": "Search",
-    "emptyChosen": "Choose warranties in Settings"
+    "emptyChosen": "Choose warranties in Settings",
+    "titleChosen": "Watching"
   },
   "viewer": {
     "scrollDown": "Scroll down",
@@ -1055,5 +1056,10 @@
     "title": "Widget warranties",
     "lead": "The widget shows only these.",
     "empty": "No active warranties."
+  },
+  "coverageShort": {
+    "standard": "Standard",
+    "store": "Store",
+    "extended": "Extended"
   }
 }

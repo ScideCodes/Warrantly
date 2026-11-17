@@ -555,7 +555,7 @@ export default function EditWarranty() {
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>{t('form.coverage')}</Text>
-                <ChoicePills disabled={busy} options={([null, 'store', 'extended'] as const).map(c => ({ key: String(c), label: t(`coverage.${c ?? 'standard'}`), selected: coverage === c, onPress: () => setCoverage(c) }))} />
+                <ChoicePills disabled={busy} options={([null, 'store', 'extended'] as const).map(c => ({ key: String(c), label: t(`coverageShort.${c ?? 'standard'}`), selected: coverage === c, onPress: () => setCoverage(c) }))} />
               </View>
               <View style={styles.field}>
                 <Text style={styles.label}>{t('form.category')}</Text>

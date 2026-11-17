@@ -454,7 +454,8 @@
     "scan": "Szkennelés",
     "add": "Új",
     "search": "Keresés",
-    "emptyChosen": "Válassz garanciát a Beállításokban"
+    "emptyChosen": "Válassz garanciát a Beállításokban",
+    "titleChosen": "Figyelt"
   },
   "viewer": {
     "scrollDown": "Görgetés lefelé",
@@ -1055,5 +1056,10 @@
     "title": "Widget garanciái",
     "lead": "A widget csak ezeket mutatja.",
     "empty": "Nincs aktív garancia."
+  },
+  "coverageShort": {
+    "standard": "Alap",
+    "store": "Bolti",
+    "extended": "Bővített"
   }
 }

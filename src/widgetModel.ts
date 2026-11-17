@@ -43,7 +43,8 @@ const HERO = 20 + 34 + 4; // name over a big day count
 export function widgetLayout(width: number, height: number, fontScale: number, wantsActions: boolean) {
   const s = Math.max(1, fontScale);
   const size = widgetSize(width, height, s);
-  const available = Math.max(0, height - 2 * PAD);
+  // Launchers report a few dp more than they draw; keep a margin so the last row is never clipped.
+  const available = Math.max(0, height - 2 * PAD - 6);
   const inner = Math.max(0, width - 2 * PAD);
   const rowH = Math.ceil(ROW * s) + 12;
   const textHeader = Math.ceil(HEADER * s);

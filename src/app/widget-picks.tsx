@@ -65,7 +65,7 @@ export default function WidgetPicks() {
 }
 
 const useStyles = themed(() => StyleSheet.create({
-  search: { marginBottom: 12 },
+  search: { marginBottom: 12, backgroundColor: colors.card }, // on the page, like the home search
   row: { backgroundColor: colors.card },
   first: { borderTopLeftRadius: RADIUS, borderTopRightRadius: RADIUS },
   last: { borderBottomLeftRadius: RADIUS, borderBottomRightRadius: RADIUS },

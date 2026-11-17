@@ -136,7 +136,7 @@ export default function ImportReview() {
             <View style={styles.field}>
               <Text style={styles.label}>{t('form.coverage')}</Text>
               <ChoicePills disabled={busy} options={([null, 'store', 'extended'] as const).map(coverage => ({
-                key: String(coverage), label: t(`coverage.${coverage ?? 'standard'}`), selected: (product.coverage ?? null) === coverage,
+                key: String(coverage), label: t(`coverageShort.${coverage ?? 'standard'}`), selected: (product.coverage ?? null) === coverage,
                 onPress: () => update(index, { coverage }),
               }))} />
             </View>
