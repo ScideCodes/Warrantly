@@ -17,7 +17,8 @@ import {
   type LayoutRectangle,
 } from 'react-native';
 import Reanimated from 'react-native-reanimated';
-import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, PRESS_DELAY, SEP_ICON, SHEEN, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
+import { GlassFill } from '@/components/GlassFill';
+import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, PRESS_DELAY, SEP_ICON, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { segmentedLayout } from '@/segmentedLayout';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
@@ -27,16 +28,9 @@ const ease = Easing.bezier(...EASE);
 // Shared accessibility preference also controls theme colour transitions.
 export { reduceMotion } from '@/components/themeMotion';
 
-// Glass without a backdrop blur: the reference's defined fallback (--material-solid), its lit edge and sheen.
-export function glass(sheen = true): ViewStyle {
-  return {
-    backgroundColor: colors.material,
-    boxShadow: colors.glassEdge,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: colors.materialEdge,
-    ...(sheen ? { backgroundImage: SHEEN.replace('0.5)', `${0.5 * colors.glassSheen})`) } : null),
-  };
-}
+// The host side of a glass element: transparent, with the outer edge and drop shadow. The material and the
+// element's content go in a <GlassFill> child (see there for why the content must be inside it).
+export const glass = (): ViewStyle => ({ backgroundColor: 'transparent', boxShadow: colors.glassEdge });
 
 type ButtonKind = 'prominent' | 'glass' | 'destructive';
 // Capsule buttons: Glass Prominent (accent) and Glass (material, label colour). 44 tall; the hit area reaches 48.
@@ -64,6 +58,13 @@ export function Button({
   const styles = useStyles();
   const prominent = kind === 'prominent';
   const ink = disabled ? colors.ink2 : prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
+  const glassy = kind === 'glass' && !disabled;
+  const content = (
+    <>
+      {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
+      <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
+    </>
+  );
   return (
     <Pressable
       pressScale={0.97}
@@ -73,7 +74,7 @@ export function Button({
       disabled={disabled || busy}
       hitSlop={4}
       style={({ pressed }) => [
-        styles.button,
+        glassy ? styles.glassHost : styles.button,
         prominent
           ? { backgroundColor: pressed ? colors.accentDown : colors.accent, borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.25)' }
           : glass(),
@@ -85,8 +86,13 @@ export function Button({
       accessibilityLabel={accessibilityLabel}
       accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
     >
-      {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
-      <Text style={[styles.buttonText, { color: ink }]}>{title}</Text>
+      {glassy ? (
+        <GlassFill flow radius={CONTROL_H / 2} style={[styles.button, styles.grow]}>
+          {content}
+        </GlassFill>
+      ) : (
+        content
+      )}
     </Pressable>
   );
 }
@@ -110,12 +116,14 @@ export function GlassButton({ icon, label, onPress, size = 20, color = colors.in
         onPressOut={() => to(1, false)}
         disabled={disabled}
         hitSlop={4}
-        style={[styles.glassButton, glass()]}
+        style={[styles.round, glass()]}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled, selected }}
       >
-        <AppIcon name={icon} size={size} color={color} />
+        <GlassFill radius={CONTROL_H / 2} style={styles.center}>
+          <AppIcon name={icon} size={size} color={color} />
+        </GlassFill>
       </Pressable>
     </Animated.View>
   );
@@ -352,7 +360,10 @@ const useStyles = themed(() => StyleSheet.create({
   disabled: { opacity: 0.45 },
   button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 12, borderRadius: CONTROL_H / 2 },
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
-  glassButton: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center' },
+  glassHost: { borderRadius: CONTROL_H / 2 },
+  grow: { flexGrow: 1 },
+  round: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2 },
+  center: { alignItems: 'center', justifyContent: 'center' },
   sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 24, marginBottom: 8, paddingHorizontal: 4 },
   sectionTitle: { ...TYPE.section, color: colors.ink, flexShrink: 1, minWidth: 0 },
   group: { backgroundColor: colors.card, borderRadius: RADIUS, overflow: 'hidden' },

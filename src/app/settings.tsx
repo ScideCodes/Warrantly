@@ -25,6 +25,7 @@ import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, s
 import { updateWidget, widgetShowsNames } from '@/widget';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
+import { setGlass, useGlassEnabled } from '@/components/GlassFill';
 import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed, useRoom } from '@/theme';
 import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
@@ -48,6 +49,7 @@ export default function Settings() {
   const [defaultCurrency, setDefaultCurrencyState] = useState(getDefaultCurrency);
   const [currencyMenu, setCurrencyMenu] = useState(false);
   const [theme, setTheme] = useState(getThemeSetting);
+  const glassOn = useGlassEnabled();
   const [density, setDensityState] = useState<Density>(getDensity);
   const [groups, setGroups] = useState(getReminderGroups);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
@@ -441,6 +443,7 @@ export default function Settings() {
             theme,
             chooseTheme,
           )}
+          {row('water-outline', TILE.blue, t('settings.glass'), t('settings.glassHint'), glassOn, setGlass)}
           {choices(
             'list-outline',
             TILE.teal,

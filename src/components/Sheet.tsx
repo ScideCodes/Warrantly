@@ -26,6 +26,10 @@ export interface SheetSection {
 // The reference's phone sheet (ios.css lines 506-563, chrome.js makeSheet): floats 6dp from the sides and
 // bottom with 38/58 corners, a 60 x 4 grabber, a 54dp toolbar with a glass close button and a centred title.
 // One damped spring (stiffness 520, damping 46) opens, closes and follows the grabber.
+// How many sheet Modals are on screen. A dialog opened over one must be a Modal too, or it would draw under it.
+let sheetsOpen = 0;
+export const isSheetOpen = (): boolean => sheetsOpen > 0;
+
 export function SheetFrame({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
   const styles = useStyles();
   const { t } = useTranslation();
@@ -60,6 +64,11 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
     Animated.spring(y, { toValue: to, velocity, useNativeDriver: true, restDisplacementThreshold: 0.25, restSpeedThreshold: 3, ...SHEET_SPRING }).start(({ finished }) => finished && done?.());
   };
   if (open && !shown) setShown(true); // mount before the spring starts; it unmounts once closed
+  useEffect(() => {
+    if (!shown) return;
+    sheetsOpen++;
+    return () => void sheetsOpen--;
+  }, [shown]);
   useEffect(() => {
     if (open) {
       y.setValue(height.current);
