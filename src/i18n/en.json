@@ -311,7 +311,11 @@
     "daysBefore": "{{days}} days",
     "groupShort_weekly": "weekly",
     "groupShort_daily": "daily",
-    "groupShort_0": "last day"
+    "groupShort_0": "last day",
+    "widgetTrack": "Widget shows",
+    "widgetTrack_soon": "Ending soon",
+    "widgetTrack_chosen": "Chosen",
+    "widgetPicks": "Choose warranties"
   },
   "backup": {
     "section": "Backup",
@@ -449,7 +453,9 @@
     "returnIn_other": "Return within {{count}} days",
     "scan": "Scan",
     "add": "Add",
-    "search": "Search"
+    "search": "Search",
+    "emptyChosen": "Choose warranties in Settings",
+    "titleChosen": "Watching"
   },
   "viewer": {
     "scrollDown": "Scroll down",
@@ -1045,5 +1051,15 @@
     "denied": "Allow calendar access in Android settings.",
     "warrantyEnds": "Warranty ends: {{name}}",
     "returnBy": "Last day to return: {{name}}"
+  },
+  "widgetPicks": {
+    "title": "Widget warranties",
+    "lead": "The widget shows only these.",
+    "empty": "No active warranties."
+  },
+  "coverageShort": {
+    "standard": "Standard",
+    "store": "Store",
+    "extended": "Extended"
   }
 }

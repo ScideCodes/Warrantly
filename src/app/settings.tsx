@@ -20,7 +20,7 @@ import { toCsv, toHtml } from '@/export';
 import { chooseBackupAccount, configureGoogleSignIn } from '@/google';
 import { appLanguage, resources } from '@/i18n';
 import { currencyName } from '@/money';
-import { CURRENCIES, getDefaultCurrency, setDefaultCurrency, getDensity, setDensity, setUsername, type Density } from '@/settings';
+import { CURRENCIES, getDefaultCurrency, setDefaultCurrency, getDensity, setDensity, setUsername, getWidgetPicks, getWidgetTrack, setWidgetTrack, type Density, type WidgetTrack } from '@/settings';
 import { forgetRecent } from '@/recentStore';
 import { getUsername, getLanguageSetting, getThemeSetting, setLanguageSetting, setThemeSetting, getReminderGroups, getRemindersEnabled, getReturnRemindersEnabled, getSetting, setReminderGroups, setRemindersEnabled, setReturnRemindersEnabled, setSetting, setWidgetNames, settingsSnapshot } from '@/settings';
 import { updateWidget, widgetShowsNames } from '@/widget';
@@ -58,6 +58,8 @@ export default function Settings() {
   const [groups, setGroups] = useState(getReminderGroups);
   const [calendarOn, setCalendarOn] = useState(getCalendarSync);
   const [widgetNames, setWidgetNamesState] = useState(widgetShowsNames);
+  const [widgetTrack, setWidgetTrackState] = useState(getWidgetTrack);
+  const [widgetPicks, setWidgetPicksCount] = useState(() => getWidgetPicks().length);
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
   const [backupBusy, setBackupBusy] = useState(false);
@@ -96,6 +98,7 @@ export default function Settings() {
       setName(getUsername());
       setLock(isLockEnabled());
       setWidgetNamesState(widgetShowsNames()); // the default follows the lock
+      setWidgetPicksCount(getWidgetPicks().length); // back from choosing widget warranties
       void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
       setBiometric(isBiometricEnabled());
       void biometricAvailable().then(setCanBiometric);
@@ -122,6 +125,11 @@ export default function Settings() {
     setBiometric(on);
   }
 
+  async function chooseWidgetTrack(v: string) {
+    setWidgetTrack(v as WidgetTrack);
+    setWidgetTrackState(v as WidgetTrack);
+    await updateWidget(await getDb());
+  }
   async function toggleWidgetNames(on: boolean) {
     setWidgetNames(on);
     setWidgetNamesState(on);
@@ -470,6 +478,11 @@ export default function Settings() {
           )}
           {choices('globe-outline', TILE.blue, t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, label: t(`settings.lang_${key}`) })), language, chooseLanguage)}
           {link('cash-outline', TILE.green, t('settings.currency'), () => setCurrencyMenu(true), { value: defaultCurrency })}
+          {Platform.OS === 'android' && choices('apps-outline', TILE.indigo, t('settings.widgetTrack'), [
+            { key: 'soon', label: t('settings.widgetTrack_soon') },
+            { key: 'chosen', label: t('settings.widgetTrack_chosen') },
+          ], widgetTrack, (v) => void chooseWidgetTrack(v))}
+          {Platform.OS === 'android' && widgetTrack === 'chosen' && link('checkmark-circle-outline', TILE.indigo, t('settings.widgetPicks'), () => router.push('/widget-picks'), { value: String(widgetPicks) })}
         </>,
       )}
 

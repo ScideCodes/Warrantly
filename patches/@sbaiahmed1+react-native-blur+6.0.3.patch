@@ -1,8 +1,20 @@
 diff --git a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
-index ab47c96..7534516 100644
+index ab47c96..735bc03 100644
 --- a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
 +++ b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
-@@ -86,6 +86,20 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -81,11 +81,32 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+   // backdrop glued to the content at full frame rate. updateGlassNode is a
+   // cheap no-op when neither the offset, the capture, nor the effect changed.
+   private val scrollTrackingListener = ViewTreeObserver.OnPreDrawListener {
++    // A re-attach (back navigation) posts the source lookup, so the first
++    // frames would draw the glass empty and the backdrop pops in late. The
++    // parent chain is settled by the first pre-draw: resolve and capture now.
++    initRunnable?.let {
++      removeCallbacks(it)
++      it.run()
++    }
+     if (canRefreshBackdrop) {
+       updateGlassNode()
      }
      true
    }
@@ -23,7 +35,7 @@ index ab47c96..7534516 100644
    // Guards the visibility callbacks Android fires from the View super
    // constructor, before this class's properties are initialized.
    private var constructed = false
-@@ -117,6 +131,10 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -117,6 +138,10 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
      // sees the backdrop update at this cadence.
      private const val SHARED_CAPTURE_MAX_AGE_MS = 100L
  
@@ -34,7 +46,7 @@ index ab47c96..7534516 100644
      // Capture at third linear resolution: ~9x fewer bytes and ~9x less
      // software raster work than full-res; the shader's blur consumes the
      // softness.
-@@ -175,6 +193,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -175,6 +200,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
  
      registeredTreeObserver = viewTreeObserver.also {
        it.addOnPreDrawListener(scrollTrackingListener)
@@ -42,7 +54,7 @@ index ab47c96..7534516 100644
      }
      restartTickerIfVisible()
    }
-@@ -216,7 +235,10 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -216,7 +242,10 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
      captureSource?.let { SharedBackdropCapture.unregister(it) }
      captureSource = null
      registeredTreeObserver?.let {
@@ -54,7 +66,7 @@ index ab47c96..7534516 100644
      }
      registeredTreeObserver = null
      appliedGeneration = -1L
-@@ -431,7 +453,8 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -431,7 +460,8 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
    private fun findNearestReactRootView(): ViewGroup? {
      var currentParent = this.parent
      while (currentParent != null) {
