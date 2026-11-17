@@ -23,6 +23,10 @@ export const setSeenWhatsNew = (id: string): void => Storage.setItemSync('seen_w
 export const getUpdateLater = (): string | null => Storage.getItemSync('update_later');
 export const setUpdateLater = (day: string): void => Storage.setItemSync('update_later', day);
 
+// Liquid Glass on (default) or every glass surface drawn as a solid colour (src/components/GlassFill.tsx).
+export const getGlassEnabled = (): boolean => Storage.getItemSync('glass') !== '0';
+export const setGlassEnabled = (on: boolean): void => Storage.setItemSync('glass', on ? '1' : '0');
+
 // Theme: 'system' follows the phone, else 'light' or 'dark'.
 export const getThemeSetting = (): string => Storage.getItemSync('theme') ?? 'system';
 export const setThemeSetting = (theme: string): void => Storage.setItemSync('theme', theme);

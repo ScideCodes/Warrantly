@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text } from '@/components/themeMotion';
 import { glass } from '@/components/ui';
+import { GlassFill } from '@/components/GlassFill';
 import { colors, CONTROL_H, TYPE, themed } from '@/theme';
 import { runUndo, useUndo } from '@/undo';
 
@@ -23,16 +24,19 @@ export function UndoHost() {
       style={[styles.bar, glass(), { bottom: insets.bottom + 84 }]}
       accessibilityLiveRegion="polite"
     >
-      <Text style={styles.text}>{current.action.message}</Text>
-      <Pressable onPress={() => void runUndo()} style={({ pressed }) => [styles.button, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`${t('undo.undo')}: ${current.action.message}`} hitSlop={6}>
-        <Text style={styles.buttonText}>{t('undo.undo')}</Text>
-      </Pressable>
+      <GlassFill flow radius={26} style={styles.content}>
+        <Text style={styles.text}>{current.action.message}</Text>
+        <Pressable onPress={() => void runUndo()} style={({ pressed }) => [styles.button, pressed && styles.pressed]} accessibilityRole="button" accessibilityLabel={`${t('undo.undo')}: ${current.action.message}`} hitSlop={6}>
+          <Text style={styles.buttonText}>{t('undo.undo')}</Text>
+        </Pressable>
+      </GlassFill>
     </Reanimated.View>
   );
 }
 
 const useStyles = themed(() => StyleSheet.create({
-  bar: { position: 'absolute', left: 16, right: 16, maxWidth: 560, alignSelf: 'center', flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 4, paddingVertical: 6, paddingLeft: 18, paddingRight: 6, borderRadius: 26 },
+  bar: { position: 'absolute', left: 16, right: 16, maxWidth: 560, alignSelf: 'center', borderRadius: 26 },
+  content: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', columnGap: 12, rowGap: 4, paddingVertical: 6, paddingLeft: 18, paddingRight: 6 },
   text: { ...TYPE.sub, color: colors.ink, flexGrow: 1, flexShrink: 1, flexBasis: 160, paddingVertical: 6 },
   button: { minHeight: CONTROL_H, minWidth: 64, paddingHorizontal: 14, borderRadius: CONTROL_H / 2, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
   pressed: { backgroundColor: colors.press },
