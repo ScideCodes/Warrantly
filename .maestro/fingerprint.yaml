@@ -10,10 +10,10 @@ appId: dev.warrantly.app
 - tapOn: "4"
 - extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }
 - tapOn: "Settings"
-- scrollUntilVisible: { element: "Fingerprint or face", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Fingerprint or face" }
+- scrollUntilVisible: { element: "Unlock with fingerprint or face", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Unlock with fingerprint or face" }
 - waitForAnimationToEnd
-- tapOn: "Fingerprint or face"
+- tapOn: "Unlock with fingerprint or face"
 - takeScreenshot: F1-turning-on
 - extendedWaitUntil: { notVisible: "Unlock Warrantly", timeout: 30000 }
 - takeScreenshot: F2-turned-on
