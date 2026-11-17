@@ -1,6 +1,7 @@
 import { forwardRef, useState, useSyncExternalStore, type ComponentRef } from 'react';
 import {
   AccessibilityInfo,
+  Animated,
   Pressable as NativePressable,
   TextInput as NativeTextInput,
   View as NativeView,
@@ -50,18 +51,28 @@ export const Text = forwardRef<ComponentRef<typeof NativeText>, TextProps>(funct
   return <NativeText {...props} ref={ref} style={[{ includeFontPadding: false }, style]} />;
 });
 
+const AnimatedPressable = Animated.createAnimatedComponent(NativePressable);
+
+// pressScale runs on the UI thread (native driver) so a native glass lens inside the button scales in the same frame
+// as its label and edge. A state-driven transform reached the screen a JS round trip later, which showed as the
+// glass material and text trailing the button.
 export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, PressableProps & { pressScale?: number }>(function ThemePressable({ style, pressScale, ...props }, ref) {
   const [pressed, setPressed] = useState(false);
-  const tracksPress = typeof style === 'function' || pressScale !== undefined;
+  const scale = useState(() => new Animated.Value(1))[0];
+  const tracksPress = typeof style === 'function';
+  const to = (value: number, duration: number) => {
+    if (pressScale === undefined || reduceMotion()) return;
+    Animated.timing(scale, { toValue: value, duration, useNativeDriver: true }).start();
+  };
   return (
-    <NativePressable
+    <AnimatedPressable
       {...props}
       ref={ref}
-      onPressIn={(event) => { if (tracksPress) setPressed(true); props.onPressIn?.(event); }}
-      onPressOut={(event) => { if (tracksPress) setPressed(false); props.onPressOut?.(event); }}
+      onPressIn={(event) => { if (tracksPress) setPressed(true); to(pressScale ?? 1, 100); props.onPressIn?.(event); }}
+      onPressOut={(event) => { if (tracksPress) setPressed(false); to(1, 140); props.onPressOut?.(event); }}
       style={[
         typeof style === 'function' ? style({ pressed, hovered: false }) : style,
-        pressScale !== undefined && pressed && !reduceMotion() && { transform: [{ scale: pressScale }] },
+        pressScale !== undefined && { transform: [{ scale }] },
       ]}
     />
   );
