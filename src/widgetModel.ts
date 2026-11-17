@@ -51,7 +51,8 @@ export function widgetLayout(width: number, height: number, fontScale: number, w
   const header = available >= textHeader + 6 + rowH;
   // Icon buttons sit in the header beside the title (about 7 characters wide), never in a row of their own.
   const fitActions = (n: number) => inner >= Math.ceil(90 * s) + n * (ACTION + 6);
-  const actions = wantsActions && header ? (size === 'large' && fitActions(3) ? 3 : fitActions(2) ? 2 : 0) : 0;
+  const roomForButtons = available >= ACTION + 6 + rowH; // the round buttons are taller than the title text
+  const actions = wantsActions && header && roomForButtons ? (size === 'large' && fitActions(3) ? 3 : fitActions(2) ? 2 : 0) : 0;
   const headerH = header ? Math.max(textHeader, actions ? ACTION : 0) + 6 : 0;
   const body = available - headerH;
   const moreH = Math.ceil(MORE * s) + 4;

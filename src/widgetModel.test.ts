@@ -37,6 +37,11 @@ test('buttons sit in the header and drop out with larger fonts', () => {
   assert.equal(widgetLayout(320, 300, 1, false).actions, 0);
 });
 
+test('a short widget drops the buttons instead of clipping its row', () => {
+  const l = widgetLayout(250, 95, 1, true); // 3x1 resized by hand: room for text header + row, not for buttons
+  assert.deepEqual([l.header, l.actions, l.rows], [true, 0, 1]);
+});
+
 test('a 2x2 widget shows the next item big', () => {
   const l = widgetLayout(160, 170, 1, true);
   assert.deepEqual([l.hero, l.rows, l.header], [true, 1, true]);
