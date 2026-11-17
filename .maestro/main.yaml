@@ -176,32 +176,32 @@ appId: dev.warrantly.app
 - tapOn: "Time"
 - tapOn: "OK"
 - takeScreenshot: 14-reminders
-- scrollUntilVisible: { element: "Import a shared list", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Import a shared list" }
+- scrollUntilVisible: { element: "Open a shared list", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Open a shared list" }
 - waitForAnimationToEnd
-- tapOn: "Import a shared list"
+- tapOn: "Open a shared list"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-shared.json } }
 - extendedWaitUntil: { visible: "1 warranty added\\.", timeout: 30000 }
 - takeScreenshot: 15-imported
 - tapOn: "OK"
-- scrollUntilVisible: { element: "Export list as PDF", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Export list as PDF" }
+- scrollUntilVisible: { element: "Save list as PDF", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Save list as PDF" }
 - waitForAnimationToEnd
-- tapOn: "Export list as PDF"
+- tapOn: "Save list as PDF"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - takeScreenshot: 16-share-pdf
 - back
-- scrollUntilVisible: { element: "Export list as spreadsheet \\(CSV\\)", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Export list as spreadsheet \\(CSV\\)" }
+- scrollUntilVisible: { element: "Save list as spreadsheet", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Save list as spreadsheet" }
 - waitForAnimationToEnd
-- tapOn: "Export list as spreadsheet \\(CSV\\)"
+- tapOn: "Save list as spreadsheet"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - takeScreenshot: 17-share-csv
 - back
-- scrollUntilVisible: { element: "Export all my data", direction: UP, timeout: 6000, optional: true }
-- scrollUntilVisible: { element: "Export all my data" }
+- scrollUntilVisible: { element: "Save all my data to a file", direction: UP, timeout: 6000, optional: true }
+- scrollUntilVisible: { element: "Save all my data to a file" }
 - waitForAnimationToEnd
-- tapOn: "Export all my data"
+- tapOn: "Save all my data to a file"
 - extendedWaitUntil: { visible: ".*(Share|Sharing|Nearby|Bluetooth|Drive|Gmail|Messages|Copy).*", timeout: 30000 }
 - back
 - scrollUntilVisible: { element: "Help and feedback", direction: UP , optional: true, timeout: 8000 }

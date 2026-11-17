@@ -236,7 +236,7 @@ export async function upsertAccount(db: Db, email: string): Promise<Account> {
   return (await db.getFirstAsync<Account>('SELECT id, email, last_synced_at, first_sync_days FROM accounts WHERE email = ?', [email]))!;
 }
 
-// Choose how far back to read (first sync, or "Scan older emails" later). Mails already read are
+// Choose how far back to read (first sync, or "Search older emails" later). Mails already read are
 // skipped, so going further back only fetches the older ones.
 export async function setSyncRange(db: Db, accountId: number, days: number): Promise<void> {
   await db.runAsync('UPDATE accounts SET first_sync_days = ?, last_synced_at = NULL WHERE id = ?', [days, accountId]);
