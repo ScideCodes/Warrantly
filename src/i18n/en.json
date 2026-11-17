@@ -297,6 +297,8 @@
     "lang_hu": "Magyar",
     "theme": "Appearance",
     "theme_system": "System",
+    "glass": "Liquid Glass",
+    "glassHint": "Off: glass buttons and bars use a solid colour.",
     "theme_light": "Light",
     "theme_dark": "Dark",
     "rate": "Rate Warrantly",

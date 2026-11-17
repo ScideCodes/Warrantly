@@ -297,6 +297,8 @@
     "lang_hu": "Magyar",
     "theme": "Megjelenés",
     "theme_system": "Rendszer",
+    "glass": "Folyékony üveg",
+    "glassHint": "Kikapcsolva: az üveg gombok és sávok egyszínűek.",
     "theme_light": "Világos",
     "theme_dark": "Sötét",
     "rate": "Értékeld a Warrantlyt",
