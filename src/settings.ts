@@ -48,6 +48,20 @@ export const getWidgetNames = (): boolean | null => {
 };
 export const setWidgetNames = (on: boolean | null): void => void (on === null ? Storage.removeItemSync('widget_names') : Storage.setItemSync('widget_names', on ? '1' : '0'));
 
+// What the widget lists: the warranties ending soonest, or only the ones picked in Settings.
+export type WidgetTrack = 'soon' | 'chosen';
+export const getWidgetTrack = (): WidgetTrack => (Storage.getItemSync('widget_track') === 'chosen' ? 'chosen' : 'soon');
+export const setWidgetTrack = (v: WidgetTrack): void => Storage.setItemSync('widget_track', v);
+export function getWidgetPicks(): number[] {
+  try {
+    const v: unknown = JSON.parse(Storage.getItemSync('widget_picks') ?? '[]');
+    return Array.isArray(v) ? v.filter((n): n is number => Number.isInteger(n)) : [];
+  } catch {
+    return [];
+  }
+}
+export const setWidgetPicks = (ids: number[]): void => Storage.setItemSync('widget_picks', JSON.stringify(ids));
+
 // Backup settings (section 17). The backup password's key lives in SecureStore, not here.
 type SettingKey = 'backup_enabled' | 'backup_interval' | 'last_backup_at' | 'last_backup_error' | 'last_backup_error_at' | 'backup_account' | 'gmail_import_enabled';
 export const getSetting = (key: SettingKey): string | null => Storage.getItemSync(key);
