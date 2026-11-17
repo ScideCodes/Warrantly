@@ -54,8 +54,8 @@ appId: dev.warrantly.app
 - tapOn: { id: "pin-key-6" }
 - extendedWaitUntil: { visible: "Search warranties", timeout: 15000 }
 - tapOn: { id: "tab-settings" }
-- scrollUntilVisible: { element: "App lock", timeout: 20000 }
-- tapOn: "App lock"
+- scrollUntilVisible: { element: "Lock with PIN", timeout: 20000 }
+- tapOn: "Lock with PIN"
 - back
 - launchApp: { stopApp: true }
 - extendedWaitUntil: { visible: "Search warranties", timeout: 30000 }

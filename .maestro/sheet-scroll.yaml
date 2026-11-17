@@ -9,9 +9,9 @@ appId: dev.warrantly.app
 # on whatever Settings shows at that spot.
 - tapOn: { text: "Settings", retryTapIfNoChange: false }
 - extendedWaitUntil: { visible: "Ignored emails", timeout: 20000 }
-- scrollUntilVisible: { element: "Import a shared list", timeout: 30000 }
+- scrollUntilVisible: { element: "Open a shared list", timeout: 30000 }
 - waitForAnimationToEnd
-- tapOn: "Import a shared list"
+- tapOn: "Open a shared list"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-stores.json } }
 - extendedWaitUntil: { visible: "12 warranties added\\.", timeout: 30000 }
 - tapOn: "OK"
