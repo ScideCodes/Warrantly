@@ -1026,7 +1026,7 @@
     "title": "Pultnál",
     "open": "Mutasd a pultnál",
     "bought": "Vásárolva: {{date}}",
-    "details": "Vásárlás",
+    "details": "Adatok",
     "receipt": "Blokk",
     "noReceipt": "Még nincs blokk csatolva.",
     "failed": "Nem sikerült megnyitni ezt a garanciát."

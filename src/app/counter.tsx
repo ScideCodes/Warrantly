@@ -1,4 +1,4 @@
-import { Text, View } from '@/components/themeMotion';
+import { Text } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, PixelRatio, StyleSheet, useWindowDimensions } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
@@ -51,7 +51,6 @@ export default function Counter() {
   if (!w) return <Page title={t('counter.title')}>{failed && <Text style={styles.note}>{t('counter.failed')}</Text>}</Page>;
   const date = (ymd: string) => formatDate(ymd, i18n.language);
   const facts = [
-    { label: t('warranty.purchaseDate'), value: date(w.purchase_date) },
     { label: t('form.store'), value: w.store_name },
     w.order_number && { label: t('warranty.orderNumber'), value: w.order_number },
     ...serialEntries(w).map((s) => ({ label: s.label || t('detail.serial'), value: s.value })),
@@ -59,14 +58,7 @@ export default function Counter() {
   ].filter((f): f is { label: string; value: string } => !!f);
 
   return (
-    <Page
-      title={w.product_name ?? t('counter.title')}
-      head={
-        <View style={styles.hero}>
-          <Text style={styles.bought}>{t('counter.bought', { date: date(w.purchase_date) })}</Text>
-        </View>
-      }
-    >
+    <Page title={w.product_name ?? t('counter.title')} lead={t('counter.bought', { date: date(w.purchase_date) })}>
       <Section title={t('counter.details')} first>
         {facts.map((f, i) => <Field key={f.label + i} label={f.label} value={f.value} last={i === facts.length - 1} />)}
       </Section>
@@ -90,8 +82,6 @@ function pickReceipt(docs: Attachment[]): Attachment | undefined {
 const rank = (d: Attachment) => { const i = ORDER.indexOf(d.label); return i < 0 ? ORDER.length : i; };
 
 const useStyles = themed(() => StyleSheet.create({
-  hero: { gap: 6, paddingTop: 4, paddingHorizontal: 4 },
-  bought: { ...TYPE.title3, color: colors.ink, fontVariant: ['tabular-nums'] },
   page: { backgroundColor: '#fff', borderRadius: RADIUS }, // paper stays white in dark mode
   loading: { paddingVertical: 32 },
   note: { ...TYPE.body, color: colors.ink2, padding: 16 },
