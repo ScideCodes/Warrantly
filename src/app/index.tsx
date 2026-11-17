@@ -734,15 +734,15 @@ function TabBar({ tabs, current }: { tabs: Tab[]; current: string }) {
   const styles = useStyles();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const [tabH, setTabH] = useState(54);
-  const barW = Math.min(368, width - 42);
+  const [tabH, setTabH] = useState(46);
+  const barW = Math.min(300, width - 64);
   const tabW = (barW - 8) / tabs.length;
   const at = Math.max(0, tabs.findIndex((tab) => tab.key === current));
   return (
     <>
       <View style={[styles.scrollEdge, { height: 80 + insets.bottom }]} pointerEvents="none" />
       <View style={[styles.tabbar, glass(), { width: barW, bottom: insets.bottom + 8 }]} accessibilityRole="tablist">
-        <GlassFill flow radius={31} sheen={false} style={styles.tabRow}>
+        <GlassFill flow radius={27} sheen={false} style={styles.tabRow}>
           <View style={[styles.lens, { top: 4, height: tabH, width: tabW, left: 4 + at * tabW }]} pointerEvents="none" />
           {tabs.map((tab, i) => (
             <View key={tab.key} style={styles.tabSlot} onLayout={i === at ? (e) => setTabH(e.nativeEvent.layout.height) : undefined}>
@@ -766,7 +766,7 @@ function TabButton({ tab, on }: { tab: Tab; on: boolean }) {
       onPressIn={() => press(0.86)} onPressOut={() => press(1)}
       accessibilityRole="tab" accessibilityLabel={tab.accessibilityLabel ?? tab.label} accessibilityState={{ selected: on }}>
       <Animated.View style={{ transform: [{ scale }] }}>
-        <AppIcon name={on && tab.iconOn ? tab.iconOn : tab.icon} size={24} color={on ? colors.tint : colors.ink} />
+        <AppIcon name={on && tab.iconOn ? tab.iconOn : tab.icon} size={22} color={on ? colors.tint : colors.ink} />
       </Animated.View>
       <Text style={[styles.tabLabel, on && { color: colors.tintInk }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>{tab.label}</Text>
     </Pressable>
@@ -824,10 +824,10 @@ const useStyles = themed(() => StyleSheet.create({
     opacity: isDarkNow() ? 0.35 : 1,
     backgroundImage: `linear-gradient(rgba(${rgb()},0) 0%, rgba(${rgb()},0.45) 60%, rgba(${rgb()},0.75) 100%)`,
   },
-  tabbar: { position: 'absolute', alignSelf: 'center', borderRadius: 31 },
+  tabbar: { position: 'absolute', alignSelf: 'center', borderRadius: 27 },
   tabRow: { flexDirection: 'row', padding: 4 },
-  lens: { position: 'absolute', borderRadius: 28, backgroundColor: colors.select },
+  lens: { position: 'absolute', borderRadius: 23, backgroundColor: colors.select },
   tabSlot: { flex: 1, minWidth: 0 },
-  tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 28, paddingHorizontal: 2 },
+  tab: { flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 23, paddingHorizontal: 2 },
   tabLabel: { ...TYPE.tab, color: colors.ink, maxWidth: '100%' },
 }));
