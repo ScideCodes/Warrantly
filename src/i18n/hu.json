@@ -312,7 +312,7 @@
     "reminderSchedule": "Mikor szóljunk",
     "noReminderDates": "Nincs kiválasztva",
     "group_daily": "Naponta az utolsó hónapban",
-    "daysBefore": "{{days}} nappal előtte",
+    "daysBefore": "{{days}} nap",
     "groupShort_weekly": "hetente",
     "groupShort_daily": "naponta",
     "groupShort_0": "utolsó nap"
@@ -516,7 +516,7 @@
     "deletePhone": "Törlés a telefonról",
     "deleteAll": "A Drive mentéseket is",
     "share": "Lista megosztása",
-    "shareHint": "Megosztás más Warrantly-felhasználóval",
+    "shareHint": "Közös lista a családdal",
     "import": "Megosztott lista megnyitása",
     "imported_one": "{{count}} garancia hozzáadva.",
     "imported_other": "{{count}} garancia hozzáadva."

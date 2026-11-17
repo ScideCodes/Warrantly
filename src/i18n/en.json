@@ -312,7 +312,7 @@
     "reminderSchedule": "When to remind me",
     "noReminderDates": "None selected",
     "group_daily": "Daily in the last month",
-    "daysBefore": "{{days}} days before",
+    "daysBefore": "{{days}} days",
     "groupShort_weekly": "weekly",
     "groupShort_daily": "daily",
     "groupShort_0": "last day"
@@ -516,7 +516,7 @@
     "deletePhone": "Delete from this phone",
     "deleteAll": "Also delete Drive backups",
     "share": "Share list with someone",
-    "shareHint": "Share with another Warrantly user",
+    "shareHint": "Share a list with your family",
     "import": "Open a shared list",
     "imported_one": "{{count}} warranty added.",
     "imported_other": "{{count}} warranties added."
