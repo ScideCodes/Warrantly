@@ -9,7 +9,7 @@ import { listReturnPrompts, listWarranties, type Db, type Warranty } from '@/db/
 import { photoForWidget } from '@/documents';
 import i18n from '@/i18n';
 import { isLockEnabled } from '@/lock/store';
-import { getThemeSetting, getWidgetConfigText, getWidgetNames, removeWidgetConfig } from '@/settings';
+import { getThemeSetting, getWidgetConfigText, getWidgetNames, getWidgetPicks, getWidgetTrack, removeWidgetConfig } from '@/settings';
 import { todayYmd, urgency } from '@/warranty';
 import { namesShown, PAD, parseWidgetConfig, widgetLayout, widgetRows, type WidgetConfig, type WidgetRow } from '@/widgetModel';
 
@@ -54,19 +54,23 @@ const icon = (d: string, color: Hex) =>
 export const widgetShowsNames = (): boolean => getWidgetNames() ?? !isLockEnabled();
 export const widgetConfig = (id: number): WidgetConfig => parseWidgetConfig(getWidgetConfigText(id));
 
-interface Data { rows: WidgetRow[]; photos: Map<number, string>; attention: number; active: number }
+interface Data { rows: WidgetRow[]; photos: Map<number, string>; attention: number; active: number; chosen: boolean }
 
 async function load(db: Db, cfg: WidgetConfig, max: number): Promise<Data> {
   const today = todayYmd();
   const [complete, needsInput, returns] = await Promise.all([listWarranties(db, 'complete'), listWarranties(db, 'needs_input'), listReturnPrompts(db)]);
-  const rows = widgetRows(complete, cfg, namesShown(cfg, widgetShowsNames()), today, max);
+  // "Chosen" in Settings: only the picked warranties, still soonest first.
+  const chosen = cfg.content === 'expiring' && getWidgetTrack() === 'chosen';
+  const picks = new Set(getWidgetPicks());
+  const pool = chosen ? complete.filter((w) => picks.has(w.id)) : complete;
+  const rows = widgetRows(pool, cfg, namesShown(cfg, widgetShowsNames()), today, max);
   const photos = new Map<number, string>();
   for (const r of rows) {
     if (!r.photo) continue;
     const uri = await photoForWidget(r.photo, 96);
     if (uri) photos.set(r.id, uri);
   }
-  return { rows, photos, attention: needsInput.length + returns.length, active: complete.filter((w: Warranty) => w.end_date >= today).length };
+  return { rows, photos, attention: needsInput.length + returns.length, active: pool.filter((w: Warranty) => w.end_date >= today).length, chosen };
 }
 
 function Action({ label, uri, path, c }: { label: string; uri: string; path: string; c: WidgetPalette }) {
@@ -109,7 +113,7 @@ function Body({ data, cfg, layout, c }: { data: Data; cfg: WidgetConfig; layout:
         {layout.actions === 3 ? <Action label={t('widget.search')} uri="warrantly://?search=1" path={ICON.search} c={c} /> : null}
       </FlexWidget>}
       {!first ? (
-        <TextWidget text={t(returns ? 'widget.emptyReturns' : 'widget.empty')} style={{ fontSize: 15, fontWeight: '600', color: c.ink }} maxLines={2} truncate="END" />
+        <TextWidget text={t(returns ? 'widget.emptyReturns' : data.chosen ? 'widget.emptyChosen' : 'widget.empty')} style={{ fontSize: 15, fontWeight: '600', color: c.ink }} maxLines={2} truncate="END" />
       ) : layout.hero ? (
         // One item with room to spare: the name over a big day count, like an iOS small widget.
         <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: `warrantly://warranty/${first.id}` }} accessibilityLabel={spoken(first)}
