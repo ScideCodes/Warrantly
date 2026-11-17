@@ -157,3 +157,14 @@ test('reminder summary joins day counts and names the rest', async () => {
   assert.equal(reminderSummary(['weekly'], t), 'weekly');
   assert.equal(reminderSummary([], t), '');
 });
+
+test('calendar plan holds future warranty ends and return deadlines only', async () => {
+  const { calendarPlan } = await import('./warranty.ts');
+  const t = (key: string, o: Record<string, unknown>) => `${key}:${o.name}`;
+  const plan = calendarPlan([
+    { id: 1, product_name: 'Kettle', store_name: 'Shop', end_date: '2027-01-01', return_by: '2026-01-01' },
+    { id: 2, product_name: null, store_name: 'Shop', end_date: '2025-01-01', return_by: '2026-12-01' },
+  ], '2026-06-01', t);
+  assert.deepEqual(plan.map((e) => e.key), ['end:1', 'return:2']);
+  assert.equal(plan[0]!.date, '2027-01-01');
+});

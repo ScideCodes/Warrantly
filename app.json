@@ -46,6 +46,7 @@
       "react-native-document-scanner-plugin",
       "expo-sharing",
       "expo-mail-composer",
+      "expo-calendar",
       [
         "react-native-android-widget",
         {
