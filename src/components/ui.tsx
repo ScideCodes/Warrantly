@@ -87,9 +87,15 @@ export function Button({
       accessibilityState={{ disabled: !!(disabled || busy), busy: !!busy }}
     >
       {glassy ? (
-        <GlassFill flow radius={CONTROL_H / 2} style={[styles.button, styles.grow]}>
-          {content}
-        </GlassFill>
+        <>
+          {/* Sizes the host. The lens below fills it absolutely, so no flex growth can stretch it. */}
+          <View style={[styles.button, styles.sizer]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            {content}
+          </View>
+          <GlassFill radius={CONTROL_H / 2} style={styles.button}>
+            {content}
+          </GlassFill>
+        </>
       ) : (
         content
       )}
@@ -361,9 +367,7 @@ const useStyles = themed(() => StyleSheet.create({
   button: { minHeight: CONTROL_H, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, paddingHorizontal: 12, borderRadius: CONTROL_H / 2 },
   buttonText: { ...TYPE.button, textAlign: 'center', flexShrink: 1 },
   glassHost: { borderRadius: CONTROL_H / 2 },
-  // Fill the host's height when a row stretches it, but stay content-sized in a column. flexGrow here grew the lens to
-  // the whole screen inside a flex:1 container (the empty home screen's Connect Gmail button).
-  grow: { height: '100%' },
+  sizer: { opacity: 0 },
   round: { width: CONTROL_H, height: CONTROL_H, borderRadius: CONTROL_H / 2 },
   center: { alignItems: 'center', justifyContent: 'center' },
   sectionHead: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8, marginTop: 24, marginBottom: 8, paddingHorizontal: 4 },
