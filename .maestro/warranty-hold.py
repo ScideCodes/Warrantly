@@ -88,7 +88,7 @@ try:
 finally:
     motion('UP', point)
 selected_once()
-run('shell', 'input', 'tap', *map(str, center(find(lambda a: a.get('content-desc') == 'Done selecting'))))
+run('shell', 'input', 'tap', *map(str, center(find(lambda a: a.get('content-desc') == 'Done'))))
 time.sleep(0.4)
 button = find(lambda a: a.get('content-desc') == 'Add a document to ' + args.product)
 point = center(button)

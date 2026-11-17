@@ -11,7 +11,7 @@ import { Page } from '@/components/Page';
 import { Button, Group, Row } from '@/components/ui';
 import { colors, TYPE, themed } from '@/theme';
 
-// Section 7: how far back to look, asked after connecting an account (and from "Scan older emails").
+// Section 7: how far back to look, asked after connecting an account (and from "Search older emails").
 const OPTIONS = [
   { key: '2w', days: 14 },
   { key: '1m', days: 30 },
