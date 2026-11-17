@@ -85,7 +85,7 @@ function Action({ label, uri, path, c }: { label: string; uri: string; path: str
 function Body({ data, cfg, layout, c }: { data: Data; cfg: WidgetConfig; layout: ReturnType<typeof widgetLayout>; c: WidgetPalette }) {
   const t = i18n.t.bind(i18n);
   const returns = cfg.content === 'returns';
-  const title = t(returns ? 'widget.titleReturns' : 'widget.title');
+  const title = t(returns ? 'widget.titleReturns' : data.chosen ? 'widget.titleChosen' : 'widget.title');
   const rowLabel = (r: WidgetRow) => r.title ?? t(returns ? 'widget.hiddenReturn' : 'widget.hidden');
   const spoken = (r: WidgetRow) => `${rowLabel(r)}, ${returns ? t('widget.returnIn', { count: r.days }) : daysLabel(t, r.days)}`;
   const days = (r: WidgetRow) => t(r.days === 0 ? 'warranty.counterToday' : 'warranty.counterDays', { count: r.days });
@@ -114,7 +114,7 @@ function Body({ data, cfg, layout, c }: { data: Data; cfg: WidgetConfig; layout:
       </FlexWidget>}
       {!first ? (
         <TextWidget text={t(returns ? 'widget.emptyReturns' : data.chosen ? 'widget.emptyChosen' : 'widget.empty')} style={{ fontSize: 15, fontWeight: '600', color: c.ink }} maxLines={2} truncate="END" />
-      ) : layout.hero ? (
+      ) : layout.hero || (data.rows.length === 1 && layout.rows >= 2) ? (
         // One item with room to spare: the name over a big day count, like an iOS small widget.
         <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: `warrantly://warranty/${first.id}` }} accessibilityLabel={spoken(first)}
           style={{ flexDirection: 'column', width: 'match_parent' }}>
