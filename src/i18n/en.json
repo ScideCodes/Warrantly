@@ -1026,7 +1026,7 @@
     "title": "Counter mode",
     "open": "Show at the counter",
     "bought": "Bought {{date}}",
-    "details": "Purchase",
+    "details": "Details",
     "receipt": "Receipt",
     "noReceipt": "No receipt attached yet.",
     "failed": "Couldn't open this warranty."
