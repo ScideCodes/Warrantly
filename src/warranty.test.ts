@@ -149,3 +149,11 @@ test('productIcon picks by name, then category, then a parcel', () => {
   assert.equal(productIcon('Mystery box', 'tools'), 'hammer-wrench');
   assert.equal(productIcon(null, null), 'package-variant-closed');
 });
+
+test('reminder summary joins day counts and names the rest', async () => {
+  const { reminderSummary } = await import('./warranty.ts');
+  const t = (key: string, o?: Record<string, unknown>) => (key === 'settings.daysBefore' ? `${o?.days} days before` : key.replace('settings.groupShort_', ''));
+  assert.equal(reminderSummary(['90', '60', '30', 'weekly', '0'], t), '90, 60, 30 days before · weekly · 0');
+  assert.equal(reminderSummary(['weekly'], t), 'weekly');
+  assert.equal(reminderSummary([], t), '');
+});

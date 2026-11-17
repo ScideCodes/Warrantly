@@ -15,3 +15,9 @@ test('appearance and language selectors reserve full labels at the chosen font s
   assert.equal(segmentedLayout(296, 1.6, ['System', 'English', 'Magyar'], true).columns, 1);
   assert.equal(segmentedLayout(296, 1, ['Világos', 'Sötét', 'Rendszer'], true).columns, 3);
 });
+
+test('measured label widths decide the row, not the letter count', () => {
+  // "Rendszer" bold is about 72dp wide: three fit in a 290dp control, which the estimate refused.
+  assert.equal(segmentedLayout(290, 1, ['Rendszer', 'English', 'Magyar'], true, 72).columns, 3);
+  assert.equal(segmentedLayout(290, 1, ['Rendszer', 'English', 'Magyar'], true, 120).columns, 1);
+});
