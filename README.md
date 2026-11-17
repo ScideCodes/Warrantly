@@ -63,7 +63,7 @@ Keep your receipts and warranties together. Warrantly counts the days left and r
   </tr>
 </table>
 
-<p align="center"><img src="assets/widget-preview.png" alt="Home screen widget" width="420" /><br /><b>Home screen widget</b><br />What ends next, with scan and add one tap away.</p>
+<p align="center"><img src="assets/widget-preview.png" alt="Home screen widget" width="420" /><br /><b>Home screen widget</b><br />What ends next, or the warranties you pick. Scan and add are one tap away.</p>
 
 ## What it does
 
@@ -75,9 +75,9 @@ Keep your receipts and warranties together. Warrantly counts the days left and r
 - **QR stickers:** print one, stick it on the item, scan to open.
 - **Calendar:** end dates and return deadlines in your phone's calendar.
 - **Claims:** repair notes, store contacts and a ready-to-send claim pack.
-- **Home screen widget:** what ends next, in glass that fits any size.
+- **Home screen widget:** what ends next, or only the warranties you pick, in glass that fits any size.
 - **Backup:** encrypted on your phone, then saved to your own Google Drive.
-- **Lock:** PIN or fingerprint.
+- **Lock:** PIN or fingerprint. While it is on, receipts stay out of screenshots and reminders hide product names.
 - **English and Hungarian.**
 
 ## Install
