@@ -6,26 +6,46 @@ const item = (id: number, end: string, extra: Partial<{ origin: string; warranty
   id, product_name: `P${id}`, store_name: 'S', end_date: end, origin: 'manual', warranty_start_date: '2026-01-01', photo_path: 'p.jpg', ...extra,
 });
 
-test('short widgets reserve room for content instead of clipping action buttons', () => {
-  const layout = widgetLayout(250, 80, 1, true, ['Scan', 'Add', 'Search']);
-  assert.equal(layout.rows, 1);
-  assert.equal(layout.header, false);
-  assert.equal(layout.actions, 0);
-  assert.equal(layout.showTitle, true);
-  const largeText = widgetLayout(180, 80, 2, true, ['Beolvasás', 'Hozzáadás', 'Keresés']);
-  assert.equal(largeText.showTitle, false);
-  assert.equal(largeText.rows, 1);
-  assert.equal(largeText.actions, 0);
+test('short widgets show one line and never a clipped header or buttons', () => {
+  const layout = widgetLayout(250, 80, 1, true);
+  assert.deepEqual([layout.rows, layout.header, layout.actions, layout.hero], [1, false, 0, false]);
+  const largeText = widgetLayout(180, 80, 2, true);
+  assert.deepEqual([largeText.rows, largeText.header, largeText.actions], [1, false, 0]);
 });
 
-test('widget content reduces with larger fonts and translated action labels', () => {
-  const normal = widgetLayout(320, 300, 1, true, ['Scan', 'Add', 'Search']);
-  const scaled = widgetLayout(320, 300, 1.6, true, ['Beolvasás', 'Hozzáadás', 'Keresés']);
-  assert.equal(normal.actions, 3);
-  assert.equal(normal.rows, 4);
+test('every part the layout picks fits the height', () => {
+  for (const w of [110, 160, 180, 250, 320, 400]) {
+    for (const h of [60, 80, 110, 150, 220, 300, 420]) {
+      for (const s of [1, 1.3, 2]) {
+        const l = widgetLayout(w, h, s, true);
+        const header = l.header ? Math.max(Math.ceil(18 * s), l.actions ? 32 : 0) + 6 : 0;
+        const body = l.hero ? Math.ceil(58 * s) : l.rows * (Math.ceil(20 * s) + 12);
+        const more = l.more ? Math.ceil(16 * s) + 4 : 0;
+        if (l.rows > 1 || l.header) assert.ok(header + body + more <= h - 28, `${w}x${h}@${s}`);
+      }
+    }
+  }
+});
+
+test('buttons sit in the header and drop out with larger fonts', () => {
+  const normal = widgetLayout(320, 300, 1, true);
+  const scaled = widgetLayout(320, 300, 1.6, true);
+  assert.deepEqual([normal.actions, normal.rows, normal.more], [3, 5, true]);
   assert.equal(scaled.actions, 2);
   assert.ok(scaled.rows < normal.rows);
-  assert.equal(widgetLayout(180, 300, 1.6, true, ['Beolvasás', 'Hozzáadás', 'Keresés']).actions, 0);
+  assert.equal(widgetLayout(180, 300, 1.6, true).actions, 0);
+  assert.equal(widgetLayout(320, 300, 1, false).actions, 0);
+});
+
+test('a short widget drops the buttons instead of clipping its row', () => {
+  const l = widgetLayout(250, 95, 1, true); // 3x1 resized by hand: room for text header + row, not for buttons
+  assert.deepEqual([l.header, l.actions, l.rows], [true, 0, 1]);
+});
+
+test('a 2x2 widget shows the next item big', () => {
+  const l = widgetLayout(160, 170, 1, true);
+  assert.deepEqual([l.hero, l.rows, l.header], [true, 1, true]);
+  assert.equal(widgetLayout(320, 170, 1, true).hero, false);
 });
 
 test('widget config parsing falls back safely', () => {

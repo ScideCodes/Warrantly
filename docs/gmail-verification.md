@@ -24,7 +24,73 @@ scide.business@gmail.com.
 | Unlisted YouTube demo video, in English | Done 14 Nov 2026: https://www.youtube.com/watch?v=J82HG2bCe4U (staging build, test account). Shows the OAuth clients and scopes, the unverified-app warning, Gmail and Drive consent, an imported test mail with its PDF. |
 | Security assessment (CASA), yearly | Possibly not required. See "CASA" below. |
 
-## Justification (draft)
+## Google's reply of 17 Nov 2026 (action needed)
+
+Google asked for: a fuller justification of `gmail.readonly`, requested scopes that match the Data Access list
+exactly, a new demo of every user-facing feature that uses the scope with the consent screen fully expanded, and
+reviewer access with step-by-step instructions. Answer below; reply in the same email thread.
+
+### Justification (sent with the reply)
+
+Warrantly is an Android app that keeps a person's product warranties and receipts and reminds them before a warranty
+or a return window ends. With `gmail.readonly` it builds that list from the user's own mailbox, so they do not have to
+type in every purchase. Every feature below runs on the phone; there is no Warrantly server.
+
+What the user sees, and the Gmail call behind it:
+
+1. **Connect Gmail and choose how far back to look** (2 weeks to all mail). The app runs one search,
+   `users.messages.list` with a `q` query that matches warranty, guarantee and invoice words in subjects and PDF
+   names, purchase mails that state a warranty length, and return or cancellation mails, in English and Hungarian.
+2. **Warranties appear automatically.** For each match the app reads the message, `users.messages.get` with
+   `format=full`, and takes the store, product, purchase date, warranty length, order number and return deadline
+   from the body.
+3. **The warranty card or invoice PDF is kept with the warranty** and opens inside the app.
+   `users.messages.attachments.get` downloads the PDF attachment.
+4. **Needs your attention:** a mail with a missing detail (for example no product name) opens a form with the found
+   values filled in and a **Show original email** button that shows the mail text.
+5. **Ignored emails:** mails the user dismisses are remembered and can be restored.
+6. **Scan older emails** later, **several Gmail accounts**, and a **new-mail check** each time the app opens (the same
+   search, limited to mail after the last check).
+7. **Disconnect** removes the account and stops all access.
+
+Why narrower scopes do not work:
+
+- `gmail.metadata` does not allow the `q` search parameter and cannot read message bodies or attachments. The
+  warranty length, product, order number and the PDF are all in the body or the attachment.
+- `gmail.labels`, `gmail.send`, `gmail.compose` and `gmail.insert` cannot read mail.
+- `gmail.addons.current.message.readonly` works only inside a Gmail add-on for the message the user has open; it
+  cannot search the mailbox and does not exist for Android apps.
+- The app never sends, changes, labels, moves or deletes mail, so no write scope is requested.
+
+Data use: mail is read on the phone and only the warranty records and the PDFs built from it are stored, on the phone.
+They leave the phone only when the user turns on an encrypted backup to their own Google Drive (`drive.file`, files the
+app created) or exports or shares them. Gmail data is not used for ads, not sold and not used to train models.
+
+### Scopes the app requests (must match Data Access exactly)
+
+| Scope | When |
+|---|---|
+| `https://www.googleapis.com/auth/gmail.readonly` | Connect Gmail |
+| `https://www.googleapis.com/auth/drive.file` | Turn on Drive backup |
+| `openid`, `.../auth/userinfo.email`, `.../auth/userinfo.profile` | Google sign-in, which shows the account picker |
+
+### Reviewer access
+
+The public 1.1.0 APK contains Gmail import behind a hidden switch, so reviewers use the same build users install.
+
+1. On an Android phone or emulator, install `Warrantly-1.1.0.apk` from
+   https://github.com/ScideCodes/Warrantly/releases/tag/v1.1.0 and open it.
+2. Type any name, tap Continue, then Later.
+3. Settings, scroll to the bottom, tap the version row 7 times: "Gmail import" turns on.
+4. In Settings, under Email accounts, tap **Add Gmail account**, choose a Google account, accept the consent screen
+   ("Advanced", then "Go to Warrantly", while the app is unverified).
+5. Choose 1 month, tap Start. Go back to Warranties: found warranties appear there; mails with a missing detail
+   under **Missing details**.
+6. Open a warranty: the PDF from the mail is under Documents, tap View.
+
+No Warrantly login exists; any Google account with a purchase or warranty mail works.
+
+## Justification (first draft, 14 Nov)
 
 Warrantly finds warranty documents and purchase mails that state a warranty length, and turns them into warranty
 records on the user's phone. It must search the mailbox (`messages.list` with a query) and read matching messages and

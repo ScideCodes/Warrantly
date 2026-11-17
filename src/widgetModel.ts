@@ -31,26 +31,43 @@ export function widgetSize(widthDp: number, heightDp: number, fontScale = 1): Wi
 }
 export const ROWS: Record<WidgetSize, number> = { small: 1, medium: 2, large: 5 };
 
-// Reserve actual text and control space before choosing row count. Android scales widget text too.
-export function widgetLayout(width: number, height: number, fontScale: number, wantsActions: boolean, actionLabels: string[]) {
-  const scale = Math.max(1, fontScale);
-  const size = widgetSize(width, height, scale);
-  const available = Math.max(0, height - 24);
-  const showTitle = available >= 33 * scale + 8;
-  const rowHeight = showTitle ? 33 * scale + 8 : Math.max(32, 16 * scale + 8);
-  const headerHeight = 18 * scale + 4;
-  const header = available >= headerHeight + rowHeight;
-  const more = size !== 'small' && showTitle;
-  const moreHeight = more ? 16 * scale + 2 : 0;
-  const actionHeight = Math.max(44, Math.ceil(18 * scale + 16));
-  const actionWidth = Math.max(60, ...actionLabels.map((s) => s.length * 13 * 0.65 * scale + 20));
-  let actions = 0;
-  if (wantsActions && width - 24 >= actionWidth * 2 && available >= (header ? headerHeight : 0) + rowHeight + moreHeight + actionHeight + 8) {
-    actions = size === 'large' && width - 24 >= actionWidth * 3 ? 3 : 2;
+// Room for each part in dp, measured on a device at font scale 1 and grown with it (Android scales widget
+// text too), so the chosen content always fits instead of being cut at the bottom edge.
+export const PAD = 14;
+const HEADER = 18;
+const ACTION = 32; // round icon button in the header
+const ROW = 20; // one line: name left, days right
+const MORE = 16;
+const HERO = 20 + 34 + 4; // name over a big day count
+
+export function widgetLayout(width: number, height: number, fontScale: number, wantsActions: boolean) {
+  const s = Math.max(1, fontScale);
+  const size = widgetSize(width, height, s);
+  // Launchers report a few dp more than they draw; keep a margin so the last row is never clipped.
+  const available = Math.max(0, height - 2 * PAD - 6);
+  const inner = Math.max(0, width - 2 * PAD);
+  const rowH = Math.ceil(ROW * s) + 12;
+  const textHeader = Math.ceil(HEADER * s);
+  const header = available >= textHeader + 6 + rowH;
+  // Icon buttons sit in the header beside the title (about 7 characters wide), never in a row of their own.
+  const fitActions = (n: number) => inner >= Math.ceil(90 * s) + n * (ACTION + 6);
+  const roomForButtons = available >= ACTION + 6 + rowH; // the round buttons are taller than the title text
+  const actions = wantsActions && header && roomForButtons ? (size === 'large' && fitActions(3) ? 3 : fitActions(2) ? 2 : 0) : 0;
+  const headerH = header ? Math.max(textHeader, actions ? ACTION : 0) + 6 : 0;
+  const body = available - headerH;
+  const moreH = Math.ceil(MORE * s) + 4;
+  let rows = Math.max(1, Math.min(5, Math.floor(body / rowH)));
+  // "+N more" under the list when it fits; a long list gives up its last row for it.
+  let more = false;
+  if (rows >= 2 && body - rows * rowH >= moreH) more = true;
+  else if (rows >= 3) { rows -= 1; more = true; }
+  // A narrow (2x2) or one-row widget shows the next item big instead, like an iOS small widget.
+  const hero = body >= Math.ceil(HERO * s) && (rows === 1 || inner < 170);
+  if (hero) {
+    rows = 1;
+    more = body - Math.ceil(HERO * s) >= moreH;
   }
-  const remaining = available - (header ? headerHeight : 0) - moreHeight - (actions ? actionHeight + 8 : 0);
-  const rows = Math.max(1, Math.min(size === 'small' ? 1 : 5, Math.floor(remaining / rowHeight)));
-  return { size, rows, header, more, showTitle, actions, actionHeight };
+  return { size, rows, header, more, actions, hero };
 }
 
 interface Item { id: number; product_name: string | null; store_name: string; end_date: string; origin: string; warranty_start_date: string; photo_path: string | null }

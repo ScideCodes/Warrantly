@@ -311,7 +311,11 @@
     "daysBefore": "{{days}} nap",
     "groupShort_weekly": "hetente",
     "groupShort_daily": "naponta",
-    "groupShort_0": "utolsó nap"
+    "groupShort_0": "utolsó nap",
+    "widgetTrack": "A widgeten",
+    "widgetTrack_soon": "Hamarosan lejár",
+    "widgetTrack_chosen": "Kiválasztott",
+    "widgetPicks": "Garanciák kiválasztása"
   },
   "backup": {
     "section": "Mentés",
@@ -449,7 +453,9 @@
     "returnIn_other": "Visszaküldés {{count}} napon belül",
     "scan": "Szkennelés",
     "add": "Új",
-    "search": "Keresés"
+    "search": "Keresés",
+    "emptyChosen": "Válassz garanciát a Beállításokban",
+    "titleChosen": "Figyelt"
   },
   "viewer": {
     "scrollDown": "Görgetés lefelé",
@@ -1045,5 +1051,15 @@
     "denied": "Engedélyezd a naptárhozzáférést az Android beállításaiban.",
     "warrantyEnds": "Lejár a garancia: {{name}}",
     "returnBy": "Visszaküldés utolsó napja: {{name}}"
+  },
+  "widgetPicks": {
+    "title": "Widget garanciái",
+    "lead": "A widget csak ezeket mutatja.",
+    "empty": "Nincs aktív garancia."
+  },
+  "coverageShort": {
+    "standard": "Alap",
+    "store": "Bolti",
+    "extended": "Bővített"
   }
 }
