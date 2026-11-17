@@ -4,6 +4,8 @@ import { Animated, BackHandler, Easing, Modal, ScrollView, StyleSheet, useWindow
 import i18n from '@/i18n';
 import { colors, EASE, TYPE, themed, wordWidth } from '@/theme';
 import { reduceMotion } from '@/components/ui';
+import { GlassFill } from '@/components/GlassFill';
+import { isSheetOpen } from '@/components/Sheet';
 
 // The reference's alert (`.link-alert`, ios.css lines 567-583): centred title and message, capsule actions,
 // opening with opacity 0 -> 1 and scale .96 -> 1 over .2 s. `showAlert` takes the same arguments as
@@ -54,8 +56,11 @@ export function DialogHost() {
   if (!current) return null;
   // Cancel first, the action last: the reference puts the prominent action on the trailing side.
   const buttons = [...current.buttons].sort((a, b) => (a.style === 'cancel' ? -1 : b.style === 'cancel' ? 1 : 0));
-  return (
-    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={cancel}>
+  // The glass lens only sees views in its own window, so the alert is an in-window overlay (DialogHost is the
+  // last child of the root). Over a sheet, which is its own Modal window, it must be a Modal too: solid there.
+  const overSheet = isSheetOpen();
+  const body = (
+    <>
       <Animated.View style={[styles.scrim, { opacity: anim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={cancel} accessible={false} />
       </Animated.View>
@@ -65,46 +70,56 @@ export function DialogHost() {
           accessibilityViewIsModal
           accessibilityRole="alert"
         >
-          <ScrollView bounces={false} contentContainerStyle={styles.content}>
-            <View style={styles.copy}>
-              <Text style={styles.title} accessibilityRole="header">
-                {current.title}
-              </Text>
-              {current.message ? <Text style={styles.message}>{current.message}</Text> : null}
-            </View>
-            <View style={styles.actions}>
-              {buttons.map((b, i) => {
-                const primary = b.style !== 'cancel' && i === buttons.length - 1 && b.style !== 'destructive';
-                return (
-                  <Pressable
-                    key={i}
-                    onPress={() => finish(b)}
-                    style={({ pressed }) => [
-                      styles.action,
-                      // two to a row only while the longest word fits; otherwise the button takes its own row
-                      { flexBasis: Math.max(96, wordWidth(b.text ?? '', 17) * fontScale + 24) },
-                      { backgroundColor: primary ? colors.accent : colors.fill },
-                      pressed && !reduceMotion() && { transform: [{ scale: 0.97 }] },
-                    ]}
-                    accessibilityRole="button"
-                  >
-                    <Text style={[styles.actionText, { color: primary ? colors.onAccent : b.style === 'destructive' ? colors.bad : colors.ink }]}>{b.text}</Text>
-                  </Pressable>
-                );
-              })}
-            </View>
-          </ScrollView>
+          <GlassFill flow radius={34} solid={overSheet} style={styles.shrink}>
+            <ScrollView bounces={false} contentContainerStyle={styles.content}>
+              <View style={styles.copy}>
+                <Text style={styles.title} accessibilityRole="header">
+                  {current.title}
+                </Text>
+                {current.message ? <Text style={styles.message}>{current.message}</Text> : null}
+              </View>
+              <View style={styles.actions}>
+                {buttons.map((b, i) => {
+                  const primary = b.style !== 'cancel' && i === buttons.length - 1 && b.style !== 'destructive';
+                  return (
+                    <Pressable
+                      key={i}
+                      onPress={() => finish(b)}
+                      style={({ pressed }) => [
+                        styles.action,
+                        // two to a row only while the longest word fits; otherwise the button takes its own row
+                        { flexBasis: Math.max(96, wordWidth(b.text ?? '', 17) * fontScale + 24) },
+                        { backgroundColor: primary ? colors.accent : colors.fill },
+                        pressed && !reduceMotion() && { transform: [{ scale: 0.97 }] },
+                      ]}
+                      accessibilityRole="button"
+                    >
+                      <Text style={[styles.actionText, { color: primary ? colors.onAccent : b.style === 'destructive' ? colors.bad : colors.ink }]}>{b.text}</Text>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </ScrollView>
+          </GlassFill>
         </Animated.View>
       </View>
+    </>
+  );
+  return overSheet ? (
+    <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={cancel}>
+      {body}
     </Modal>
+  ) : (
+    <View style={styles.overlay}>{body}</View>
   );
 }
 
 const useStyles = themed(() => StyleSheet.create({
+  overlay: { ...StyleSheet.absoluteFill, zIndex: 1000, elevation: 1000 },
   scrim: { ...StyleSheet.absoluteFill, backgroundColor: colors.dim },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 16 },
-  // --material-solid: the reference's own fallback where its 24px backdrop blur is unavailable
-  alert: { maxHeight: '100%', borderRadius: 34, backgroundColor: colors.material, boxShadow: `${colors.glassEdge}, 0 16px 48px rgba(0,0,0,0.18)` },
+  alert: { maxHeight: '100%', borderRadius: 34, boxShadow: `${colors.glassEdge}, 0 16px 48px rgba(0,0,0,0.18)` },
+  shrink: { flexShrink: 1 },
   content: { padding: 14 },
   copy: { paddingTop: 12, paddingHorizontal: 10, paddingBottom: 18 },
   title: { ...TYPE.headline, letterSpacing: -0.26, color: colors.ink, textAlign: 'center' },

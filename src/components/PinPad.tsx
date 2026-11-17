@@ -5,7 +5,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { glass, reduceMotion } from '@/components/ui';
-import { colors, CONTROL_H, EASE, isDarkNow, TYPE, themed } from '@/theme';
+import { GlassFill } from '@/components/GlassFill';
+import { colors, CONTROL_H, EASE, TYPE, themed } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -24,7 +25,6 @@ function PinKey({ size, label, onPress, disabled, children, plain, testID }: { s
     if (reduceMotion()) return;
     Animated.timing(scale, { toValue: v, duration: 110, easing: Easing.bezier(...EASE), useNativeDriver: true }).start();
   };
-  const dark = isDarkNow();
   return (
     <Animated.View style={[{ transform: [{ scale }] }, disabled && styles.disabled]}>
       <Pressable
@@ -32,14 +32,8 @@ function PinKey({ size, label, onPress, disabled, children, plain, testID }: { s
         style={({ pressed }) => [
           styles.key,
           { width: size, height: size, borderRadius: size / 2 },
-          !plain && (dark
-            ? {
-                backgroundColor: 'rgba(255, 255, 255, 0.11)',
-                borderWidth: StyleSheet.hairlineWidth,
-                borderColor: 'rgba(255, 255, 255, 0.15)',
-              }
-            : glass(false)),
-          pressed && { backgroundColor: colors.select },
+          !plain && glass(),
+          plain && pressed && { backgroundColor: colors.select },
         ]}
         onPress={onPress}
         onPressIn={() => to(0.96)}
@@ -49,7 +43,15 @@ function PinKey({ size, label, onPress, disabled, children, plain, testID }: { s
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled }}
       >
-        {children}
+        {({ pressed }) =>
+          plain ? (
+            children
+          ) : (
+            <GlassFill radius={size / 2} sheen={false} highlight={pressed && colors.select} style={styles.key}>
+              {children}
+            </GlassFill>
+          )
+        }
       </Pressable>
     </Animated.View>
   );
@@ -139,17 +141,13 @@ export function PinLayout({ icon, title, message, error, pad, footer, top = 0, s
           <View
             style={[
               styles.tile,
-              isDarkNow()
-                ? {
-                    backgroundColor: colors.card2,
-                    borderWidth: StyleSheet.hairlineWidth,
-                    borderColor: colors.line,
-                  }
-                : glass(false),
+              glass(),
             ]}
             importantForAccessibility="no-hide-descendants"
           >
-            <AppIcon name={icon} size={28} color={colors.tint} />
+            <GlassFill radius={22} sheen={false} style={styles.key}>
+              <AppIcon name={icon} size={28} color={colors.tint} />
+            </GlassFill>
           </View>
         )}
         {!compact && <Text style={styles.brand}>Warrantly</Text>}

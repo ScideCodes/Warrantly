@@ -1,0 +1,14 @@
+diff --git a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
+index ab47c96..048f296 100644
+--- a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
++++ b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
+@@ -431,7 +431,8 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+   private fun findNearestReactRootView(): ViewGroup? {
+     var currentParent = this.parent
+     while (currentParent != null) {
+-      if (currentParent.javaClass.name == "com.facebook.react.ReactRootView") {
++      // New Architecture roots are ReactSurfaceView, a ReactRootView subclass: match by type, not class name.
++      if (currentParent is com.facebook.react.ReactRootView) {
+         return currentParent as? ViewGroup
+       }
+       currentParent = currentParent.parent

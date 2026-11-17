@@ -36,6 +36,7 @@ import { readBackupHealth } from '@/backupStatus';
 import { getBundleLead, getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
+import { GlassFill } from '@/components/GlassFill';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { finishPendingDeletes, showUndo } from '@/undo';
@@ -740,14 +741,15 @@ function TabBar({ tabs, current }: { tabs: Tab[]; current: string }) {
   return (
     <>
       <View style={[styles.scrollEdge, { height: 80 + insets.bottom }]} pointerEvents="none" />
-      <View style={[styles.tabbar, { width: barW, bottom: insets.bottom + 8 }]} accessibilityRole="tablist">
-        <View style={[styles.tabSurface, glass(false), { boxShadow: colors.tabbarEdge, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.materialEdge, width: barW, left: 0 }]} pointerEvents="none" />
-        <View style={[styles.lens, { top: 4, height: tabH, width: tabW, left: 4 + at * tabW }]} pointerEvents="none" />
-        {tabs.map((tab, i) => (
-          <View key={tab.key} style={styles.tabSlot} onLayout={i === at ? (e) => setTabH(e.nativeEvent.layout.height) : undefined}>
-            <TabButton tab={tab} on={i === at} />
-          </View>
-        ))}
+      <View style={[styles.tabbar, glass(), { width: barW, bottom: insets.bottom + 8 }]} accessibilityRole="tablist">
+        <GlassFill flow radius={31} sheen={false} style={styles.tabRow}>
+          <View style={[styles.lens, { top: 4, height: tabH, width: tabW, left: 4 + at * tabW }]} pointerEvents="none" />
+          {tabs.map((tab, i) => (
+            <View key={tab.key} style={styles.tabSlot} onLayout={i === at ? (e) => setTabH(e.nativeEvent.layout.height) : undefined}>
+              <TabButton tab={tab} on={i === at} />
+            </View>
+          ))}
+        </GlassFill>
       </View>
     </>
   );
@@ -820,10 +822,10 @@ const useStyles = themed(() => StyleSheet.create({
     right: 0,
     bottom: 0,
     opacity: isDarkNow() ? 0.35 : 1,
-    backgroundImage: `linear-gradient(rgba(${rgb()},0) 0%, rgba(${rgb()},0.82) 55%, rgba(${rgb()},1) 100%)`,
+    backgroundImage: `linear-gradient(rgba(${rgb()},0) 0%, rgba(${rgb()},0.45) 60%, rgba(${rgb()},0.75) 100%)`,
   },
-  tabbar: { position: 'absolute', alignSelf: 'center', flexDirection: 'row', padding: 4 },
-  tabSurface: { position: 'absolute', top: 0, bottom: 0, borderRadius: 31 },
+  tabbar: { position: 'absolute', alignSelf: 'center', borderRadius: 31 },
+  tabRow: { flexDirection: 'row', padding: 4 },
   lens: { position: 'absolute', borderRadius: 28, backgroundColor: colors.select },
   tabSlot: { flex: 1, minWidth: 0 },
   tab: { flex: 1, minHeight: 54, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: 28, paddingHorizontal: 2 },
