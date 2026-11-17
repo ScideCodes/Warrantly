@@ -35,6 +35,9 @@ const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
 type Icon = IconName;
 
 // Settings (section 13): mail accounts, app lock, reminders and backup.
+// Setting titles stay on one line: slightly smaller text before a second line.
+const ONE_LINE = { numberOfLines: 1, adjustsFontSizeToFit: true, minimumFontScale: 0.8 } as const;
+
 export default function Settings() {
   const styles = useStyles();
   const { t, i18n } = useTranslation();
@@ -296,7 +299,7 @@ export default function Settings() {
       {narrowRows ? <>
         <View style={styles.blockHead}>
           <IconTile name={icon} color={tint} />
-          <Text style={[styles.label, styles.rowText]}>{label}</Text>
+          <Text style={[styles.label, styles.rowText]} {...ONE_LINE}>{label}</Text>
         </View>
         <View style={styles.switchDetail}>
           {hint && <Text style={[styles.hint, styles.rowText]}>{hint}</Text>}
@@ -305,7 +308,7 @@ export default function Settings() {
       </> : <>
         <IconTile name={icon} color={tint} />
         <View style={styles.rowText}>
-          <Text style={styles.label}>{label}</Text>
+          <Text style={styles.label} {...ONE_LINE}>{label}</Text>
           {hint && <Text style={styles.hint}>{hint}</Text>}
         </View>
         <Switch value={value} onValueChange={onChange} accessibilityLabel={label} />
@@ -316,7 +319,7 @@ export default function Settings() {
     <Row key={label} iconInset style={styles.row} onPress={onPress} chevron={!opts.danger}>
       <IconTile name={icon} color={tint} />
       <View style={styles.rowText}>
-        <Text style={[styles.label, opts.danger && { color: colors.bad }]}>{label}</Text>
+        <Text style={[styles.label, opts.danger && { color: colors.bad }]} {...ONE_LINE}>{label}</Text>
         {opts.hint && <Text style={styles.hint}>{opts.hint}</Text>}
       </View>
       {opts.value && <Text style={styles.value}>{opts.value}</Text>}
@@ -422,7 +425,7 @@ export default function Settings() {
       {section(
         t('settings.remindersSection'),
         <>
-          {row('notifications-outline', TILE.red, t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
+          {row('notifications-outline', TILE.red, t('settings.reminders'), null, reminders, toggleReminders)}
           {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => setReminderMenu(true), { hint: reminderSummary(groups, (k, o) => t(k, o ?? {})) || t('settings.noReminderDates') })}
           {reminders && row('return-down-back-outline', TILE.purple, t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
         </>,
@@ -443,7 +446,7 @@ export default function Settings() {
             theme,
             chooseTheme,
           )}
-          {row('water-outline', TILE.blue, t('settings.glass'), t('settings.glassHint'), glassOn, setGlass)}
+          {row('water-outline', TILE.blue, t('settings.glass'), null, glassOn, setGlass)}
           {choices(
             'list-outline',
             TILE.teal,
@@ -463,11 +466,11 @@ export default function Settings() {
       {section(
         t('settings.security'),
         <>
-          {row('lock-closed-outline', TILE.grey, t('settings.lock'), t('settings.lockHint'), lock, toggleLock)}
+          {row('lock-closed-outline', TILE.grey, t('settings.lock'), null, lock, toggleLock)}
           {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), () => router.push('/pin'))}
           {lock && canBiometric && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
-          {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), t('settings.widgetNamesHint'), widgetNames, toggleWidgetNames)}
-          {link('time-outline', TILE.grey, t('recent.clear'), () => { forgetRecent(); showAlert(t('recent.cleared')); }, { hint: t('recent.clearHint') })}
+          {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), null, widgetNames, toggleWidgetNames)}
+          {link('time-outline', TILE.grey, t('recent.clear'), () => { forgetRecent(); showAlert(t('recent.cleared')); })}
         </>,
       )}
 
