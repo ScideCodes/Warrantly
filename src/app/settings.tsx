@@ -28,7 +28,7 @@ import { showAlert } from '@/components/Dialog';
 import { setGlass, useGlassEnabled } from '@/components/GlassFill';
 import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed, useRoom } from '@/theme';
-import { ALL_GROUPS, type ReminderGroup } from '@/warranty';
+import { ALL_GROUPS, reminderSummary, type ReminderGroup } from '@/warranty';
 import { isGmailImportEnabled, setGmailImportEnabled, useGmailImport } from '@/features';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
@@ -423,7 +423,7 @@ export default function Settings() {
         t('settings.remindersSection'),
         <>
           {row('notifications-outline', TILE.red, t('settings.reminders'), t('settings.remindersHint'), reminders, toggleReminders)}
-          {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => setReminderMenu(true), { hint: groups.map(g => t(`settings.group_${g}`)).join(' · ') || t('settings.noReminderDates') })}
+          {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => setReminderMenu(true), { hint: reminderSummary(groups, (k, o) => t(k, o ?? {})) || t('settings.noReminderDates') })}
           {reminders && row('return-down-back-outline', TILE.purple, t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
         </>,
       )}

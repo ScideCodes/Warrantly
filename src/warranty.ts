@@ -236,3 +236,11 @@ export function warrantyFacets(list: { account_id: number | null; category?: str
   }
   return { total: list.length, accounts, categories, stores };
 }
+
+// One-line summary of the chosen reminder dates for the Settings row: "90, 60, 30 days · weekly · last day".
+export function reminderSummary(groups: readonly ReminderGroup[], t: (key: string, options?: Record<string, unknown>) => string): string {
+  const days = groups.filter((g) => /^[1-9]\d*$/.test(g));
+  const rest = groups.filter((g) => !days.includes(g));
+  const parts = days.length ? [t('settings.daysBefore', { days: days.join(', ') })] : [];
+  return [...parts, ...rest.map((g) => t(`settings.groupShort_${g}`))].join(' · ');
+}
