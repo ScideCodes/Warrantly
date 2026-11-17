@@ -313,7 +313,13 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
   const { fontScale } = useWindowDimensions();
   const [width, setWidth] = useState(0);
   const [rects, setRects] = useState<Record<string, LayoutRectangle>>({});
-  const { columns, optionWidth, icons } = segmentedLayout(width, fontScale, options.map((o) => o.label), large);
+  // Each label's own width, laid out bold off screen: the letter-count estimate stacks short labels
+  // on narrow phones. Keyed by label so a language switch re-measures.
+  const [textWidths, setTextWidths] = useState<Record<string, number>>({});
+  const labels = options.map((o) => o.label);
+  const measured = labels.every((l) => textWidths[`${fontScale}:${l}`] !== undefined)
+    ? Math.max(...labels.map((l) => textWidths[`${fontScale}:${l}`] ?? 0)) : undefined;
+  const { columns, optionWidth, icons } = segmentedLayout(width, fontScale, labels, large, measured);
   const selected = rects[value];
   // Only the decorative lens moves; touch targets, text and the grid stay still.
   // Recreate the lens when text/width reflows so resizing never sweeps over the UI.
@@ -331,6 +337,16 @@ export function Segmented<K extends string>({ options, value, onChange, large }:
             transitionTimingFunction: 'ease-out',
           }]} />
       )}
+      <View pointerEvents="none" accessible={false} importantForAccessibility="no-hide-descendants" style={styles.segMeasure}>
+        {labels.map((l) => (
+          <Text key={l} style={[styles.segText, { fontWeight: '600', flexShrink: 0 }]}
+            onLayout={(e) => {
+              const w = e.nativeEvent.layout.width;
+              const k = `${fontScale}:${l}`;
+              setTextWidths((prev) => (prev[k] === w ? prev : { ...prev, [k]: w }));
+            }}>{l}</Text>
+        ))}
+      </View>
       {options.map((o) => {
         const on = o.key === value;
         return (
@@ -390,5 +406,6 @@ const useStyles = themed(() => StyleSheet.create({
   segOn: { backgroundColor: colors.segOn, boxShadow: colors.segShadow },
   segLens: { position: 'absolute', top: 0, left: 0, borderRadius: 14, backgroundColor: colors.segOn, boxShadow: colors.segShadow },
   segLensLarge: { borderRadius: 20 },
+  segMeasure: { position: 'absolute', left: 0, top: 0, opacity: 0, alignItems: 'flex-start' },
   segText: { ...TYPE.seg, color: colors.ink, textAlign: 'center', flexShrink: 1 },
 }));
