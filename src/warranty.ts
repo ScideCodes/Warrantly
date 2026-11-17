@@ -244,3 +244,15 @@ export function reminderSummary(groups: readonly ReminderGroup[], t: (key: strin
   const parts = days.length ? [t('settings.daysBefore', { days: days.join(', ') })] : [];
   return [...parts, ...rest.map((g) => t(`settings.groupShort_${g}`))].join(' · ');
 }
+
+// The events the calendar should hold: future dates only, one per warranty end and return deadline.
+export type CalendarEvent = { key: string; title: string; date: string };
+export function calendarPlan(items: readonly { id: number; product_name: string | null; store_name: string; end_date: string; return_by: string | null }[], today: string, t: (key: string, o: Record<string, unknown>) => string): CalendarEvent[] {
+  return items.flatMap((w) => {
+    const name = shortName(w.product_name ?? w.store_name);
+    return [
+      w.end_date >= today && { key: `end:${w.id}`, title: t('calendarSync.warrantyEnds', { name }), date: w.end_date },
+      w.return_by && w.return_by >= today && { key: `return:${w.id}`, title: t('calendarSync.returnBy', { name }), date: w.return_by },
+    ].filter((e): e is CalendarEvent => !!e);
+  });
+}

@@ -671,7 +671,10 @@ export default function Home() {
         leading={selecting ? <GlassButton icon="close" label={t('bulk.cancel')} onPress={endSelect} /> : undefined}
         trailing={selecting
           ? <GlassButton icon={chosen.length === shownIds.length && shownIds.length > 0 ? 'remove-circle-outline' : 'checkmark-done-outline'} label={t(chosen.length === shownIds.length && shownIds.length > 0 ? 'bulk.selectNone' : 'bulk.selectAll')} onPress={() => setSelected(chosen.length === shownIds.length ? new Set() : new Set(shownIds))} />
-          : <GlassButton icon="funnel-outline" label={t('home.filter')} color={filter.kind !== 'all' || quick ? colors.tint : colors.ink} selected={filter.kind !== 'all' || quick !== null} onPress={() => setMenuOpen(true)} />}
+          : <>
+            <GlassButton icon="qr-code-outline" label={t('sticker.scan')} onPress={() => router.push('/scan-sticker')} />
+            <GlassButton icon="funnel-outline" label={t('home.filter')} color={filter.kind !== 'all' || quick ? colors.tint : colors.ink} selected={filter.kind !== 'all' || quick !== null} onPress={() => setMenuOpen(true)} />
+          </>}
       />
       {selecting && (
         <View style={[styles.bulkBar, { bottom: insets.bottom + 84 }]}>

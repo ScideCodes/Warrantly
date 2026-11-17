@@ -7,6 +7,7 @@ import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
 import { plannedCustomReminders } from '@/db/features.ts';
 import { getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
+import { syncCalendar } from '@/calendarSync';
 import { reminderDays, reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
 
 
@@ -43,6 +44,8 @@ async function reschedule(db: Db): Promise<void> {
   const now = new Date();
   const returns = getReturnRemindersEnabled();
   const items = warranties.map((w) => ({ ...w, return_by: returns ? returnDeadline(w) : null }));
+  // The phone calendar copy follows the same dates; a calendar error never blocks the reminders.
+  void syncCalendar(items, todayYmd(now)).catch((e) => console.warn('calendar', e));
   const time = getReminderTime();
   // Custom dates (shortlist 12) are the user's own: sent even when the automatic ones are switched off.
   const custom = await plannedCustomReminders(db);

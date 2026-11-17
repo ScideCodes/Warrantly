@@ -1021,5 +1021,29 @@
     "body": "Ezek a termékek már szerepelhetnek a listában:\n{{products}}",
     "review": "Meglévők áttekintése",
     "save": "Hozzáadás mégis"
+  },
+  "counter": {
+    "title": "Pultnál",
+    "open": "Mutasd a pultnál",
+    "bought": "Vásárolva: {{date}}",
+    "details": "Adatok",
+    "receipt": "Blokk",
+    "noReceipt": "Még nincs blokk csatolva.",
+    "failed": "Nem sikerült megnyitni ezt a garanciát."
+  },
+  "sticker": {
+    "scan": "Matrica beolvasása",
+    "print": "QR-matrica nyomtatása",
+    "printHint": "Olvasd be a Warrantlyvel",
+    "hint": "Fordítsd a kamerát egy Warrantly-matricára.",
+    "notOurs": "Ez nem Warrantly-matrica.",
+    "notHere": "Ez a termék nincs ezen a telefonon."
+  },
+  "calendarSync": {
+    "title": "Naptárba írás",
+    "hint": "Lejáratok és határidők",
+    "denied": "Engedélyezd a naptárhozzáférést az Android beállításaiban.",
+    "warrantyEnds": "Lejár a garancia: {{name}}",
+    "returnBy": "Visszaküldés utolsó napja: {{name}}"
   }
 }
