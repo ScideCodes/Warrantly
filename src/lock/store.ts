@@ -6,7 +6,8 @@ import { encodePin, lockoutSeconds, pinLength, pinMatches } from './pin.ts';
 const PIN = 'lock_pin';
 const BIOMETRIC = 'lock_biometric';
 const FAILURES = 'lock_failures';
-const WAIT_UNTIL = 'lock_wait_until';
+// Milliseconds of lockout still to wait. Replaces 'lock_wait_until' (a wall-clock deadline): never read that one as this.
+const WAIT_LEFT = 'lock_wait_left';
 
 export const isLockEnabled = (): boolean => SecureStore.getItem(PIN) !== null;
 
@@ -29,16 +30,26 @@ export function setPin(pin: string): void {
 }
 
 export async function clearLock(): Promise<void> {
-  await Promise.all([PIN, BIOMETRIC, FAILURES, WAIT_UNTIL].map((k) => SecureStore.deleteItemAsync(k)));
+  await Promise.all([PIN, BIOMETRIC, FAILURES, WAIT_LEFT].map((k) => SecureStore.deleteItemAsync(k)));
 }
+
+// The lockout counts down only while the app runs, on the monotonic clock (performance.now), so changing the
+// phone's time does not end it. A closed app or a sleeping phone pauses it.
+let lastTick: number | null = null;
 
 // Seconds the user must still wait before another try (0 = may try now).
-export function waitSeconds(now = Date.now()): number {
-  return Math.max(0, Math.ceil((Number(SecureStore.getItem(WAIT_UNTIL) ?? 0) - now) / 1000));
+export function waitSeconds(at = performance.now()): number {
+  const passed = lastTick === null ? 0 : Math.max(0, at - lastTick);
+  lastTick = at;
+  const left = Number(SecureStore.getItem(WAIT_LEFT) ?? 0);
+  if (!(left > 0)) return 0;
+  const next = Math.max(0, left - passed);
+  if (next !== left) SecureStore.setItem(WAIT_LEFT, String(next));
+  return Math.ceil(next / 1000);
 }
 
-export function checkPin(pin: string, now = Date.now()): boolean {
-  if (waitSeconds(now) > 0) return false;
+export function checkPin(pin: string, at = performance.now()): boolean {
+  if (waitSeconds(at) > 0) return false; // also moves lastTick to now, so a new wait starts in full
   if (pinMatches(pin, SecureStore.getItem(PIN) ?? '::')) {
     resetFailures();
     return true;
@@ -46,18 +57,19 @@ export function checkPin(pin: string, now = Date.now()): boolean {
   const failures = Number(SecureStore.getItem(FAILURES) ?? 0) + 1;
   SecureStore.setItem(FAILURES, String(failures));
   const wait = lockoutSeconds(failures);
-  if (wait) SecureStore.setItem(WAIT_UNTIL, String(now + wait * 1000));
+  if (wait) SecureStore.setItem(WAIT_LEFT, String(wait * 1000));
   return false;
 }
 
 function resetFailures() {
   SecureStore.setItem(FAILURES, '0');
-  SecureStore.setItem(WAIT_UNTIL, '0');
+  SecureStore.setItem(WAIT_LEFT, '0');
 }
 
-// Fingerprint / face: only offered when the phone has it and it is set up (section 19).
+// Fingerprint / face: only offered when the phone has it and it is set up (section 19). Strong (Class 3) only:
+// a camera-based face unlock can be fooled by a photo.
 export async function biometricAvailable(): Promise<boolean> {
-  return (await LocalAuthentication.hasHardwareAsync()) && (await LocalAuthentication.isEnrolledAsync());
+  return (await LocalAuthentication.getEnrolledLevelAsync()) === LocalAuthentication.SecurityLevel.BIOMETRIC_STRONG;
 }
 export const isBiometricEnabled = (): boolean => SecureStore.getItem(BIOMETRIC) === '1';
 export const setBiometricEnabled = (on: boolean): void => SecureStore.setItem(BIOMETRIC, on ? '1' : '0');
@@ -65,7 +77,12 @@ export const setBiometricEnabled = (on: boolean): void => SecureStore.setItem(BI
 // Biometrics only; the PIN pad is the fallback, so the device passcode is not offered here.
 // `error` says who closed the prompt: 'user_cancel' is the person, 'system_cancel'/'app_cancel' is Android.
 export async function unlockWithBiometrics(prompt: string, cancel: string): Promise<{ success: boolean; error?: string }> {
-  const res = await LocalAuthentication.authenticateAsync({ promptMessage: prompt, cancelLabel: cancel, disableDeviceFallback: true });
+  const res = await LocalAuthentication.authenticateAsync({
+    promptMessage: prompt,
+    cancelLabel: cancel,
+    disableDeviceFallback: true,
+    biometricsSecurityLevel: 'strong',
+  });
   return res.success ? { success: true } : { success: false, error: res.error };
 }
 

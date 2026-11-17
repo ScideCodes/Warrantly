@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { addAttachment, addManual, migrate, saveStoreRule } from '../db/repo.ts';
 import { nodeDb } from '../db/testDb.ts';
 import { driveClient, uploadAndPrune, FOLDER_NAME } from './drive.ts';
-import { backupDue, checkKdf, deriveKey, docBackupName, dumpDb, readEnvelope, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
+import { backupDue, checkKdf, deriveKey, sharedPdf, docBackupName, dumpDb, readEnvelope, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
 
 // Same AES-256-GCM as expo-crypto, from node:crypto; tag appended to the ciphertext.
 const nodeAead: Aead = {
@@ -143,5 +143,15 @@ test('backup files cannot ask for extreme key-derivation cost', () => {
   assert.throws(() => checkKdf({ N: 2 ** 30, r: 8, p: 1, salt: 'AA==' }), /Damaged backup/);
   assert.throws(() => checkKdf({ N: 2 ** 15, r: 1000, p: 1, salt: 'AA==' }), /Damaged backup/);
   assert.throws(() => checkKdf({ N: 3000, r: 8, p: 1, salt: 'AA==' }), /Damaged backup/);
+  assert.throws(() => checkKdf({ N: 2 ** 18, r: 16, p: 1, salt: 'AA==' }), /Damaged backup/); // 512 MB of scrypt memory
+  assert.throws(() => checkKdf({ N: 2 ** 15, r: 8, p: 5, salt: 'AA==' }), /Damaged backup/);
   assert.equal(checkKdf({ N: 2 ** 15, r: 8, p: 1, salt: 'AA==' }).N, 2 ** 15);
+  assert.equal(checkKdf({ N: 2 ** 18, r: 1, p: 1, salt: 'AA==' }).N, 2 ** 18);
+});
+
+test('a shared file keeps only PDFs of a bounded size', () => {
+  assert.deepEqual([...sharedPdf(toBase64(new Uint8Array([37, 80, 68, 70, 45])))!], [37, 80, 68, 70, 45]);
+  assert.equal(sharedPdf(toBase64(new TextEncoder().encode('<html>'))), null);
+  assert.equal(sharedPdf(42), null);
+  assert.equal(sharedPdf('JVBERi'.padEnd(41943044, 'A')), null); // over 30 MB, refused before decoding
 });

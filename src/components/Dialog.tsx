@@ -6,26 +6,30 @@ import { colors, EASE, TYPE, themed, wordWidth } from '@/theme';
 import { reduceMotion } from '@/components/ui';
 import { GlassFill } from '@/components/GlassFill';
 import { isSheetOpen } from '@/components/Sheet';
+import { isLocked, useLocked } from '@/lock/gate';
 
 // The reference's alert (`.link-alert`, ios.css lines 567-583): centred title and message, capsule actions,
 // opening with opacity 0 -> 1 and scale .96 -> 1 over .2 s. `showAlert` takes the same arguments as
 // React Native's Alert.alert, so every existing call keeps its buttons and callbacks.
-type Request = { title: string; message?: string; buttons: AlertButton[]; cancelable: boolean };
+// `locked`: asked for while the lock showed, so by the lock screen; the app's own alerts wait behind the lock.
+type Request = { title: string; message?: string; buttons: AlertButton[]; cancelable: boolean; locked: boolean };
 let queue: Request[] = [];
 let notify: (() => void) | null = null;
 
 export function showAlert(title: string, message?: string, buttons?: AlertButton[], options?: { cancelable?: boolean }): void {
-  queue = [...queue, { title, message, buttons: buttons?.length ? buttons : [{ text: i18n.t('dialog.ok') }], cancelable: options?.cancelable ?? true }];
+  queue = [...queue, { title, message, buttons: buttons?.length ? buttons : [{ text: i18n.t('dialog.ok') }], cancelable: options?.cancelable ?? true, locked: isLocked() }];
   notify?.();
 }
 
 export function DialogHost() {
   const styles = useStyles();
-  const [current, setCurrent] = useState<Request | null>(() => queue[0] ?? null);
+  const [, setVersion] = useState(0);
   const { width, fontScale } = useWindowDimensions();
   const anim = useState(() => new Animated.Value(0))[0];
+  const locked = useLocked();
+  const current = queue.find((r) => !locked || r.locked) ?? null;
   useEffect(() => {
-    notify = () => setCurrent((c) => c ?? queue[0] ?? null);
+    notify = () => setVersion((n) => n + 1);
     return () => {
       notify = null;
     };
@@ -37,8 +41,8 @@ export function DialogHost() {
   }, [current, anim]);
 
   const finish = (b?: AlertButton) => {
-    queue = queue.slice(1);
-    setCurrent(queue[0] ?? null);
+    queue = queue.filter((r) => r !== current);
+    setVersion((n) => n + 1);
     b?.onPress?.();
   };
   const cancel = () => {
@@ -58,7 +62,8 @@ export function DialogHost() {
   const buttons = [...current.buttons].sort((a, b) => (a.style === 'cancel' ? -1 : b.style === 'cancel' ? 1 : 0));
   // The glass lens only sees views in its own window, so the alert is an in-window overlay (DialogHost is the
   // last child of the root). Over a sheet, which is its own Modal window, it must be a Modal too: solid there.
-  const overSheet = isSheetOpen();
+  // While locked the sheets are hidden and a Modal would float over the lock screen: in-window, like its own alerts.
+  const overSheet = isSheetOpen() && !locked;
   const body = (
     <>
       <Animated.View style={[styles.scrim, { opacity: anim }]}>

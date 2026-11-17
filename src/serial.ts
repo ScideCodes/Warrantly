@@ -2,7 +2,8 @@
 // always confirms or edits the value before it is saved. Pure, tested in Node.
 
 const LABEL = /\b(?:s\/?n|sn\b|serial(?:\s*(?:no|number|nr|id|#))?|ser\.?\s*no|sorozatsz[aá]m|gy[aá]ri\s*(?:sz[aá]m|sz\.)|gy\.?\s*sz\.?|gsz\.?|imei)\b\.?\s*[:#=\s-]?\s*([A-Z0-9][A-Z0-9-]{3,29})/i;
-const TOKEN = /\b(?=[A-Z0-9-]*\d)(?=[A-Z0-9-]*[A-Z])[A-Z0-9][A-Z0-9-]{5,29}\b/g;
+// Lookaheads bounded to the token's 30 chars: open-ended ones rescan long runs from every start (ReDoS).
+const TOKEN = /\b(?=[A-Z0-9-]{0,29}\d)(?=[A-Z0-9-]{0,29}[A-Z])[A-Z0-9][A-Z0-9-]{5,29}\b/g;
 
 // A labelled value ("S/N: ABC123") first, then code-like words with both letters and digits; longest first.
 export function serialCandidates(lines: string[]): string[] {

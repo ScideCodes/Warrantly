@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AppState } from 'react-native';
-import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider } from 'expo-router';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { AppState, StyleSheet, View } from 'react-native';
+import { DarkTheme, DefaultTheme, router, Stack, ThemeProvider, usePathname } from 'expo-router';
 import * as SystemUI from 'expo-system-ui';
 import { ShareIntentProvider, useShareIntentContext } from 'expo-share-intent';
 import { addInbox } from '@/db/features.ts';
 import { emailToDocument, fileToDocument, deleteDocuments, textToDocument } from '@/documents';
-import { setLockShowing } from '@/lock/gate';
+import { setLockShowing, syncScreenCapture } from '@/lock/gate';
 import { UndoHost } from '@/components/UndoHost';
 import { StatusBar } from 'expo-status-bar';
 import { useLocales } from 'expo-localization';
@@ -72,20 +72,27 @@ export default function RootLayout() {
   });
   const unlock = useCallback(() => setLocked(false), []); // stable, so the lock screen's fingerprint prompt starts once
   const hiddenAt = useRef<number | null>(null);
+  // Covers the app while it is in the background; inside the 3-minute grace it is lifted without the PIN.
+  const [covered, setCovered] = useState(false);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
         hiddenAt.current = Date.now();
+        if (isLockEnabled()) setCovered(true);
         void getDb().then(updateWidget).catch((e) => console.warn('widget', e)); // the home screen shows it next
       }
       if (state === 'active') {
         if (isLockEnabled() && shouldRelock(hiddenAt.current, Date.now())) setLocked(true);
+        setCovered(false);
         hiddenAt.current = null;
       }
     });
     return () => sub.remove();
   }, []);
-  useEffect(() => setLockShowing(locked), [locked]);
+  useLayoutEffect(() => setLockShowing(locked), [locked]); // before paint, so no sheet window shows over the lock for a frame
+  // The PIN is set on its own screen and cleared in Settings; check again after each navigation.
+  const pathname = usePathname();
+  useEffect(() => void syncScreenCapture(), [pathname]);
   const locales = useLocales();
   useEffect(() => {
     i18n.changeLanguage(appLanguage()); // the phone's language changed; a language chosen in Settings stays
@@ -103,6 +110,7 @@ export default function RootLayout() {
         <UndoHost />
         {locked && <LockScreen onUnlock={unlock} />}
         <DialogHost />
+        {covered && <View style={[StyleSheet.absoluteFill, { zIndex: 2000, elevation: 2000, backgroundColor: colors.bg }]} />}
       </ThemeProvider>
     </ShareIntentProvider>
   );

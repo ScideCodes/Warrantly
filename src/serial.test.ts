@@ -14,3 +14,13 @@ test('barcode payloads', () => {
   assert.equal(serialFromBarcode('https://example.com/x'), null);
   assert.equal(serialFromBarcode(''), null);
 });
+
+test('serial tokens stay linear on 50 KB hostile text', () => {
+  assert.deepEqual(serialCandidates(['Model AB12-CD34 ok']), ['AB12-CD34']);
+  for (const unit of ['-', '1-', 'A-']) {
+    const start = performance.now();
+    serialCandidates([unit.repeat(50_000 / unit.length)]);
+    const ms = performance.now() - start;
+    assert.ok(ms < 200, `${unit} run took ${ms.toFixed(0)} ms`);
+  }
+});

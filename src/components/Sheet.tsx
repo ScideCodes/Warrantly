@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { colors, MAX_WIDTH, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
 import { GlassButton, Group, reduceMotion, Row, type IconName } from '@/components/ui';
+import { useLocked } from '@/lock/gate';
 
 export type { IconName };
 
@@ -35,6 +36,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const { t } = useTranslation();
   const { height: screenH, width: screenW } = useWindowDimensions();
   const insets = useSafeAreaInsets();
+  const locked = useLocked();
   const [shown, setShown] = useState(open);
   // The translucent Modal can be taller than the activity window on three-button navigation.
   // Measure that actual viewport and use the keyboard's screen position, not its reported height.
@@ -99,7 +101,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   if (!shown) return null;
   const dim = y.interpolate({ inputRange: [0, Math.max(panelH, 1)], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
-    <Modal visible transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+    <Modal visible={!locked} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Animated.View style={[styles.backdrop, { opacity: dim }]} onLayout={e => setModalHeight(e.nativeEvent.layout.height)}>
         <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('sheet.close')} />
       </Animated.View>

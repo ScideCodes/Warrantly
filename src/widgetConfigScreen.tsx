@@ -6,10 +6,11 @@ import { useTranslation } from 'react-i18next';
 import { Text, View } from '@/components/themeMotion';
 import { Button, Group, Row, Segmented, Switch } from '@/components/ui';
 import { getDb } from '@/db/client';
+import { isLockEnabled, verifyDeviceOwner } from '@/lock/store';
 import { setWidgetConfigText } from '@/settings';
 import { colors, TYPE, themed } from '@/theme';
 import { renderFor, widgetConfig } from '@/widget';
-import type { WidgetConfig } from '@/widgetModel';
+import type { WidgetConfig, WidgetNames } from '@/widgetModel';
 
 // Shown by Android when a widget is placed, and from its "reconfigure" option (shortlist 27). Each widget
 // keeps its own choices; the preview on the home screen updates as they change.
@@ -21,6 +22,12 @@ export function WidgetConfigScreen({ widgetInfo, renderWidget, setResult }: Widg
     void getDb().then((db) => renderFor(db, widgetInfo, cfg)).then(renderWidget).catch(() => {});
   }, [cfg]); // eslint-disable-line react-hooks/exhaustive-deps
   const set = (patch: Partial<WidgetConfig>) => setCfg((c) => ({ ...c, ...patch }));
+  // Anyone can open this from the home screen. With the app lock on, showing names takes the owner, and is
+  // asked on picking because the preview already draws them on the home screen.
+  async function pickNames(names: WidgetNames) {
+    if (names === 'show' && isLockEnabled() && !(await verifyDeviceOwner(t('lock.biometricPrompt')).catch(() => false))) return;
+    set({ names });
+  }
   function save() {
     setWidgetConfigText(widgetInfo.widgetId, JSON.stringify(cfg));
     setResult('ok');
@@ -33,7 +40,7 @@ export function WidgetConfigScreen({ widgetInfo, renderWidget, setResult }: Widg
           <Text style={styles.label}>{t('widgetConfig.content')}</Text>
           <Segmented options={[{ key: 'expiring', label: t('widgetConfig.expiring') }, { key: 'returns', label: t('widgetConfig.returns') }]} value={cfg.content} onChange={(content) => set({ content })} />
           <Text style={styles.label}>{t('widgetConfig.names')}</Text>
-          <Segmented options={[{ key: 'auto', label: t('widgetConfig.namesAuto') }, { key: 'show', label: t('widgetConfig.namesShow') }, { key: 'hide', label: t('widgetConfig.namesHide') }]} value={cfg.names} onChange={(names) => set({ names })} />
+          <Segmented options={[{ key: 'auto', label: t('widgetConfig.namesAuto') }, { key: 'show', label: t('widgetConfig.namesShow') }, { key: 'hide', label: t('widgetConfig.namesHide') }]} value={cfg.names} onChange={(names) => void pickNames(names)} />
           <Text style={styles.hint}>{t('widgetConfig.namesHint')}</Text>
           <Group>
             <Row accessibilityRole="switch" onPress={() => set({ photos: !cfg.photos })} accessibilityState={{ checked: cfg.photos }}>

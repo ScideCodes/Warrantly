@@ -549,29 +549,34 @@ export async function sharedWarranties(db: Db, ids: number[]): Promise<SharedWar
 // Returns how many were added.
 export async function importShared(db: Db, items: SharedWarranty[], saveDocument: (doc: SharedWarranty['documents'][number]) => Promise<string | null>, now = new Date().toISOString()): Promise<number> {
   let added = 0;
-  for (const { warranty: src, history, documents } of items) {
-    if (typeof src !== 'object' || src === null) continue;
-    // Only plain text and numbers from another person's file; anything else is left empty.
-    const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, typeof src[c] === 'string' || typeof src[c] === 'number' ? (src[c] as Param) : null]));
-    if (typeof w.store_name !== 'string' || typeof w.purchase_date !== 'string' || typeof w.warranty_start_date !== 'string' || typeof w.warranty_months !== 'number') continue;
-    Object.assign(w, serialFields(w));
-    const dup = await db.getFirstAsync(
-      `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored' AND deleted_at IS NULL`,
-      [w.product_name, w.store_name, w.purchase_date, w.coverage],
-    );
-    if (dup) continue;
-    const res = await db.runAsync(
-      `INSERT INTO warranties (origin, ${SHARED_COLUMNS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
-       VALUES ('manual', ${SHARED_COLUMNS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
-      [...SHARED_COLUMNS.map((c) => w[c]), now, now],
-    );
-    for (const h of history ?? []) await addHistory(db, res.lastInsertRowId, String(h.date), String(h.note));
-    for (const d of documents ?? []) {
-      const stored = await saveDocument(d);
-      if (stored) await addAttachment(db, res.lastInsertRowId, String(d.filename), stored, DOC_LABELS.includes(d.label as DocLabel) ? (d.label as DocLabel) : 'other');
+  // One transaction: a file that fails half-way adds nothing (the caller deletes the documents it wrote).
+  await db.withTransactionAsync(async () => {
+    for (const item of items) {
+      if (typeof item !== 'object' || item === null) continue;
+      const { warranty: src, history, documents } = item;
+      if (typeof src !== 'object' || src === null) continue;
+      // Only plain text and numbers from another person's file; anything else is left empty.
+      const w = Object.fromEntries(SHARED_COLUMNS.map((c) => [c, typeof src[c] === 'string' || typeof src[c] === 'number' ? (src[c] as Param) : null]));
+      if (typeof w.store_name !== 'string' || typeof w.purchase_date !== 'string' || typeof w.warranty_start_date !== 'string' || typeof w.warranty_months !== 'number') continue;
+      Object.assign(w, serialFields(w));
+      const dup = await db.getFirstAsync(
+        `SELECT 1 FROM warranties WHERE product_name IS ? AND store_name = ? AND purchase_date = ? AND coverage IS ? AND status != 'ignored' AND deleted_at IS NULL`,
+        [w.product_name, w.store_name, w.purchase_date, w.coverage],
+      );
+      if (dup) continue;
+      const res = await db.runAsync(
+        `INSERT INTO warranties (origin, ${SHARED_COLUMNS.join(', ')}, start_is_suggested, length_is_suggested, status, created_at, updated_at)
+         VALUES ('manual', ${SHARED_COLUMNS.map(() => '?').join(', ')}, 0, 0, 'complete', ?, ?)`,
+        [...SHARED_COLUMNS.map((c) => w[c]), now, now],
+      );
+      for (const h of history ?? []) await addHistory(db, res.lastInsertRowId, String(h.date), String(h.note));
+      for (const d of documents ?? []) {
+        const stored = await saveDocument(d);
+        if (stored) await addAttachment(db, res.lastInsertRowId, String(d.filename), stored, DOC_LABELS.includes(d.label as DocLabel) ? (d.label as DocLabel) : 'other');
+      }
+      added++;
     }
-    added++;
-  }
+  });
   return added;
 }
 
@@ -689,12 +694,19 @@ export async function deleteAccount(db: Db, accountId: number): Promise<string[]
   return gone;
 }
 
+export async function tableColumns(db: Db, table: string): Promise<Set<string>> {
+  return new Set((await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`, [])).map((c) => c.name));
+}
+
 // Puts a disconnect backup back under the (re)connected account. Rows get new ids, so nothing added
 // since then can collide; sources and documents follow their warranty. Mail PDFs are not in the backup:
 // docs_backfilled = 0 makes the next sync download them again.
 export async function restoreAccount(db: Db, accountId: number, rows: AccountRows): Promise<void> {
+  const known = new Map<string, Set<string>>();
   const insert = async (table: string, row: Record<string, unknown>) => {
-    const cols = Object.keys(row);
+    // Column names come from the backup file, so only ones this table has reach the SQL.
+    if (!known.has(table)) known.set(table, await tableColumns(db, table));
+    const cols = Object.keys(row).filter((c) => known.get(table)!.has(c));
     const res = await db.runAsync(`INSERT INTO ${table} (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`, cols.map((c) => row[c] as string | number | null));
     return res.lastInsertRowId;
   };

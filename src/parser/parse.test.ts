@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { findItems, findWarrantyMonths, parseEmail } from './parse.ts';
+import { cleanText, findItems, findOrderNumber, findWarrantyMonths, MAX_TEXT, parseEmail } from './parse.ts';
 import type { MailMessage, StoreRules } from './types.ts';
 
 // Real emails from the owner's inbox, anonymized (names, addresses, phone, order numbers, URLs).
@@ -81,4 +81,43 @@ test('findItems captures multi-word products from quantity prefixes, numbers and
   assert.deepEqual(findItems('Termék megnevezése: Sony WH-1000XM4 vezeték nélküli fejhallgató'), [
     { name: 'Sony WH-1000XM4 vezeték nélküli fejhallgató', months: null },
   ]);
+});
+
+// ReDoS guards: each 50 KB input made an old regex backtrack for seconds to minutes.
+const hostile = (unit: string) => unit.repeat(Math.ceil(50_000 / unit.length));
+function assertFast(label: string, run: () => unknown) {
+  const start = performance.now();
+  run();
+  const ms = performance.now() - start;
+  assert.ok(ms < 200, `${label} took ${ms.toFixed(0)} ms`);
+}
+
+test('order numbers match real formats and stay linear on hostile text', () => {
+  assert.equal(findOrderNumber('Már dolgozunk rajta. / 1060000001 sz. megr.'), '1060000001');
+  assert.equal(findOrderNumber('Tájékoztatunk, hogy 20260801_0001 sz. megrendelésed'), '20260801_0001');
+  assert.equal(findOrderNumber('Order #ATKGR00001 confirmed'), 'ATKGR00001');
+  assert.equal(findOrderNumber('Rendelésszám: 260901/900001'), '260901/900001');
+  assert.equal(findOrderNumber('A sz. megrendelés'), null);
+  assertFast('"sz. megr" token', () => findOrderNumber(hostile('1-')));
+  assertFast('order keyword then spaces', () => findOrderNumber(`order${hostile(' ')}`));
+  assertFast('repeated order keywords', () => findOrderNumber(hostile('order x/')));
+});
+
+test('warranty, link and line-item regexes stay linear on hostile text', () => {
+  assert.equal(findWarrantyMonths('Garancia időtartama: 24 hónap'), 24);
+  assert.equal(cleanText('Acme [Kettle](https://x.hu) [](#)'), 'Acme Kettle');
+  assert.deepEqual(findItems('Acme   Kettle   2 db   19 990 Ft'), [{ name: 'Acme Kettle', months: null }]);
+  assertFast('warranty words', () => findWarrantyMonths(hostile('garancia')));
+  assertFast('open brackets', () => cleanText(hostile('[')));
+  assertFast('open link targets', () => cleanText(hostile('[](')));
+  assertFast('space run in a line', () => findItems(`a${hostile(' ')}b 1 db`));
+  assertFast('space run in a table row', () => findItems(`a${hostile(' ')}b | c`));
+  assertFast('price groups', () => findItems(`1 db Kettle${hostile(' 000')}`));
+  assertFast('item code prefix', () => findItems(`1 db id${hostile(' ')}x`));
+  assertFast('contact address scan', () => parseEmail({ id: 'm', from: 'a@b.hu', to: [], subject: 'Garancia', date: '2026-01-01T00:00:00Z', text: hostile('a'), attachments: [] }));
+});
+
+test('the parser reads only the first MAX_TEXT characters of a mail', () => {
+  const msg: MailMessage = { id: 'big', from: 'shop@example.com', to: [], subject: 'Warranty', date: '2026-11-10T12:00:00Z', text: `${' '.repeat(MAX_TEXT)}\n1 × Acme Kettle`, attachments: [] };
+  assert.deepEqual(parseEmail(msg).items, []);
 });

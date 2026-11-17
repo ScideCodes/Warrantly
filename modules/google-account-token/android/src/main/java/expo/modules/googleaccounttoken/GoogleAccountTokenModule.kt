@@ -31,7 +31,8 @@ class GoogleAccountTokenModule : Module() {
           val token = result.accessToken
           // A resolution means Google wants to show consent: the user must reconnect this account.
           if (result.hasResolution() || token == null) {
-            promise.reject("CONSENT_REQUIRED", "Google needs you to reconnect $email", null)
+            // No email in the message: it lands in the error log that feedback mails can carry.
+            promise.reject("CONSENT_REQUIRED", "Google needs you to reconnect this account", null)
           } else {
             promise.resolve(token)
           }
