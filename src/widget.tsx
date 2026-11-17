@@ -99,7 +99,7 @@ function Body({ data, cfg, layout, c }: { data: Data; cfg: WidgetConfig; layout:
         <FlexWidget style={{ flex: 1, flexDirection: 'row', alignItems: 'center' }}>
           <TextWidget text={title} style={{ fontSize: 13, fontWeight: '600', color: c.ink2 }} maxLines={1} truncate="END" />
           {data.attention > 0 ? (
-            <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: 'warrantly://attention' }} style={{ backgroundColor: c.badge.bg, borderRadius: 9, paddingHorizontal: 6, marginLeft: 6 }}>
+            <FlexWidget clickAction="OPEN_URI" clickActionData={{ uri: 'warrantly://attention' }} style={{ backgroundColor: c.badge.bg, borderRadius: 9, paddingHorizontal: 6, paddingBottom: 1, marginLeft: 6 }}>
               <TextWidget text={String(data.attention)} accessibilityLabel={t('widget.attention', { count: data.attention })} style={{ fontSize: 11, fontWeight: '700', color: c.badge.fg }} maxLines={1} />
             </FlexWidget>
           ) : null}
@@ -131,8 +131,9 @@ function Body({ data, cfg, layout, c }: { data: Data; cfg: WidgetConfig; layout:
                 <FlexWidget style={{ flex: 1, marginRight: 8 }}>
                   <TextWidget text={rowLabel(r)} style={{ fontSize: 15, fontWeight: '600', color: c.ink }} maxLines={1} truncate="END" />
                 </FlexWidget>
+                {/* Digits have no descenders and Android pads above for accents: 1dp up reads as centred. */}
                 <TextWidget text={days(r)} maxLines={1}
-                  style={{ fontSize: 12, fontWeight: '700', color: pill.fg, backgroundColor: pill.bg, borderRadius: 10, paddingHorizontal: 8, paddingVertical: 2 }} />
+                  style={{ fontSize: 12, fontWeight: '700', color: pill.fg, backgroundColor: pill.bg, borderRadius: 10, paddingHorizontal: 8, paddingTop: 1, paddingBottom: 3 }} />
               </FlexWidget>
             );
           })}
