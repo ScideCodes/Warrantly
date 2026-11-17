@@ -4,8 +4,9 @@ Warrantly ships in two ways.
 
 - **Over the air.** JavaScript and asset changes reach compatible installed builds on the `preview` channel without a new
   APK. The runtime version equals the app version in `app.json`.
-- **New build.** Native code changes need a new `version` in `app.json`, then an APK
-  (`npx eas-cli@latest build --platform android --profile preview`).
+- **New build.** Native code changes need a new `version` in `app.json`, then an APK from the
+  **Release APK** workflow (`.github/workflows/release-apk.yml`, run it from the Actions tab). Download the
+  `warrantly-apk` artifact and attach it to the GitHub release.
 
 ## OTA records
 
@@ -30,6 +31,20 @@ scripts/ota-release.sh "Update description" path/to/app.apk
 - Gmail import is off (`GMAIL_IMPORT` in `src/features.ts`) until Google verifies the `gmail.readonly` scope. With
   it off, sign-in asks only for `drive.file`. See `docs/gmail-verification.md`.
 - 1.0.0 is a full release: create it with `gh release create` without `--prerelease`, APK attached.
+
+## Signing
+
+- APKs are built on GitHub Actions, not EAS: the EAS free plan ran out of Android builds in November 2026, and Actions
+  minutes are free now that the repository is public.
+- The release key for `dev.warrantly.app` is `warrantly-release.jks` (alias `warrantly`), kept outside the repository
+  in the maintainer's `Documents/Warrantly keys` folder with its password. Keep an offline copy: an APK update signed
+  with any other key will not install over 1.0.0.
+- The workflow reads it from the repository secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD` and
+  `ANDROID_KEY_ALIAS`.
+- Its SHA-1 `38:56:43:77:E1:64:1E:59:AD:9E:B5:97:D4:01:F4:50:71:85:9F:24` is registered as the Android OAuth client
+  "Warrantly Release" in Cloud project `warrantly-514408`; Drive sign-in fails in builds signed with any other key.
+- EAS also holds a keystore for `dev.warrantly.app` that it generated in November 2026. It was never used for a
+  published APK. Before building on EAS again, upload `warrantly-release.jks` with `npx eas-cli@latest credentials`.
 
 ## Release checks
 
