@@ -164,6 +164,7 @@ test('disconnect removes one account only; reconnect restores it under the new a
   // Reconnect: a new account row, then the backup comes back under it with fresh ids.
   const again = await upsertAccount(db, 'work@example.com');
   assert.notEqual(again.id, work.id);
+  rows.warranties[0]['x) VALUES (1); --'] = 1; // a crafted column name is dropped, not put into the SQL
   await restoreAccount(db, again.id, rows);
   assert.equal(count('SELECT COUNT(*) n FROM warranties WHERE account_id = ?', again.id), workWarranties);
   assert.equal(count('SELECT COUNT(*) n FROM sources s JOIN warranties w ON w.id = s.warranty_id WHERE s.account_id = ?', again.id), 2);
@@ -390,4 +391,10 @@ test('sharing: warranties with notes and documents move to another phone once', 
   assert.deepEqual((await listAttachments(b, w.id)).map((d) => [d.filename, d.local_path]), [['Invoice.pdf', 'copy-of-scan-1.pdf']]);
   // A file with junk instead of a warranty is skipped, not imported half-way.
   assert.equal(await importShared(b, [{ warranty: { product_name: 'x' }, history: [], documents: [] }], save), 0);
+  assert.equal(await importShared(b, [null as never], save), 0);
+  // A failure half-way leaves nothing behind.
+  const c = nodeDb();
+  await migrate(c);
+  await assert.rejects(importShared(c, shared, async () => { throw new Error('disk full'); }), /disk full/);
+  assert.equal((await listWarranties(c, 'complete')).length, 0);
 });

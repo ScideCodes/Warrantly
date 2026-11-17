@@ -237,6 +237,7 @@
     "returnSoon_one": "The return window closes in {{count}} day. Return it now if you want to.",
     "returnSoon_other": "The return window closes in {{count}} days. Return it now if you want to.",
     "custom": "A reminder you set",
+    "privateTitle": "Warranty reminder",
     "title": "My reminders",
     "placeholder": "Note (optional)",
     "pickDate": "Pick a date",

@@ -44,11 +44,23 @@ export async function importDocument(): Promise<{ text: string; localPath: strin
   return fileToDocument(uri, name, mimeType ?? null);
 }
 
+const SHARED_MAX_BYTES = 30 * 1024 * 1024; // mail providers cap a message near 25 MB
+
+// A file picked or shared from another app. A non-content: path must be in the cache, where the picker and
+// the share module copy files: another app must not make Warrantly read its own private files.
+function sharedFile(uri: string): File {
+  if (!uri.startsWith('content:') && (!uri.startsWith(Paths.cache.uri) || uri.includes('..'))) throw new Error('Not a document');
+  const file = new File(uri);
+  if ((file.size ?? 0) > SHARED_MAX_BYTES) throw new Error('File too large');
+  return file;
+}
+
 // A photo or PDF file (picked, or shared into Warrantly from another app) as a stored document.
 export async function fileToDocument(uri: string, name: string, mimeType: string | null): Promise<{ text: string; localPath: string }> {
+  const file = sharedFile(uri);
   if (mimeType === 'application/pdf' || name.toLowerCase().endsWith('.pdf')) {
     const pdf = new File(folder(), `import-${Date.now()}.pdf`);
-    await new File(uri).copy(pdf);
+    await file.copy(pdf);
     let text = '';
     try {
       text = await readPdfText(
@@ -64,13 +76,10 @@ export async function fileToDocument(uri: string, name: string, mimeType: string
   return imagesToPdf([{ uri, mimeType: imageMime(mimeType) }]); // the type comes from the sending app
 }
 
-const EMAIL_MAX_BYTES = 30 * 1024 * 1024; // mail providers cap a message near 25 MB
-
 // A mail shared as an .eml file: its first PDF attachment is the document; a mail without one is kept as a PDF
 // of its text. The text fills the form like a scanned receipt.
 export async function emailToDocument(uri: string, name: string): Promise<{ text: string; localPath: string; filename: string }> {
-  const file = new File(uri);
-  if ((file.size ?? 0) > EMAIL_MAX_BYTES) throw new Error('File too large');
+  const file = sharedFile(uri);
   const { message, pdfs } = parseRfc822(await file.bytes(), name);
   const text = mailToText(message);
   if (!pdfs[0]) return textToDocument(text, message.subject || name.replace(/\.eml$/i, ''));

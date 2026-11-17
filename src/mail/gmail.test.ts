@@ -145,3 +145,21 @@ test('fetchAndParse skips a mail that cannot be fetched and keeps going', async 
   assert.deepEqual(failed, [{ id: 'bad', error: 'Gmail 403 on messages/bad' }]);
   assert.equal(results.length, 1);
 });
+
+// ReDoS guards: each 50 KB input made an old regex backtrack for seconds to minutes.
+const hostile = (unit: string) => unit.repeat(Math.ceil(50_000 / unit.length));
+function assertFast(label: string, run: () => unknown) {
+  const start = performance.now();
+  run();
+  const ms = performance.now() - start;
+  assert.ok(ms < 200, `${label} took ${ms.toFixed(0)} ms`);
+}
+
+test('htmlToText stays linear on unclosed tags and comments', () => {
+  assert.equal(htmlToText('a<!-- never closed <p>b</p>'), 'a');
+  assert.equal(htmlToText('<p class="x">a < b</p>'), 'a < b');
+  assertFast('open tags', () => htmlToText(hostile('<')));
+  assertFast('open block tags', () => htmlToText(hostile('<p')));
+  assertFast('open comments', () => htmlToText(hostile('<!--')));
+  assertFast('open styles', () => htmlToText(hostile('<style>')));
+});

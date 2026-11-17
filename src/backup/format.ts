@@ -1,5 +1,5 @@
 import { scryptAsync } from '@noble/hashes/scrypt.js';
-import type { Db } from '../db/repo.ts';
+import { tableColumns, type Db } from '../db/repo.ts';
 
 // Backup (brainstorm section 17): the database as JSON plus settings, encrypted on the phone with a key
 // from the user's backup password. Google Drive only ever sees the sealed envelope.
@@ -36,7 +36,7 @@ export async function restoreDb(db: Db, data: BackupData): Promise<void> {
   await db.withTransactionAsync(async () => {
     for (const t of [...TABLES].reverse()) await db.runAsync(`DELETE FROM ${t}`, []);
     for (const t of TABLES) {
-      const known = new Set((await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${t})`, [])).map((c) => c.name));
+      const known = await tableColumns(db, t);
       for (const row of data.tables[t] ?? []) {
         if (typeof row !== 'object' || row === null) throw new Error('Damaged backup');
         const cols = Object.keys(row).filter((c) => known.has(c));
@@ -66,10 +66,11 @@ export interface KdfParams {
 export const KDF = { N: 2 ** 15, r: 8, p: 1 };
 
 // The parameters are read from the backup file, so they are bounded: a crafted file must not make the phone
-// spend minutes or gigabytes of memory before the password is even checked.
+// spend minutes or gigabytes of memory before the password is even checked. scrypt memory is 128*N*r bytes:
+// N*r <= 2^18 keeps it at 32 MB (the default N=2^15, r=8 is exactly that).
 export function checkKdf(kdf: KdfParams): KdfParams {
   const pow2 = Number.isInteger(kdf?.N) && kdf.N >= 2 ** 10 && kdf.N <= 2 ** 18 && (kdf.N & (kdf.N - 1)) === 0;
-  if (!pow2 || !Number.isInteger(kdf.r) || kdf.r < 1 || kdf.r > 16 || !Number.isInteger(kdf.p) || kdf.p < 1 || kdf.p > 4 || typeof kdf.salt !== 'string') {
+  if (!pow2 || !Number.isInteger(kdf.r) || kdf.r < 1 || kdf.N * kdf.r > 2 ** 18 || !Number.isInteger(kdf.p) || kdf.p < 1 || kdf.p > 4 || typeof kdf.salt !== 'string') {
     throw new Error('Damaged backup');
   }
   return kdf;
@@ -148,4 +149,13 @@ export function toBase64(bytes: Uint8Array): string {
 }
 export function fromBase64(b64: string): Uint8Array {
   return Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+const SHARED_DOC_MAX_BYTES = 30 * 1024 * 1024;
+// A document inside someone else's Warrantly file: kept only if it is a PDF of a bounded size, since it is
+// stored as .pdf and opened by the viewer. Size is checked on the base64 text, before it is decoded.
+export function sharedPdf(data: unknown): Uint8Array | null {
+  if (typeof data !== 'string' || data.length > (SHARED_DOC_MAX_BYTES / 3) * 4) return null;
+  const bytes = fromBase64(data);
+  return String.fromCharCode(...bytes.subarray(0, 4)) === '%PDF' ? bytes : null;
 }

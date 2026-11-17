@@ -1,8 +1,16 @@
 diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-index ff5b100..eb595e0 100644
+index ff5b100..641f87a 100644
 --- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
 +++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
-@@ -63,16 +63,22 @@ class ExpoShareIntentModule : Module() {
+@@ -57,22 +57,30 @@ class ExpoShareIntentModule : Module() {
+ 
+         @SuppressLint("Range")
+         private fun getFileInfo(uri: Uri): Map<String, String?> {
++            // Patched (Warrantly): a file:// URI from another app could name this app's own private files.
++            require(ContentResolver.SCHEME_CONTENT.equals(uri.scheme, ignoreCase = true)) { "only content: URIs are accepted" }
+             val resolver: ContentResolver? = instance?.currentActivity?.contentResolver
+                     ?: instance?.context?.contentResolver
+             if (resolver == null) {
                  notifyError("Cannot get resolver (getFileInfo)")
                  return mapOf(
                      "contentUri" to uri.toString(),
@@ -32,7 +40,7 @@ index ff5b100..eb595e0 100644
  
              var mediaWidth: String? = null;
              var mediaHeight: String? = null;
-@@ -101,7 +107,7 @@ class ExpoShareIntentModule : Module() {
+@@ -101,7 +109,7 @@ class ExpoShareIntentModule : Module() {
  
              return mapOf(
                      "contentUri" to uri.toString(),
@@ -41,7 +49,7 @@ index ff5b100..eb595e0 100644
                      "fileName" to fileName,
                      "fileSize" to fileSize,
                      "mimeType" to mimeType,
-@@ -142,14 +148,22 @@ class ExpoShareIntentModule : Module() {
+@@ -142,14 +150,22 @@ class ExpoShareIntentModule : Module() {
                  if (intent.action == Intent.ACTION_SEND) {
                      val uri = intent.parcelable<Uri>(Intent.EXTRA_STREAM);
                      if (uri != null) {
@@ -66,3 +74,25 @@ index ff5b100..eb595e0 100644
                      } else {
                          notifyError("empty uris array for file sharing: " + intent.action)
                      }
+@@ -265,7 +281,7 @@ class ExpoShareIntentModule : Module() {
+                 return getDataColumn(uri, null, null)
+             }
+ 
+-            return uri.path
++            return null // patched (Warrantly): only content: URIs; a file:// path could name this app's own files
+         } catch (e: Exception) {
+             e.printStackTrace()
+             notifyError("cannot retreive absoluteFilePath for $uri: ${e.message}")
+@@ -301,9 +317,10 @@ class ExpoShareIntentModule : Module() {
+                     val columnIndex = cursor.getColumnIndexOrThrow(column)
+                     val fileName = cursor.getString(columnIndex)
+                     Log.i("FileDirectory", "File name: $fileName")
+-                    val safeName = fileName?.let { File(it).name }.orEmpty()
++                    // Patched (Warrantly): the name comes from another app; a bare name, unique so no cache file is overwritten.
++                    val safeName = fileName?.substringAfterLast('/')?.replace("..", "_").orEmpty()
+                     if (safeName.isNotEmpty()) {
+-                        val candidate = File(context.cacheDir, safeName)
++                        val candidate = File(context.cacheDir, "share-${Date().time}-$safeName")
+                         val cacheRoot = context.cacheDir.canonicalPath + File.separator
+                         if (candidate.canonicalPath.startsWith(cacheRoot)) {
+                             targetFile = candidate

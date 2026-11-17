@@ -8,6 +8,7 @@ import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
 import { plannedCustomReminders } from '@/db/features.ts';
 import { getReminderGroups, getReminderTime, getRemindersEnabled, getReturnRemindersEnabled } from '@/settings';
 import { syncCalendar } from '@/calendarSync';
+import { isLockEnabled } from '@/lock/store';
 import { reminderDays, reminderPlan, returnDeadline, shortName, todayYmd } from '@/warranty';
 
 
@@ -78,16 +79,17 @@ async function reschedule(db: Db): Promise<void> {
   scheduled = key;
 }
 
+// With the app lock on, a notification names no product (it shows over other apps and in the shade).
 function content(w: Warranty, daysLeft: number): Notifications.NotificationContentInput {
   return {
-    title: w.product_name ? (w.origin === 'manual' || w.origin === 'scan' || w.status === 'complete' ? w.product_name : shortName(w.product_name)) : w.store_name,
+    title: isLockEnabled() ? i18n.t('reminder.privateTitle') : w.product_name ? (w.origin === 'manual' || w.origin === 'scan' || w.status === 'complete' ? w.product_name : shortName(w.product_name)) : w.store_name,
     body: daysLeft === 0 ? i18n.t('reminder.today') : i18n.t('reminder.daysLeft', { count: daysLeft }),
     data: { url: `/warranty/${w.id}` },
   };
 }
 
 function customContent(w: Warranty, note: string | null): Notifications.NotificationContentInput {
-  return { ...content(w, 0), body: note || i18n.t('reminder.custom') };
+  return { ...content(w, 0), body: (!isLockEnabled() && note) || i18n.t('reminder.custom') };
 }
 
 function returnContent(w: Warranty): Notifications.NotificationContentInput {

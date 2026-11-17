@@ -1,4 +1,4 @@
-import { findItems, findOrderNumber, findWarrantyMonths } from './parse.ts';
+import { findItems, findOrderNumber, findWarrantyMonths, MAX_TEXT } from './parse.ts';
 import { findDate, findWarrantyStartDate } from './dates.ts';
 import { serialCandidates } from '../serial.ts';
 export { findDate, findWarrantyStartDate } from './dates.ts';
@@ -64,7 +64,8 @@ export function findPrice(text: string): { price: number | null; currency: strin
   const totalKeywords = /(?:fizetendő(?:\s*összeg)?|végösszeg|összesen|bruttó(?:\s*végösszeg|\s*összeg)?|nyugtaösszeg|total(?:\s*amount)?|amount\s*due|grand\s*total|gross\s*total)/i;
   for (const line of lines) {
     if (totalKeywords.test(line)) {
-      const m = line.match(/(?:([A-Za-z$€£]+)\s*)?([0-9\s.,]+)\s*([A-Za-z$€£]+)?/);
+      // Start only at the head of a letter run: same matches, without re-scanning the run from every letter.
+      const m = line.match(/(?<![A-Za-z$€£])(?:([A-Za-z$€£]+)\s*)?([0-9\s.,]+)\s*([A-Za-z$€£]+)?/);
       if (m) {
         const curSym = (m[3] || m[1] || '').toLowerCase();
         const cur = CURRENCY_MAP[curSym] ?? (curSym ? curSym.toUpperCase() : null);
@@ -76,7 +77,7 @@ export function findPrice(text: string): { price: number | null; currency: strin
     }
   }
   for (const line of lines) {
-    const m = line.match(/([0-9]{1,3}(?:[\s.][0-9]{3})+|[0-9]+(?:[.,][0-9]{2})?)\s*(ft|huf|eur|usd|gbp|chf|pln|czk|ron|€|\$|£)\b/i);
+    const m = line.match(/([0-9]{1,3}(?:[\s.][0-9]{3}){1,4}|[0-9]{1,12}(?:[.,][0-9]{2})?)\s*(ft|huf|eur|usd|gbp|chf|pln|czk|ron|€|\$|£)\b/i);
     if (m) {
       const cur = CURRENCY_MAP[m[2].toLowerCase()] ?? m[2].toUpperCase();
       const num = normalizePrice(m[1], cur);
@@ -89,7 +90,7 @@ export function findPrice(text: string): { price: number | null; currency: strin
 function findScanOrderNumber(text: string): string | null {
   const standard = findOrderNumber(text);
   if (standard) return standard;
-  const match = text.match(/(?:számlaszám|számla\s*sorszáma|bizonylatszám|számla\s*száma|invoice\s*(?:no\.?|#|number))\s*[:#]?\s*([A-Za-z0-9][\w/.-]*\d[\w/-]*)/i);
+  const match = text.match(/(?:számlaszám|számla\s*sorszáma|bizonylatszám|számla\s*száma|invoice\s*(?:no\.?|#|number))\s*(?:[:#]\s*)?([A-Za-z0-9][\w/.-]{0,39}\d[\w/-]{0,39})/i);
   return match?.[1] ?? null;
 }
 
@@ -141,7 +142,7 @@ const METADATA_CONTENT = /(?:adószám|adoszam|tax|vat|bankszámla|iban|swift|bi
 function cleanStoreCandidate(raw: string): string | null {
   let s = raw.trim();
   s = s.replace(/^(?:cégnév|eladó|forgalmazó|kereskedő|szállító|kibocsátó|értékesítő|seller|vendor|store|merchant|sold\s*by|issued\s*by)\s*[:：-]\s*/i, '');
-  s = s.split(/(?:,|\s+-\s+|;|\s+adószám|\s+adoszam|\s+tax|\s+cím:)/i)[0].trim();
+  s = s.split(/(?:,|\s-\s|;|\sadószám|\sadoszam|\stax|\scím:)/i)[0].trim();
   if (s.length < 3 || s.length > 60 || NOISE_START.test(s) || METADATA_CONTENT.test(s)) return null;
   if (!/\p{L}{2}/u.test(s)) return null;
   return s;
@@ -157,7 +158,7 @@ function cleanStoreCandidate(raw: string): string | null {
 function findStore(lines: string[]): string | null {
   // 1. Email sender header
   for (const line of lines.slice(0, 15)) {
-    const fromMatch = line.match(/^(?:from|feladó)\s*[:：]\s*(?:(?:"?([^"<>\n]+)"?\s*)?<[^>]+>|([^\n<]+))/i);
+    const fromMatch = line.match(/^(?:from|feladó)\s*[:：]\s*(?:(?:"?([^"<>\n]*[^"<>\s])"?\s*)?<[^>]+>|([^\n<]+))/i);
     if (fromMatch) {
       const sender = (fromMatch[1] || fromMatch[2] || '').trim();
       const cleaned = cleanStoreCandidate(sender);
@@ -239,7 +240,8 @@ function findStore(lines: string[]): string | null {
   return null;
 }
 
-export function parseScanText(text: string, today: string): ScanResult {
+export function parseScanText(fullText: string, today: string): ScanResult {
+  const text = fullText.slice(0, MAX_TEXT);
   const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
   const items = findItems(lines.join('\n'));
   const purchaseDate = findDate(text, today);

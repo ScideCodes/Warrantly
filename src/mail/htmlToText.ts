@@ -1,15 +1,21 @@
+// Shop mails are tens of KB; a cap keeps a hostile body from stalling the import.
+const MAX_HTML = 500_000;
+
 // Shop emails are mostly HTML tables. Keep the table shape the parser relies on:
 // cells end with " | ", rows end with a newline, block elements start a new paragraph.
+// Unclosed "<!--", "<style" or "<p" must not each rescan the rest of the mail (quadratic):
+// an open comment runs to the end like in a browser, and the other scans stop at the next "<".
 export function htmlToText(html: string): string {
   const text = html
-    .replace(/<!--[\s\S]*?-->/g, '')
-    .replace(/<(style|script|head|title)\b[\s\S]*?<\/\1>/gi, '')
+    .slice(0, MAX_HTML)
+    .replace(/<!--[\s\S]*?(?:-->|$)/g, '')
+    .replace(/<(style|script|head|title)\b(?:(?!<\/?\1\b)[\s\S])*<\/\1>/gi, '')
     .replace(/\s+/g, ' ') // HTML whitespace is not significant; structure comes from tags below
     .replace(/<br\s*\/?>/gi, '\n')
     .replace(/<\/(td|th)>/gi, ' | ')
     .replace(/<\/tr>/gi, '\n')
-    .replace(/<\/?(p|div|h[1-6]|li|ul|ol|table|center|blockquote)\b[^>]*>/gi, '\n\n')
-    .replace(/<[^>]*>/g, '');
+    .replace(/<\/?(p|div|h[1-6]|li|ul|ol|table|center|blockquote)\b[^<>]*>/gi, '\n\n')
+    .replace(/<[^<>]*>/g, '');
   return decodeEntities(text)
     .split('\n')
     .map((line) => line.replace(/[ \t]+/g, ' ').trim())

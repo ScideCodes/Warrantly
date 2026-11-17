@@ -81,3 +81,20 @@ test('shared email autofill keeps product and purchase date from the body', () =
   assert.equal(result.warrantyMonths, 24);
   assert.equal(result.storeName, 'Acme Shop');
 });
+
+// ReDoS guards: each 50 KB input made an old regex backtrack for seconds to minutes.
+const hostile = (unit: string) => unit.repeat(Math.ceil(50_000 / unit.length));
+function assertFast(label: string, run: () => unknown) {
+  const start = performance.now();
+  run();
+  const ms = performance.now() - start;
+  assert.ok(ms < 200, `${label} took ${ms.toFixed(0)} ms`);
+}
+
+test('RFC 2231 file names decode and hostile parameters stay linear', () => {
+  const eml = (disposition: string) => new TextEncoder().encode(`Content-Type: application/pdf\nContent-Disposition: attachment; ${disposition}\n\nx`);
+  assert.equal(parseRfc822(eml("filename*=utf-8''sz%C3%A1mla%20%C5%91.pdf"), 'f').pdfs[0].filename, 'számla ő.pdf');
+  assert.equal(parseRfc822(eml("filename*=iso-8859-2''sz%E1mla.pdf"), 'f').pdfs[0].filename, 'számla.pdf');
+  assert.equal(parseRfc822(eml("filename*=utf-8''bad%zz%E1.pdf"), 'f').pdfs[0].filename, 'bad%zz�.pdf');
+  assertFast('repeated filename*=', () => parseRfc822(eml(hostile('; filename*=a')), 'f'));
+});

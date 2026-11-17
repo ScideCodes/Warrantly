@@ -10,8 +10,8 @@ import Storage from 'expo-sqlite/kv-store';
 import { GoogleOneTapSignIn } from 'react-native-nitro-google-signin';
 import * as DocumentPicker from 'expo-document-picker';
 import { deleteDriveBackups } from '@/backup';
-import { fromBase64, toBase64 } from '@/backup/format.ts';
-import { documentExists, readDocument, writeDocument } from '@/documents';
+import { sharedPdf, toBase64 } from '@/backup/format.ts';
+import { deleteDocuments, documentExists, readDocument, writeDocument } from '@/documents';
 import { clearLock } from '@/lock/store';
 import { importShared, sharedWarranties, wipeDb, type Db, type SharedWarranty } from '@/db/repo.ts';
 import { updateWidget } from '@/widget';
@@ -72,12 +72,20 @@ export async function importSharedFile(db: Db): Promise<number | null> {
   if ((picked.assets[0].size ?? file.size ?? 0) > IMPORT_MAX_BYTES) throw new Error('This file is too large to be a Warrantly file');
   const data = JSON.parse(await file.text());
   if (data?.format !== SHARE_FORMAT || !Array.isArray(data.items)) throw new Error('Not a Warrantly file');
-  return importShared(db, data.items, async (doc) => {
-    if (typeof doc.data !== 'string') return null;
-    const name = `shared-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`;
-    await writeDocument(name, fromBase64(doc.data));
-    return name;
-  });
+  const written: string[] = [];
+  try {
+    return await importShared(db, data.items, async (doc) => {
+      const pdf = sharedPdf(doc?.data);
+      if (!pdf) return null;
+      const name = `shared-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.pdf`;
+      written.push(name);
+      await writeDocument(name, pdf);
+      return name;
+    });
+  } catch (e) {
+    deleteDocuments(written); // the rows were rolled back, so these files belong to nothing
+    throw e;
+  }
 }
 
 // Everything on this phone goes: warranties, documents, settings, PIN, backup key, reminders, Google

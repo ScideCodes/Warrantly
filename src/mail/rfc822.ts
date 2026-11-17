@@ -39,8 +39,13 @@ function split(raw: string): { headers: Map<string, string>; body: string } {
 
 // `name="x"` or `name=x` from a header value; RFC 2231 `name*=utf-8''x` too.
 function param(value: string, name: string): string | null {
-  const ext = value.match(new RegExp(`;\\s*${name}\\*=([^']*)'[^']*'([^;]+)`, 'i'));
-  if (ext) return decodeText(toBytes(decodeURIComponent(ext[2].trim()).replace(/[^\0-\xff]/g, '')), ext[1] || 'utf-8');
+  const ext = value.match(new RegExp(`;\\s*${name}\\*=([^';]*)'[^';]*'([^;]+)`, 'i'));
+  if (ext) {
+    // Escapes by hand: decodeURIComponent throws on a bad escape and assumes UTF-8 whatever the charset.
+    const bytes = toBytes(ext[2].trim().replace(/%([0-9A-Fa-f]{2})/g, (_, h) => String.fromCharCode(parseInt(h, 16))));
+    // Back to a UTF-8 binary string like every other header value, so decodeWords decodes it once.
+    return binary(new TextEncoder().encode(decodeText(bytes, ext[1] || 'utf-8')));
+  }
   const m = value.match(new RegExp(`;\\s*${name}=(?:"([^"]*)"|([^;\\s]+))`, 'i'));
   return m ? (m[1] ?? m[2]) : null;
 }

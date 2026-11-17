@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { findDate, parseScanText } from './scan.ts';
+import { findDate, findPrice, parseScanText } from './scan.ts';
 
 test('findDate reads common receipt formats and ignores future dates', () => {
   const today = '2026-11-11';
@@ -168,4 +168,27 @@ Total: 349.00 EUR`;
   assert.equal(result.purchaseDate, '2026-05-20');
   assert.equal(result.price, 349);
   assert.equal(result.currency, 'EUR');
+});
+
+// ReDoS guards: each 50 KB input made an old regex backtrack for seconds to minutes.
+const hostile = (unit: string) => unit.repeat(Math.ceil(50_000 / unit.length));
+function assertFast(label: string, run: () => unknown) {
+  const start = performance.now();
+  run();
+  const ms = performance.now() - start;
+  assert.ok(ms < 200, `${label} took ${ms.toFixed(0)} ms`);
+}
+
+test('scan regexes keep their matches and stay linear on hostile text', () => {
+  assert.deepEqual(findPrice('Végösszeg: 12 990 Ft'), { price: 12990, currency: 'HUF' });
+  assert.deepEqual(findPrice('Kettle 1 234 567 Ft'), { price: 1234567, currency: 'HUF' });
+  assert.equal(parseScanText('Számlaszám: ABC-2026/123', '2026-11-11').orderNumber, 'ABC-2026/123');
+  assert.equal(parseScanText('From: "Acme Shop" <a@acme.hu>', '2026-11-11').storeName, 'Acme Shop');
+  assert.equal(parseScanText('Eladó: Acme   Kft, adószám: 1', '2026-11-11').storeName, 'Acme   Kft');
+  const scan = (text: string) => () => parseScanText(text, '2026-11-11');
+  assertFast('total line letters', scan(`Total ${hostile('a')}`));
+  assertFast('digit run', () => findPrice(hostile('1')));
+  assertFast('invoice number spaces', scan(`számlaszám${hostile(' ')}`));
+  assertFast('From line spaces', scan(`From: a${hostile(' ')}b`));
+  assertFast('seller name spaces', scan(`Eladó: a${hostile(' ')}b`));
 });

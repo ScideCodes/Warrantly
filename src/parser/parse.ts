@@ -4,17 +4,21 @@ import { todayYmd } from '../warranty.ts';
 import { findDate } from './dates.ts';
 
 const NOREPLY = /no-?reply|do-?not-?reply/i;
+// Real mail fits easily; a hostile or runaway body must not stall the parser.
+export const MAX_TEXT = 100_000;
 
 // Brainstorm section 8, steps 1, 2 and 4: classify the mail, extract from the body, and
 // report missing required fields. Step 3 (PDF text) runs later on `pdfAttachments`.
 export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): ParseResult {
-  const text = cleanText(msg.text);
-  const all = `${msg.subject}\n${text}`;
+  const body = msg.text.slice(0, MAX_TEXT);
+  const subject = msg.subject.slice(0, MAX_TEXT);
+  const text = cleanText(body);
+  const all = `${subject}\n${text}`;
   const storeDomain = registrableDomain(msg.from);
   const receivedDay = todayYmd(new Date(msg.date));
   // A later invoice/forward must not move the purchase to the day the email was sent.
-  const purchaseDate = findDate(msg.text, receivedDay, true) ?? receivedDay;
-  const orderNumber = findOrderNumber(msg.subject) ?? findOrderNumber(text);
+  const purchaseDate = findDate(body, receivedDay, true) ?? receivedDay;
+  const orderNumber = findOrderNumber(subject) ?? findOrderNumber(text);
   const pdfAttachments = msg.attachments
     .filter((a) => a.mimeType === 'application/pdf' || /\.pdf$/i.test(a.filename))
     .map((a) => a.filename);
@@ -39,8 +43,8 @@ export function parseEmail(msg: MailMessage, storeRules: StoreRules = {}): Parse
   // A warranty document (by subject or PDF name, not claim/repair updates), or a mail that states a
   // warranty length for a product ("24 hó gar."). Invoice bodies saying "garancia" alone do not count.
   const isDocument =
-    LANGUAGES.some((l) => l.document.test(msg.subject) || pdfAttachments.some((f) => l.document.test(f))) &&
-    !LANGUAGES.some((l) => l.repair.test(msg.subject));
+    LANGUAGES.some((l) => l.document.test(subject) || pdfAttachments.some((f) => l.document.test(f))) &&
+    !LANGUAGES.some((l) => l.repair.test(subject));
   const statesWarranty = items.some((i) => i.warrantySource === 'email');
   const isPurchase = (isDocument || statesWarranty) && (orderNumber || items.length || pdfAttachments.length);
   if (kind === 'purchase' && !isPurchase) kind = 'ignored';
@@ -85,7 +89,7 @@ export function cleanText(raw: string): string {
     .replace(/&amp;/g, '&')
     .replace(/&#39;/g, "'")
     .replace(/&quot;/g, '"')
-    .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+    .replace(MARKDOWN_LINK, '$1')
     .replace(/https?:\/\/\S+/g, '')
     .replace(/\(\s*\)/g, '')
     .split(/\n[ \t]*\n/)
@@ -105,10 +109,15 @@ export function registrableDomain(email: string): string {
   return email.toLowerCase().split('@').pop()!.split('.').slice(-2).join('.');
 }
 
+// "[text](url)" link debris; the classes stop at the next bracket so unclosed ones stay linear.
+const MARKDOWN_LINK = /\[([^[\]]*)\]\([^)\]]*\)/g;
+
+// Bounded tokens and one whitespace run per gap: these run on whole mails and PDF text, where
+// open-ended overlapping repeats backtrack polynomially (ReDoS).
 const ORDER_PATTERNS = [
-  // [\wáéíóöőúüű]*: Hungarian suffixes and compounds, e.g. "rendelésének", "Rendelésszám"
-  /\b(?:order|megrendelés|rendelés)[\wáéíóöőúüű]*\s*(?:#|no\.?|number|nr\.?|id|száma|azonosító(?:ja)?)?\s*[:#]?\s*([A-Z0-9][\w/.-]*\d[\w/-]*)/i,
-  /\b([A-Z0-9][\w/-]*\d[\w/-]*)\s*sz\.\s*(?:megr|rend)/i,
+  // [\wáéíóöőúüű]{0,20}: Hungarian suffixes and compounds, e.g. "rendelésének", "Rendelésszám"
+  /\b(?:order|megrendelés|rendelés)[\wáéíóöőúüű]{0,20}\s*(?:(?:#|no\.?|number|nr\.?|id|száma|azonosító(?:ja)?)\s*)?(?:[:#]\s*)?([A-Z0-9][\w/.-]{0,39}\d[\w/-]{0,39})/i,
+  /\b(?=[A-Z0-9][\w/-]{0,38}\d)([A-Z0-9][\w/-]{0,39})\s*sz\.\s*(?:megr|rend)/i,
   /\bAzonosító:\s*([\w/-]*\d[\w/-]*)/i,
 ];
 
@@ -130,7 +139,7 @@ export function findWarrantyMonths(s: string): number | null {
   for (const lang of LANGUAGES) {
     const unit = `(${lang.monthUnit}|${lang.yearUnit})`;
     const before = new RegExp(`(\\d{1,3})[\\s-]*${unit}\\.?\\s*(?:${lang.warrantyWord})`, 'i');
-    const after = new RegExp(`(?:${lang.warrantyWord})\\w*[^.\\n\\d]{0,25}?(\\d{1,3})[\\s-]*${unit}`, 'i');
+    const after = new RegExp(`(?:${lang.warrantyWord})\\w{0,20}[^.\\n\\d]{0,25}?(\\d{1,3})[\\s-]*${unit}`, 'i');
     for (const re of [before, after]) {
       const m = s.match(re);
       const months = m && toMonths(m[1], m[2], lang);
@@ -147,25 +156,25 @@ function cleanProductName(raw: string): string {
   // Strip leading list numbers or quantity markers
   s = s.replace(/^\s*(?:\d+[\.\)]\s+|\d+\s*(?:[x×]|db|darab|db\.|pcs|qty)\s+)/i, '');
   // Strip leading ID / SKU / item code prefixes e.g. "Azonosító: 260901/900001", "Cikkszám: 12345"
-  s = s.replace(/^(?:azonosító|cikkszám|sku|item\s*no\.?|id|kód)\s*[:：]?\s*\S+\s+/i, '');
+  s = s.replace(/^(?:azonosító|cikkszám|sku|item\s*no\.?|id|kód)\s*(?:[:：]\s*)?\S+\s+/i, '');
   // Strip labelled prefixes e.g. "Termék:", "Megnevezés:", "Termék megnevezése:", "Product:"
   s = s.replace(/^(?:termék(?:\s*megnevezése|\s*neve)?|megnevezés|tétel(?:\s*megnevezése)?|cikk(?:\s*megnevezése)?|item(?:\s*name)?|product(?:\s*name)?|description)\s*[:：-]\s*/i, '');
   // Strip markdown link debris e.g. "[](#)" or "[](url)"
-  s = s.replace(/\[([^\]]*)\]\([^)]*\)/g, '$1').replace(/\(\s*\)/g, '').trim();
+  s = s.replace(MARKDOWN_LINK, '$1').replace(/\(\s*\)/g, '').trim();
   // Strip trailing price amounts e.g. "19 990 Ft", "499.00 EUR", "$29.99"
-  s = s.replace(/\s+[0-9]{1,3}(?:[\s.][0-9]{3})*(?:[.,][0-9]{2})?\s*(?:ft|huf|eur|usd|gbp|chf|pln|czk|ron|€|\$|£)\s*$/i, '');
+  s = s.replace(/\s[0-9]{1,3}(?:[\s.][0-9]{3}){0,4}(?:[.,][0-9]{2})?\s*(?:ft|huf|eur|usd|gbp|chf|pln|czk|ron|€|\$|£)\s*$/i, '');
   // Strip trailing quantity and warranty markers in either order
   for (let iter = 0; iter < 2; iter++) {
-    s = s.replace(/\s+(?:[x×]\s*\d+|\d+\s*[x×]|\d+\s*(?:db|darab|db\.|pcs))\s*$/i, '');
+    s = s.replace(/\s(?:[x×]\s*\d+|\d+\s*[x×]|\d+\s*(?:db|darab|db\.|pcs))\s*$/i, '');
     for (const lang of LANGUAGES) {
       s = s.replace(
-        new RegExp(`\\s+(?:\\([\\w-]+\\)\\s*)?\\d{1,3}[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b.*$`, 'i'),
+        new RegExp(`\\s(?:\\([\\w-]+\\)\\s*)?\\d{1,3}[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b.*$`, 'i'),
         '',
       );
     }
   }
   // Strip trailing separators or stray punctuation
-  s = s.replace(/\s+[-–|/]\s*$/, '').trim();
+  s = s.replace(/\s[-–|/]\s*$/, '').trim();
   // Normalize internal whitespace (e.g. collapsing multiple spaces from OCR)
   return s.replace(/\s+/g, ' ');
 }
@@ -177,7 +186,7 @@ export function findItems(text: string): { name: string; months: number | null }
 
   // 1. Process table rows (lines with pipes |)
   const rows = text.split('\n').map((row) => {
-    const cells = row.split(/\s*\|\s*/);
+    const cells = row.split('|').map((c) => c.trim());
     for (let i = 1; i < cells.length; i++) {
       if (findWarrantyMonths(cells[i]) && isProductName(cells[i - 1]) && !findWarrantyMonths(cells[i - 1])) {
         cells[i - 1] += ` ${cells[i]}`;
@@ -187,17 +196,17 @@ export function findItems(text: string): { name: string; months: number | null }
     return cells.join(' | ');
   });
 
-  const tableSegments = rows.join('\n').split(/\n|\s*\|\s*|\t/).map((s) => s.trim()).filter(Boolean);
+  const tableSegments = rows.join('\n').split(/[\n|\t]/).map((s) => s.trim()).filter(Boolean);
   for (const seg of tableSegments) {
     for (const lang of LANGUAGES) {
       const tagged = seg.match(
-        new RegExp(`^(.+?)\\s*(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b`, 'i'),
+        new RegExp(`^(.+?)(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b`, 'i'),
       );
       const name =
         tagged?.[1] ??
         seg.match(/^\d+\s*[x×]\s+(.+)$/i)?.[1] ??
-        seg.match(/^(.+?)\s+[x×]\s*\d+\b/i)?.[1] ??
-        seg.match(new RegExp(`^(.+?)\\s+\\d+\\s*(?:${lang.quantityUnit})\\b`, 'i'))?.[1];
+        seg.match(/^(.+?)\s[x×]\s*\d+\b/i)?.[1] ??
+        seg.match(new RegExp(`^(.+?)\\s\\d+\\s*(?:${lang.quantityUnit})\\b`, 'i'))?.[1];
       if (!name) continue;
       const product = cleanProductName(name);
       if (!isProductName(product)) continue;
@@ -214,7 +223,7 @@ export function findItems(text: string): { name: string; months: number | null }
     // Check if line has a warranty tag
     for (const lang of LANGUAGES) {
       const tagged = line.match(
-        new RegExp(`^(.+?)\\s*(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b`, 'i'),
+        new RegExp(`^(.+?)(?:\\([\\w-]+\\)\\s*)?(\\d{1,3})[\\s-]*(${lang.monthUnit}|${lang.yearUnit})\\.?\\s*(?:${lang.warrantyWord})\\b`, 'i'),
       );
       if (tagged) {
         const months = toMonths(tagged[2], tagged[3], lang);
@@ -271,7 +280,7 @@ export function findItems(text: string): { name: string; months: number | null }
 
     // Suffix quantity: "Name 1 db", "Name × 2"
     for (const lang of LANGUAGES) {
-      const suffixQty = line.match(new RegExp(`^(.+?)\\s+(?:[x×]\\s*\\d+|\\d+\\s*[x×]|\\d+\\s*(?:${lang.quantityUnit}))(?:\\s+.*)?$`, 'i'));
+      const suffixQty = line.match(new RegExp(`^(.+?)\\s(?:[x×]\\s*\\d+|\\d+\\s*[x×]|\\d+\\s*(?:${lang.quantityUnit}))(?:\\s+.*)?$`, 'i'));
       if (suffixQty) {
         const candidate = cleanProductName(suffixQty[1]);
         if (isProductName(candidate)) {
@@ -298,7 +307,7 @@ function isProductName(name: string): boolean {
 
 function findContactEmail(msg: MailMessage, text: string, storeDomain: string): string | null {
   const own = new Set(msg.to.map((t) => t.toLowerCase()));
-  const candidates = [msg.from, ...(text.match(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) ?? [])].map((e) => e.toLowerCase());
+  const candidates = [msg.from, ...(text.match(/(?<![\w.+-])[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g) ?? [])].map((e) => e.toLowerCase());
   return candidates.find((e) => !NOREPLY.test(e) && !own.has(e) && registrableDomain(e) === storeDomain) ?? null;
 }
 

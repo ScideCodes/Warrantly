@@ -237,6 +237,7 @@
     "returnSoon_one": "{{count}} nap múlva lejár az elállási idő. Ha vissza akarod küldeni, most tedd.",
     "returnSoon_other": "{{count}} nap múlva lejár az elállási idő. Ha vissza akarod küldeni, most tedd.",
     "custom": "Általad beállított emlékeztető",
+    "privateTitle": "Garancia emlékeztető",
     "title": "Saját emlékeztetők",
     "placeholder": "Megjegyzés (nem kötelező)",
     "pickDate": "Dátum választása",
