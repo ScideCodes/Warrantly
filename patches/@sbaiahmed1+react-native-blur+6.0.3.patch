@@ -1,8 +1,60 @@
 diff --git a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
-index ab47c96..048f296 100644
+index ab47c96..7534516 100644
 --- a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
 +++ b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
-@@ -431,7 +431,8 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -86,6 +86,20 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+     }
+     true
+   }
++
++  // Glass fixed OVER scrolling content (a tab bar, a floating button) never
++  // moves itself, so the offset check in updateGlassNode never fires and the
++  // backdrop would only refresh at the idle cadence: the blur visibly trails
++  // the list. Any scroll in the window re-captures at frame cadence instead.
++  // Dispatched inside ViewRootImpl.draw, after pre-draw and before the frame
++  // is recorded, so the new backdrop lands in the same frame as the scroll.
++  private val scrollChangedListener = ViewTreeObserver.OnScrollChangedListener {
++    if (canRefreshBackdrop) {
++      captureSource?.let { SharedBackdropCapture.acquire(it, CAPTURE_DOWNSAMPLE, SCROLL_CAPTURE_MAX_AGE_MS) }
++      updateGlassNode()
++    }
++  }
++
+   // Guards the visibility callbacks Android fires from the View super
+   // constructor, before this class's properties are initialized.
+   private var constructed = false
+@@ -117,6 +131,10 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+     // sees the backdrop update at this cadence.
+     private const val SHARED_CAPTURE_MAX_AGE_MS = 100L
+ 
++    // While something scrolls: one shared capture per frame (60 Hz), across
++    // every glass view on the screen.
++    private const val SCROLL_CAPTURE_MAX_AGE_MS = 15L
++
+     // Capture at third linear resolution: ~9x fewer bytes and ~9x less
+     // software raster work than full-res; the shader's blur consumes the
+     // softness.
+@@ -175,6 +193,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+ 
+     registeredTreeObserver = viewTreeObserver.also {
+       it.addOnPreDrawListener(scrollTrackingListener)
++      it.addOnScrollChangedListener(scrollChangedListener)
+     }
+     restartTickerIfVisible()
+   }
+@@ -216,7 +235,10 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+     captureSource?.let { SharedBackdropCapture.unregister(it) }
+     captureSource = null
+     registeredTreeObserver?.let {
+-      if (it.isAlive) it.removeOnPreDrawListener(scrollTrackingListener)
++      if (it.isAlive) {
++        it.removeOnPreDrawListener(scrollTrackingListener)
++        it.removeOnScrollChangedListener(scrollChangedListener)
++      }
+     }
+     registeredTreeObserver = null
+     appliedGeneration = -1L
+@@ -431,7 +453,8 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
    private fun findNearestReactRootView(): ViewGroup? {
      var currentParent = this.parent
      while (currentParent != null) {
