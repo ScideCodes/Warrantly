@@ -194,8 +194,10 @@ export default function Settings() {
         onPress: async () => {
           const db = await getDb();
           try {
-            await disconnectAccount(db, account);
-            showAlert(t('accounts.done', { email: account.email }));
+            const backupOff = await disconnectAccount(db, account);
+            setBackup(getSetting('backup_enabled') === '1' && hasBackupPassword());
+            setBackupAccount(getSetting('backup_account'));
+            showAlert(t('accounts.done', { email: account.email }), backupOff ? t('accounts.backupOff') : undefined);
           } catch (e) {
             showAlert(e instanceof Error ? e.message : String(e));
           }

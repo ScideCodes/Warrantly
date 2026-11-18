@@ -3,7 +3,7 @@ import * as SecureStore from 'expo-secure-store';
 import { changeCount, markBackedUp } from '@/db/features.ts';
 import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, readDocument, writeDocument } from '@/documents';
-import { ensureDriveAccess, getAccessToken } from '@/google';
+import { ensureDriveAccess, getAccessToken, revokeGoogleAccess } from '@/google';
 import { applySnapshot, getSetting, setSetting, settingsSnapshot } from '@/settings';
 import { BACKUP_PREFIX, driveClient, uploadAndPrune } from './drive.ts';
 import {
@@ -140,7 +140,8 @@ const filesOf = (data: { tables: Record<string, Record<string, unknown>[] | unde
 
 // Encrypted with the backup key (so a backup password must exist), kept on the phone, and also uploaded
 // when automatic backup is on. Then the account's warranties are removed. Manual entries stay.
-export async function disconnectAccount(db: Db, account: Account, now = new Date()): Promise<void> {
+// Also removes Warrantly's access at Google; resolves true when that turned Drive backup off.
+export async function disconnectAccount(db: Db, account: Account, now = new Date()): Promise<boolean> {
   const stored = storedKey();
   if (!stored) throw new Error('No backup password set');
   const rows = await dumpAccount(db, account.id);
@@ -154,6 +155,7 @@ export async function disconnectAccount(db: Db, account: Account, now = new Date
   // so their files stay for the restore.
   // shortcut: those files stay on the phone if the account is never restored; clean up when that matters.
   deleteDocuments((await deleteAccount(db, account.id)).filter((f) => f.startsWith('mail-')));
+  return revokeGoogleAccess(account.email);
 }
 
 const keptOnDisconnect = (a: Record<string, unknown>) => !String(a.local_path).startsWith('mail-');

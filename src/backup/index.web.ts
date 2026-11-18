@@ -8,7 +8,7 @@ export const runDueBackup = async (_db: Db): Promise<void> => {};
 export const latestBackup = async (): Promise<{ id: string; createdTime: string } | null> => null;
 export class PasswordNeededError extends Error {}
 export const restoreBackup = async (_db: Db, _id: string, _password: string | null): Promise<void> => {};
-export const disconnectAccount = async (_db: Db, _account: Account): Promise<void> => {};
+export const disconnectAccount = async (_db: Db, _account: Account): Promise<boolean> => false;
 export const disconnectBackupDate = async (_db: Db, _email: string): Promise<string | null> => null;
 export const restoreDisconnected = async (_db: Db, _account: Account): Promise<void> => {};
 export const deleteDriveBackups = async (): Promise<void> => {};

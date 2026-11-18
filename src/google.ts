@@ -55,6 +55,29 @@ export const needsReconnect = (e: unknown): boolean => (e as { code?: string })?
 
 let cached: { token: string; at: number } | null = null;
 
+// Disconnect: take Warrantly off the account's "third-party access" list at Google. Revoking a token removes the
+// whole grant, Drive included, so a backup on this account is turned off. Returns true in that case.
+// Best effort: with no network or no grant left, the account is still disconnected on the phone.
+export async function revokeGoogleAccess(email: string): Promise<boolean> {
+  let token: string;
+  try {
+    token = await GoogleAccountToken.getToken(email, [GMAIL_READONLY]);
+  } catch {
+    return false; // already revoked, or never granted
+  }
+  try {
+    await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `token=${encodeURIComponent(token)}` });
+    await GoogleOneTapSignIn.clearCachedAccessToken(token).catch(() => {});
+  } catch {
+    return false;
+  }
+  if (getSetting('backup_account') !== email) return false;
+  setSetting('backup_account', '');
+  setSetting('backup_enabled', '0');
+  cached = null;
+  return true;
+}
+
 // Backups go to Google Drive (section 17). `interactive: false` (automatic backups) never shows a dialog.
 // The account that granted Drive access is remembered: "the signed-in user" changes whenever another
 // Gmail account is connected, and backups must keep going to the same Drive.
