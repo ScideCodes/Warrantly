@@ -528,7 +528,7 @@
       "## Röviden",
       "A Warrantly a telefonodon tárolja a garanciáidat. Nincs Warrantly szerver, fiók, hirdetés vagy követés. A fejlesztő nem látja az adataidat.",
       "## Gmail",
-      "Az 1.0-s verzióban nincs Gmail-importálás, és az app nem kér hozzáférést a Gmailhez. Az alábbi szöveg akkor érvényes, ha egy későbbi verzió bekapcsolja.",
+      "A Gmail-importálás nem kötelező. A Warrantly csak akkor kér hozzáférést a Gmailhez, ha megérinted a Gmail-fiók hozzáadása gombot.",
       "Az engedélyeddel a Warrantly ezen a telefonon olvassa a Gmail fiókodat (csak olvasásra), hogy megtalálja a garanciajegyeket és a garanciát említő leveleket. Csak ezeket tölti le, és csak a garanciához szükséges adatokat tartja meg: bolt, termék, dátumok, rendelésszám, elérhetőségek és a csatolt PDF-ek. A leveleket nem küldi tovább, és soha nem küld, töröl vagy módosít levelet.",
       "A Warrantly a Google API-któl kapott adatokat a Google API Services User Data Policy szerint használja és továbbítja, a Limited Use követelményeket is beleértve.",
       "## Mentések",
