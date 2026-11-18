@@ -1,8 +1,8 @@
 # Release APK: builds the installable APK on GitHub instead of EAS (no build quota), signed with the release key
 # for dev.warrantly.app from the repository secrets. Over-the-air updates stay on (channel "preview", runtime =
 # app version). Gmail import is on for everyone.
-# The APK is uploaded as a workflow artifact. Pushing a v* tag also publishes the GitHub release with the APK;
-# its text comes from docs/release-notes/<tag>.md.
+# The APK is uploaded as a workflow artifact. Pushing a v* tag, or a manual run with "release" ticked, also publishes
+# the GitHub release v<app.json version> with the APK; its text comes from docs/release-notes/<tag>.md.
 name: Release APK
 on:
   push:
@@ -10,6 +10,11 @@ on:
     paths: ['.github/workflows/release-apk.yml'] # not checked for tag pushes
     tags: ['v*']
   workflow_dispatch:
+    inputs:
+      release:
+        description: Publish the GitHub release for this version
+        type: boolean
+        default: false
 jobs:
   android:
     runs-on: ubuntu-latest
@@ -57,9 +62,9 @@ jobs:
           name: warrantly-apk
           path: Warrantly-*.apk
       - name: Publish release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v') || inputs.release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          version=${GITHUB_REF_NAME#v}
-          gh release create "$GITHUB_REF_NAME" "Warrantly-$version.apk" --title "Warrantly $version" --notes-file "docs/release-notes/$GITHUB_REF_NAME.md"
+          version=$(node -p "require('./app.json').expo.version")
+          gh release create "v$version" "Warrantly-$version.apk" --target "$GITHUB_SHA" --title "Warrantly $version" --notes-file "docs/release-notes/v$version.md"
