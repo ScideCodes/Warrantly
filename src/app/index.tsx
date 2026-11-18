@@ -199,8 +199,13 @@ export default function Home() {
     const text = plain(`${w.product_name ?? ''} ${w.store_name} ${w.order_number ?? ''} ${serialSummary(w) ?? ''} ${bundledText}`);
     return words.every((word) => text.includes(word)) || (textHits.q === searchQuery && textHits.hits.has(w.id));
   }, [words, textHits, searchQuery, warranties]);
+  // A filter, quick-filter or sort tap redraws its chip and closes the sheet first; the list swap
+  // (new rows mounting) renders after, interruptibly, so the tap does not stall a 120 Hz frame.
+  const listFilter = useDeferredValue(filter);
+  const listQuick = useDeferredValue(quick);
+  const listSortKey = useDeferredValue(sort);
   const visible = useMemo(() => {
-    const base = filter.kind === 'archived' ? archived : warranties;
+    const base = listFilter.kind === 'archived' ? archived : warranties;
     const bundleMap = new Map<number, Warranty[]>();
     for (const item of base) {
       if (item.bundle_id) {
@@ -220,20 +225,20 @@ export default function Home() {
     const hiddenBase = base.filter((item) => !isBundleLead(item));
     const common = {
       query: '',
-      account: filter.kind === 'account' ? filter.id : filter.kind === 'manual' ? 'manual' as const : 'all' as const,
-      category: filter.kind === 'category' ? filter.key : null,
-      store: filter.kind === 'store' ? filter.name : null,
+      account: listFilter.kind === 'account' ? listFilter.id : listFilter.kind === 'manual' ? 'manual' as const : 'all' as const,
+      category: listFilter.kind === 'category' ? listFilter.key : null,
+      store: listFilter.kind === 'store' ? listFilter.name : null,
       soon: false,
     };
-    const inCollection = filter.kind === 'collection' ? members.get(filter.id) ?? new Set<number>() : null;
-    const pick = (list: Warranty[]) => sortWarranties(quickFilter(list.filter((w) => matches(w) && (!inCollection || inCollection.has(w.id))), quick, today), sort);
+    const inCollection = listFilter.kind === 'collection' ? members.get(listFilter.id) ?? new Set<number>() : null;
+    const pick = (list: Warranty[]) => sortWarranties(quickFilter(list.filter((w) => matches(w) && (!inCollection || inCollection.has(w.id))), listQuick, today), listSortKey);
     const filterHidden = (list: Warranty[]) => list.filter((w) => {
       if (common.account !== 'all' && (common.account === 'manual' ? w.account_id !== null : w.account_id !== common.account)) return false;
       if (common.store && w.store_name !== common.store) return false;
       if (common.category && w.category !== common.category) return false;
       return true;
     });
-    if (filter.kind === 'archived') return { pinned: [], soon: [], covered: [], hidden: [], expired: [], archived: pick(base) };
+    if (listFilter.kind === 'archived') return { pinned: [], soon: [], covered: [], hidden: [], expired: [], archived: pick(base) };
     const active = pick(filterWarranties(leadBase, { ...common, tab: 'active' }, today));
     const { pinned, rest } = splitPinned(active, today);
     const soon: Warranty[] = [], covered: Warranty[] = [];
@@ -246,9 +251,9 @@ export default function Home() {
       expired: pick(filterWarranties(leadBase, { ...common, tab: 'expired' }, today)),
       archived: [] as Warranty[],
     };
-  }, [warranties, archived, filter, quick, sort, matches, members, today]);
+  }, [warranties, archived, listFilter, listQuick, listSortKey, matches, members, today]);
   const hiddenOpen = showHidden || searchQuery.trim() !== '';
-  const expiredOpen = showExpired || searchQuery.trim() !== '' || quick === 'nodocs'; // search includes expired items
+  const expiredOpen = showExpired || searchQuery.trim() !== '' || listQuick === 'nodocs'; // search includes expired items
   const sections = useMemo(() => [
     { key: 'pinned' as const, data: visible.pinned },
     { key: 'soon' as const, data: visible.soon },
