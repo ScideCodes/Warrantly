@@ -279,8 +279,6 @@
     "general": "Alkalmazás",
     "widgetNames": "Nevek a widgeten",
     "version": "Warrantly {{version}}",
-    "devModeGmailOn": "Fejlesztői mód: Gmail összekapcsolás bekapcsolva",
-    "devModeGmailOff": "Fejlesztői mód: Gmail összekapcsolás kikapcsolva",
     "returnReminders": "Visszaküldés",
     "returnRemindersHint": "2 nappal a határidő előtt",
     "reminderTime": "Időpont",

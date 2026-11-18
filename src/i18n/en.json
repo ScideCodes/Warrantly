@@ -279,8 +279,6 @@
     "general": "App",
     "widgetNames": "Names on widget",
     "version": "Warrantly {{version}}",
-    "devModeGmailOn": "Developer mode: Gmail connect enabled",
-    "devModeGmailOff": "Developer mode: Gmail connect disabled",
     "returnReminders": "Return reminders",
     "returnRemindersHint": "2 days before the return deadline",
     "reminderTime": "Time",

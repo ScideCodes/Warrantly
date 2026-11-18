@@ -76,17 +76,16 @@ app created) or exports or shares them. Gmail data is not used for ads, not sold
 
 ### Reviewer access
 
-The public 1.1.0 APK contains Gmail import behind a hidden switch, so reviewers use the same build users install.
+Since 1.2.3 Gmail import is visible to everyone, so reviewers use the same build users install.
 
 1. On an Android phone or emulator, install `Warrantly-1.1.0.apk` from
    https://github.com/ScideCodes/Warrantly/releases/tag/v1.1.0 and open it.
 2. Type any name, tap Continue, then Later.
-3. Settings, scroll to the bottom, tap the version row 7 times: "Gmail import" turns on.
-4. In Settings, under Email accounts, tap **Add Gmail account**, choose a Google account, accept the consent screen
+3. In Settings, under Email accounts, tap **Add Gmail account**, choose a Google account, accept the consent screen
    ("Advanced", then "Go to Warrantly", while the app is unverified).
-5. Choose 1 month, tap Start. Go back to Warranties: found warranties appear there; mails with a missing detail
+4. Choose 1 month, tap Start. Go back to Warranties: found warranties appear there; mails with a missing detail
    under **Missing details**.
-6. Open a warranty: the PDF from the mail is under Documents, tap View.
+5. Open a warranty: the PDF from the mail is under Documents, tap View.
 
 No Warrantly login exists; any Google account with a purchase or warranty mail works.
 

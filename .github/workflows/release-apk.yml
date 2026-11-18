@@ -1,6 +1,6 @@
 # Release APK: builds the installable APK on GitHub instead of EAS (no build quota), signed with the release key
 # for dev.warrantly.app from the repository secrets. Over-the-air updates stay on (channel "preview", runtime =
-# app version). Gmail import stays off: EXPO_PUBLIC_GMAIL_IMPORT is never set here.
+# app version). Gmail import is on for everyone.
 # The APK is uploaded as a workflow artifact; attach it to the GitHub release by hand after testing.
 name: Release APK
 on:
