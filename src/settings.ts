@@ -72,9 +72,13 @@ export const getDefaultCurrency = (): string => Storage.getItemSync('default_cur
 export const setDefaultCurrency = (code: string): void => Storage.setItemSync('default_currency', code);
 
 // What a backup carries besides the database.
-export const settingsSnapshot = (): Record<string, string | null> => ({ username: Storage.getItemSync('username'), theme: Storage.getItemSync('theme'), language: Storage.getItemSync('language'), default_currency: Storage.getItemSync('default_currency'), reminder_time: Storage.getItemSync('reminder_time'), reminder_groups: Storage.getItemSync('reminder_groups'), return_reminders: Storage.getItemSync('return_reminders'), reminders_enabled: Storage.getItemSync('reminders_enabled'), density: Storage.getItemSync('density'), list_sort: Storage.getItemSync('list_sort') });
+// Everything the user chose that a backup carries to a new phone. Not here: per-phone state (lock, calendar
+// link, backup account and status, review and update prompts).
+const BACKED_UP = ['username', 'theme', 'language', 'default_currency', 'reminder_time', 'reminder_groups', 'return_reminders', 'reminders_enabled',
+  'density', 'list_sort', 'backup_interval', 'widget_track', 'widget_picks', 'widget_names', 'glass', 'recent'];
+export const settingsSnapshot = (): Record<string, string | null> => Object.fromEntries(BACKED_UP.map((k) => [k, Storage.getItemSync(k)]));
 export function applySnapshot(s: Record<string, string | null>): void {
-  for (const [k, v] of Object.entries(s)) if (['username', 'theme', 'language', 'default_currency', 'reminders_enabled', 'reminder_time', 'reminder_groups', 'return_reminders', 'density', 'list_sort'].includes(k) && typeof v === 'string' && v.length <= 200) Storage.setItemSync(k, v);
+  for (const [k, v] of Object.entries(s)) if (BACKED_UP.includes(k) && typeof v === 'string' && v.length <= 4000) Storage.setItemSync(k, v);
 }
 
 // List density (shortlist): compact rows use less padding and one meta line; text size is never reduced.

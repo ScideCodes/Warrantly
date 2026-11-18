@@ -4,7 +4,8 @@ import { useLocalSearchParams } from 'expo-router';
 import { goBack } from '@/nav';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { runBackup, setBackupPassword } from '@/backup';
+import { runBackup, setBackupPassword, type BackupStep } from '@/backup';
+import { backupStepText } from '@/backupSteps';
 import { getDb } from '@/db/client';
 import { setSetting } from '@/settings';
 import { Page } from '@/components/Page';
@@ -23,16 +24,18 @@ export default function BackupPassword() {
   const [repeat, setRepeat] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<BackupStep | null>(null);
 
   async function save() {
     if (password.length < MIN_PASSWORD) return setError(t('backupPassword.errShort'));
     if (password !== repeat) return setError(t('backupPassword.errMatch'));
     setBusy(true);
+    setStep(null);
     try {
       await setBackupPassword(password);
       if (purpose !== 'disconnect') {
         setSetting('backup_enabled', '1');
-        await runBackup(await getDb(), true).catch(() => {}); // Settings shows a backup failure.
+        await runBackup(await getDb(), true, undefined, setStep).catch(() => {}); // Settings shows a backup failure.
       }
       goBack();
     } catch {
@@ -57,7 +60,12 @@ export default function BackupPassword() {
       title={t('backupPassword.title')}
       footer={
         <>
-          {busy && <Text style={styles.hint}>{t('backupPassword.working')}</Text>}
+          {busy && (
+            <Text style={styles.hint} accessibilityLiveRegion="polite">
+              {step ? backupStepText(t, step) : t('backupSteps.key')}
+              {purpose !== 'disconnect' && `\n${t('backupSteps.slow')}`}
+            </Text>
+          )}
           <Button title={t(purpose === 'disconnect' ? 'backupPassword.saveOnly' : 'backupPassword.save')} onPress={save} busy={busy} />
         </>
       }

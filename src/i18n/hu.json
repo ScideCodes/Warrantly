@@ -336,6 +336,16 @@
     "accountNone": "Az első mentéskor választható",
     "change": "Módosítás"
   },
+  "backupSteps": {
+    "key": "Jelszó biztonságos tárolása…",
+    "drive": "Kapcsolódás a Google Drive-hoz…",
+    "read": "Garanciák összegyűjtése…",
+    "docs": "Dokumentumok: {{done}} / {{total}}",
+    "save": "Mentés feltöltése a Google Drive-ra…",
+    "download": "Mentés letöltése…",
+    "restore": "Garanciák visszaállítása…",
+    "slow": "Az első mentés néhány percig is eltarthat. Ne zárd be az alkalmazást."
+  },
   "backupPassword": {
     "title": "Mentési jelszó",
     "body": "Őrizd meg a jelszót: a visszaállításhoz kell. Nem tudjuk visszaszerezni vagy nélküle megnyitni a mentést.",

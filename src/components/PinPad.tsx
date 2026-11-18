@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { glass, reduceMotion } from '@/components/ui';
 import { GlassFill } from '@/components/GlassFill';
-import { colors, CONTROL_H, EASE, TYPE, themed } from '@/theme';
+import { colors, CONTROL_H, EASE, isDarkNow, TYPE, themed } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -171,7 +171,8 @@ export function PinLayout({ icon, title, message, error, pad, footer, top = 0, s
 }
 
 const useStyles = themed(() => StyleSheet.create({
-  screen: { flex: 1, backgroundColor: colors.bg },
+  // Dark: card grey, not pure black. The pad has no cards on it, so black read as a sudden drop in brightness.
+  screen: { flex: 1, backgroundColor: isDarkNow() ? colors.card : colors.bg },
   content: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, gap: 24 },
   pad: { alignItems: 'center' },
   head: { alignItems: 'center', gap: 8, maxWidth: 312, width: '100%' },

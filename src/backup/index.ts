@@ -35,13 +35,19 @@ export async function setBackupPassword(password: string): Promise<void> {
 
 const drive = () => driveClient(() => getAccessToken());
 
+// What a long backup or restore is doing now, so the screen can say it (a first backup can take minutes).
+export type BackupStep = { step: 'drive' | 'read' | 'docs' | 'save' | 'download' | 'restore'; done?: number; total?: number };
+export type OnBackupStep = (s: BackupStep) => void;
+
 // interactive: Settings ("Back up now", first backup) may show Google's dialog; automatic runs never do.
-export async function runBackup(db: Db, interactive: boolean, now = new Date()): Promise<void> {
+export async function runBackup(db: Db, interactive: boolean, now = new Date(), onStep?: OnBackupStep): Promise<void> {
   try {
     const stored = storedKey();
     if (!stored) throw new Error('No backup password set');
+    onStep?.({ step: 'drive' });
     if (!(await ensureDriveAccess(interactive))) throw new Error('Google Drive access is needed');
     const key = fromBase64(stored.key);
+    onStep?.({ step: 'read' });
     const changes = await changeCount(db); // read before the data: an edit made during the upload stays pending
     const data = await dumpDb(db, settingsSnapshot(), now);
     const d = drive();
@@ -54,13 +60,17 @@ export async function runBackup(db: Db, interactive: boolean, now = new Date()):
       if (onDrive.has(name)) safe.push(path);
       else if (documentExists(path)) needed.push(path);
     }
+    let uploaded = 0;
+    if (needed.length) onStep?.({ step: 'docs', done: 0, total: needed.length });
     await Promise.all(
       needed.map(async (path) => {
         const name = docBackupName(path);
         await d.upload(name, await sealBytes(aead, key, await readDocument(path)));
         safe.push(path);
+        onStep?.({ step: 'docs', done: ++uploaded, total: needed.length });
       }),
     );
+    onStep?.({ step: 'save' });
     await uploadAndPrune(d, `${BACKUP_PREFIX}${now.toISOString().replace(/[:.]/g, '-')}.json`, await seal(aead, key, stored.kdf, data));
     await markBackedUp(db, changes, safe); // only after the backup file itself is on Drive
     setSetting('last_backup_at', now.toISOString());
@@ -101,7 +111,8 @@ export async function deleteDriveBackups(): Promise<void> {
 export class PasswordNeededError extends Error {}
 
 // Restore replaces everything on this phone. The password is needed unless this phone made the backup.
-export async function restoreBackup(db: Db, id: string, password: string | null): Promise<void> {
+export async function restoreBackup(db: Db, id: string, password: string | null, onStep?: OnBackupStep): Promise<void> {
+  onStep?.({ step: 'download' });
   const text = await drive().download(id);
   const stored = storedKey();
   let derived: StoredKey | null = null;
@@ -112,6 +123,7 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
     derived = { kdf, key: toBase64(key) };
     return key;
   });
+  onStep?.({ step: 'restore' });
   await restoreDb(db, data);
   applySnapshot(data.settings);
   if (derived) SecureStore.setItem(KEY, JSON.stringify(derived)); // keep backing up with the same password
@@ -120,10 +132,10 @@ export async function restoreBackup(db: Db, id: string, password: string | null)
   // screen then says the file is not on this phone.
   const key = derived ? fromBase64((derived as StoredKey).key) : fromBase64(stored!.key);
   const files = new Map((await drive().list()).map((f) => [f.name, f.id]));
-  for (const path of filesOf(data)) {
-    const id = files.get(docBackupName(path));
-    if (!id || documentExists(path)) continue;
-    await writeDocument(path, await unsealBytes(aead, key, await drive().download(id)));
+  const missing = filesOf(data).filter((path) => files.has(docBackupName(path)) && !documentExists(path));
+  for (const [i, path] of missing.entries()) {
+    onStep?.({ step: 'docs', done: i, total: missing.length });
+    await writeDocument(path, await unsealBytes(aead, key, await drive().download(files.get(docBackupName(path))!)));
   }
   // What was just restored is exactly what Drive holds: nothing is pending until the next change.
   await markBackedUp(db, await changeCount(db), filesOf(data).filter((p) => files.has(docBackupName(p))));

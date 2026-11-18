@@ -6,10 +6,12 @@ import { tableColumns, type Db } from '../db/repo.ts';
 
 // `returns` points at warranty ids, so it must travel with them (old backups without it restore as empty).
 // v13 tables (bundles, claims, collections, custom reminders, the inbox and "not a duplicate" answers) travel
-// too; a backup made before them restores with those tables empty. The text index is not backed up: it is
-// read again from the documents.
+// too; a backup made before them restores with those tables empty. The text read from documents travels too,
+// so a restored phone need not read every document again, and so do the saved copies of disconnected accounts.
 export const TABLES = ['accounts', 'warranties', 'sources', 'store_rules', 'attachments', 'returns', 'history', 'bundles', 'claims', 'collections',
-  'collection_items', 'custom_reminders', 'inbox', 'duplicate_dismissals'] as const;
+  'collection_items', 'custom_reminders', 'inbox', 'duplicate_dismissals', 'doc_text', 'disconnect_backups'] as const;
+// A backup made before these tables travelled leaves this phone's rows as they are instead of emptying them.
+const KEPT_IF_ABSENT = new Set<string>(['disconnect_backups']);
 
 export interface BackupData {
   app: 'warrantly';
@@ -34,7 +36,7 @@ export async function restoreDb(db: Db, data: BackupData): Promise<void> {
   const current = (await db.getFirstAsync<{ user_version: number }>('PRAGMA user_version', []))?.user_version ?? 0;
   if (data.schema > current) throw new Error('This backup is from a newer app version. Update Warrantly first.');
   await db.withTransactionAsync(async () => {
-    for (const t of [...TABLES].reverse()) await db.runAsync(`DELETE FROM ${t}`, []);
+    for (const t of [...TABLES].reverse()) if (data.tables[t] !== undefined || !KEPT_IF_ABSENT.has(t)) await db.runAsync(`DELETE FROM ${t}`, []);
     for (const t of TABLES) {
       const known = await tableColumns(db, t);
       for (const row of data.tables[t] ?? []) {

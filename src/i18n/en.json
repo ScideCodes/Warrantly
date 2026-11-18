@@ -336,6 +336,16 @@
     "accountNone": "Choose at first backup",
     "change": "Change"
   },
+  "backupSteps": {
+    "key": "Securing your password…",
+    "drive": "Connecting to Google Drive…",
+    "read": "Collecting your warranties…",
+    "docs": "Documents: {{done}} of {{total}}",
+    "save": "Saving the backup to Google Drive…",
+    "download": "Downloading the backup…",
+    "restore": "Restoring your warranties…",
+    "slow": "The first backup can take a few minutes. Keep the app open."
+  },
   "backupPassword": {
     "title": "Backup password",
     "body": "Keep this password: you need it to restore. We cannot recover it or open your backup without it.",

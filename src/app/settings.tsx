@@ -6,7 +6,8 @@ import { SheetFrame, SheetBody } from '@/components/Sheet';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
-import { disconnectAccount, hasBackupPassword, runBackup } from '@/backup';
+import { disconnectAccount, hasBackupPassword, runBackup, type BackupStep } from '@/backup';
+import { backupStepText } from '@/backupSteps';
 import { dumpDb, type BackupInterval } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
 import { listAccounts, listWarranties, type Account } from '@/db/repo.ts';
@@ -63,6 +64,7 @@ export default function Settings() {
   const [backup, setBackup] = useState(() => getSetting('backup_enabled') === '1' && hasBackupPassword());
   const [interval, setIntervalChoice] = useState<BackupInterval>(() => (getSetting('backup_interval') as BackupInterval) ?? 'weekly');
   const [backupBusy, setBackupBusy] = useState(false);
+  const [backupStep, setBackupStep] = useState<BackupStep | null>(null);
   const [lastBackup, setLastBackup] = useState(() => getSetting('last_backup_at'));
   const [backupError, setBackupError] = useState(() => getSetting('last_backup_error'));
   const [backupAccount, setBackupAccount] = useState(() => getSetting('backup_account'));
@@ -209,7 +211,8 @@ export default function Settings() {
 
   async function backupNow() {
     setBackupBusy(true);
-    await runBackup(await getDb(), true).catch(() => {}); // the error is saved and shown below
+    setBackupStep(null);
+    await runBackup(await getDb(), true, undefined, setBackupStep).catch(() => {}); // the error is saved and shown below
     setLastBackup(getSetting('last_backup_at'));
     setBackupError(getSetting('last_backup_error'));
     setBackupAccount(getSetting('backup_account'));
@@ -488,9 +491,9 @@ export default function Settings() {
             <>
               {link('repeat-outline', TILE.cyan, t('backup.interval'), () => setIntervalMenu(true), { value: t(`backup.${interval}`) })}
               <Row key="backup-status" iconInset style={styles.block}>
-                <Text style={backupError ? styles.error : styles.hint}>
+                <Text style={backupError && !backupBusy ? styles.error : styles.hint} accessibilityLiveRegion="polite">
                   {backupBusy
-                    ? t('backup.working')
+                    ? backupStep ? backupStepText(t, backupStep) : t('backup.working')
                     : backupError
                       ? t('backup.failed', { detail: backupError })
                       : lastBackup

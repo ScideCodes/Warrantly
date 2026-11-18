@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import AppIcon from '@/components/Icon';
 import { Page } from '@/components/Page';
 import { Button, Group } from '@/components/ui';
-import { runBackup } from '@/backup';
+import { runBackup, type BackupStep } from '@/backup';
+import { backupStepText } from '@/backupSteps';
 import type { BackupHealth } from '@/backupHealth';
 import { readBackupHealth } from '@/backupStatus';
 import { getDb } from '@/db/client';
@@ -20,6 +21,7 @@ export default function BackupStatus() {
   const { t, i18n } = useTranslation();
   const [health, setHealth] = useState<BackupHealth | null>(null);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<BackupStep | null>(null);
   const [readError, setReadError] = useState(false);
   const reload = useCallback(() => {
     setReadError(false);
@@ -30,8 +32,9 @@ export default function BackupStatus() {
 
   async function retry() {
     setBusy(true);
+    setStep(null);
     try {
-      await runBackup(await getDb(), true);
+      await runBackup(await getDb(), true, undefined, setStep);
     } catch {
       // Read the stored backup failure, including failures before the upload starts.
     } finally {
@@ -65,7 +68,7 @@ export default function BackupStatus() {
         <View style={styles.head} accessible accessibilityLiveRegion="polite">
           <AppIcon name={good ? 'checkmark-circle' : bad ? 'alert-circle' : health.state === 'off' ? 'cloud-offline-outline' : 'time-outline'} size={28} color={good ? colors.ok : health.state === 'failed' ? colors.bad : health.state === 'overdue' ? colors.warn : colors.ink2} />
           <Text style={styles.headline}>{headline}</Text>
-          <Text style={styles.detail}>{detail}</Text>
+          <Text style={styles.detail}>{busy ? (step ? backupStepText(t, step) : t('backup.working')) : detail}</Text>
         </View>
         {health.state === 'off'
           ? <Button title={t('health.turnOn')} onPress={() => router.push('/settings')} />

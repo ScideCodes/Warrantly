@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
 import { AppState, BackHandler, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,8 +31,13 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   }, []);
 
   // Ask for the fingerprint by itself when the lock shows. Android closes a prompt opened while it is still
-  // bringing the app to the front, so wait until the app is in front, then try again once if the system
-  // (not the person) closed it. "Use PIN" stays the person's choice.
+  // bringing the app to the front (splash screen, window focus), so wait until the app is in front and keep
+  // trying while the system (not the person) closes it. "Use PIN", cancel or a lockout stay the person's answer.
+  // Runs once per lock: `t` changes when the language loads at startup, and a second prompt would cancel the first.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  });
   useEffect(() => {
     if (!isBiometricEnabled()) return;
     let alive = true;
@@ -42,14 +47,16 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
         if (AppState.currentState === 'active') return resolve();
         const sub = AppState.addEventListener('change', (s) => s === 'active' && (sub.remove(), resolve()));
       });
+    const DELAYS = [300, 700, 1200, 2000];
+    const ANSWERED = ['user_cancel', 'user_fallback', 'lockout', 'not_enrolled', 'not_available', 'passcode_not_set'];
     (async () => {
-      for (let attempt = 0; attempt < 2 && alive; attempt++) {
+      for (let attempt = 0; attempt < DELAYS.length && alive; attempt++) {
         await inFront();
-        await sleep(attempt ? 700 : 300);
+        await sleep(DELAYS[attempt]);
         if (!alive) return;
-        const res = await unlockWithBiometrics(t('lock.biometricPrompt'), t('lock.usePin'));
+        const res = await unlockWithBiometrics(tRef.current('lock.biometricPrompt'), tRef.current('lock.usePin'));
         if (res.success) return onUnlock();
-        if (res.error !== 'system_cancel' && res.error !== 'app_cancel') return;
+        if (!alive || (res.error && ANSWERED.includes(res.error))) return;
         const note = `fingerprint prompt closed by Android (${res.error}), attempt ${attempt + 1}`;
         logError(note, 'lock');
         console.warn('lock', note);
@@ -58,7 +65,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     return () => {
       alive = false;
     };
-  }, [onUnlock, t]);
+  }, [onUnlock]);
 
   useEffect(() => {
     if (!wait) return;

@@ -3,7 +3,8 @@ import { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
-import { latestBackup, PasswordNeededError, restoreBackup } from '@/backup';
+import { latestBackup, PasswordNeededError, restoreBackup, type BackupStep } from '@/backup';
+import { backupStepText } from '@/backupSteps';
 import { WrongPasswordError } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
 import { Page } from '@/components/Page';
@@ -19,6 +20,7 @@ export default function Restore() {
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [step, setStep] = useState<BackupStep | null>(null);
 
   useEffect(() => {
     latestBackup()
@@ -40,9 +42,10 @@ export default function Restore() {
 
   async function restore() {
     setBusy(true);
+    setStep(null);
     setMessage(null);
     try {
-      await restoreBackup(await getDb(), backup!.id, password || null);
+      await restoreBackup(await getDb(), backup!.id, password || null, setStep);
       showAlert(t('restore.done'));
       router.replace('/');
     } catch (e) {
@@ -72,6 +75,11 @@ export default function Restore() {
               <Text style={styles.hint}>{t('restore.passwordHint')}</Text>
             </Group>
             <Button title={t('restore.button')} onPress={confirm} busy={busy} />
+            {busy && (
+              <Text style={styles.hint} accessibilityLiveRegion="polite">
+                {step ? backupStepText(t, step) : t('restore.working')}
+              </Text>
+            )}
           </>
         )}
         {message && (
