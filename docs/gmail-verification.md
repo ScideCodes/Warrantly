@@ -78,8 +78,8 @@ app created) or exports or shares them. Gmail data is not used for ads, not sold
 
 Since 1.2.3 Gmail import is visible to everyone, so reviewers use the same build users install.
 
-1. On an Android phone or emulator, install `Warrantly-1.1.0.apk` from
-   https://github.com/ScideCodes/Warrantly/releases/tag/v1.1.0 and open it.
+1. On an Android phone or emulator, install `Warrantly-1.2.3.apk` (or the newest APK) from
+   https://github.com/ScideCodes/Warrantly/releases/latest and open it.
 2. Type any name, tap Continue, then Later.
 3. In Settings, under Email accounts, tap **Add Gmail account**, choose a Google account, accept the consent screen
    ("Advanced", then "Go to Warrantly", while the app is unverified).
