@@ -38,6 +38,7 @@ import { getBundleLead, getDensity, getListSort, getUsername, setListSort, type 
 import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, RADIUS, TYPE, themed } from '@/theme';
 import { Button, GlassButton, Group, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
+import { AFTER_SLIDE_MS } from '@/components/Dock';
 import { showAlert } from '@/components/Dialog';
 import { finishPendingDeletes, showUndo } from '@/undo';
 import { CATEGORIES, daysUntil, filterWarranties, plain, todayYmd, totalValue, warrantyFacets } from '@/warranty';
@@ -157,7 +158,8 @@ export default function Home() {
   // Reload when coming back from another screen; sync once on app open (section 7).
   useFocusEffect(
     useCallback(() => {
-      void load().catch((e) => setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] }));
+      const id = setTimeout(() => void load().catch((e) => setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] })), AFTER_SLIDE_MS);
+      return () => clearTimeout(id);
     }, [load]),
   );
   useEffect(() => {

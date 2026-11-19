@@ -9,7 +9,7 @@ export default function TabsLayout() {
     <InDock.Provider value>
     <Tabs
       tabBar={(props) => <Dock {...props} />}
-      screenOptions={{ headerShown: false, animation: reduceMotion() ? 'none' : 'shift', tabBarHideOnKeyboard: true, sceneStyle: { backgroundColor: colors.bg } }}
+      screenOptions={{ headerShown: false, animation: reduceMotion() ? 'none' : 'shift', tabBarHideOnKeyboard: true, lazy: false, sceneStyle: { backgroundColor: colors.bg } }}
     >
       <Tabs.Screen name="index" options={{ title: 'Warrantly' }} />
       <Tabs.Screen name="add" />

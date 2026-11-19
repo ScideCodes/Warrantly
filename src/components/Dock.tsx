@@ -11,6 +11,8 @@ import { colors, isDarkNow, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme'
 
 // Room a tab page keeps free at the bottom for the dock floating over it (bar 54 + 8 gap + some air).
 export const DOCK_SPACE = 72;
+// Tab pages start their on-focus reload after the 150 ms tab slide, so its re-render does not land mid-slide.
+export const AFTER_SLIDE_MS = 180;
 // Set on the tab pages: Page adds DOCK_SPACE at the bottom and shows no back button.
 export const InDock = createContext(false);
 // The Add tab's form calls this when it is done (saved), instead of going back.

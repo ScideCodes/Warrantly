@@ -4,6 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
 import { SheetFrame, SheetBody, SheetHost, type SheetControl } from '@/components/Sheet';
 import AppIcon, { type IconName } from '@/components/Icon';
+import { AFTER_SLIDE_MS } from '@/components/Dock';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
 import { disconnectAccount, hasBackupPassword, runBackup, type BackupStep } from '@/backup';
@@ -79,6 +80,7 @@ export default function Settings() {
   // Back from PIN setup: show whether the lock is now on.
   useFocusEffect(
     useCallback(() => {
+      const id = setTimeout(() => {
       setName(getUsername());
       setLock(isLockEnabled());
       setWidgetNamesState(widgetShowsNames()); // the default follows the lock
@@ -91,6 +93,8 @@ export default function Settings() {
       setBackupError(getSetting('last_backup_error'));
       setBackupAccount(getSetting('backup_account'));
       void getDb().then(listAccounts).then(setAccounts);
+      }, AFTER_SLIDE_MS);
+      return () => clearTimeout(id);
     }, []),
   );
 
