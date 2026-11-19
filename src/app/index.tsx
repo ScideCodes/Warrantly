@@ -11,9 +11,10 @@ import { useUpdateReady } from '@/appUpdate';
 import { UpdateCard } from '@/components/UpdateCard';
 import { shouldShowWhatsNew } from '@/whatsNew';
 import { maybeAskReview } from '@/rate';
+import { whenUnlocked } from '@/lock/gate'; // Play's review window over the lock would close the fingerprint prompt
 import { clearFoundPictures } from '@/legacyPictures';
 import { runDueBackup } from '@/backup';
-import { Sheet, type IconName, type SheetSection } from '@/components/Sheet';
+import { Sheet, SheetHost, type IconName, type SheetControl, type SheetSection } from '@/components/Sheet';
 import { DocumentSheet } from '@/components/DocumentSheet';
 import { DocThumb } from '@/components/DocThumb';
 import { displayName, formatMoney, WarrantyRow } from '@/components/WarrantyRow';
@@ -72,7 +73,7 @@ export default function Home() {
   const [showExpired, setShowExpired] = useState(false);
   const [showHidden, setShowHidden] = useState(false);
   const [query, setQuery] = useState('');
-  const [menuOpen, setMenuOpen] = useState(false);
+  const filterMenu = useRef<SheetControl>(null); // open state lives in the sheet host: opening it does not redraw the list
   const [warranties, setWarranties] = useState<Warranty[]>([]);
   const [archived, setArchivedList] = useState<Warranty[]>([]);
   const [attention, setAttention] = useState(0);
@@ -160,7 +161,7 @@ export default function Home() {
   useEffect(() => {
     if (name && isGmailImportEnabled()) void Promise.resolve().then(runSync);
     if (name && shouldShowWhatsNew()) router.push('/whats-new');
-    else if (name) void getDb().then((db) => listWarranties(db, 'complete')).then((l) => maybeAskReview(l.length)).catch(() => {});
+    else if (name) void getDb().then((db) => listWarranties(db, 'complete')).then((l) => whenUnlocked().then(() => maybeAskReview(l.length))).catch(() => {});
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Links from the widget: a quick filter, or straight into search.
@@ -678,7 +679,7 @@ export default function Home() {
           ? <GlassButton icon={chosen.length === shownIds.length && shownIds.length > 0 ? 'remove-circle-outline' : 'checkmark-done-outline'} label={t(chosen.length === shownIds.length && shownIds.length > 0 ? 'bulk.selectNone' : 'bulk.selectAll')} onPress={() => setSelected(chosen.length === shownIds.length ? new Set() : new Set(shownIds))} />
           : <>
             <GlassButton icon="qr-code-outline" label={t('sticker.scan')} onPress={() => router.push('/scan-sticker')} />
-            <GlassButton icon="funnel-outline" label={t('home.filter')} color={filter.kind !== 'all' || quick ? colors.tint : colors.ink} selected={filter.kind !== 'all' || quick !== null} onPress={() => setMenuOpen(true)} />
+            <GlassButton icon="funnel-outline" label={t('home.filter')} color={filter.kind !== 'all' || quick ? colors.tint : colors.ink} selected={filter.kind !== 'all' || quick !== null} onPress={() => filterMenu.current?.open()} />
           </>}
       />
       {selecting && (
@@ -694,7 +695,9 @@ export default function Home() {
         ]}
         current="list"
       />
-      <Sheet open={menuOpen} onClose={() => setMenuOpen(false)} title={t('home.filter')} subtitle={total ? t('home.total', { total }) : undefined} sections={menu} />
+      <SheetHost control={filterMenu}>
+        {(open, close) => <Sheet open={open} onClose={close} title={t('home.filter')} subtitle={total ? t('home.total', { total }) : undefined} sections={menu} />}
+      </SheetHost>
       {/* eslint-disable-next-line react-hooks/refs -- options read refs only when tapped */}
       <Sheet open={bulkSheet !== null} onClose={() => setBulk(null)} title={bulkSheet?.title ?? ''} sections={bulkSheet?.sections ?? []} />
       <DocumentSheet warranty={docSheet?.w ?? null} docs={docSheet?.docs ?? []} title={docSheet ? displayName(t, docSheet.w) : ''} onClose={() => setDocSheet(null)} />

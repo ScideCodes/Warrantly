@@ -75,7 +75,8 @@ export const isBiometricEnabled = (): boolean => SecureStore.getItem(BIOMETRIC) 
 export const setBiometricEnabled = (on: boolean): void => SecureStore.setItem(BIOMETRIC, on ? '1' : '0');
 
 // Biometrics only; the PIN pad is the fallback, so the device passcode is not offered here.
-// `error` says who closed the prompt: 'user_cancel' is the person, 'system_cancel'/'app_cancel' is Android.
+// `error`: 'user_cancel' is the person or Android (Android 14 reports a prompt closed by focus loss the same way);
+// 'system_cancel'/'app_cancel' are other closes by Android or a second prompt.
 export async function unlockWithBiometrics(prompt: string, cancel: string): Promise<{ success: boolean; error?: string }> {
   const res = await LocalAuthentication.authenticateAsync({
     promptMessage: prompt,

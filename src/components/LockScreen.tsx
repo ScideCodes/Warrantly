@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { router } from 'expo-router';
-import { AppState, BackHandler, StyleSheet } from 'react-native';
+import { AppState, BackHandler, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { PinLayout, PinPad } from '@/components/PinPad';
@@ -9,6 +9,16 @@ import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWit
 import { logError } from '@/errorLog';
 import { showAlert } from '@/components/Dialog';
 import { colors, CONTROL_H, TYPE, themed } from '@/theme';
+
+// Android 14 closes the fingerprint prompt when it loses window focus, and reports that as 'user_cancel', the same as
+// the person pressing Back. Our own window takes focus at the end of a launch or return animation, so the prompt
+// waits until the window has it. A focus gained before JS listened (process start) is never reported: no blur seen
+// counts as focused.
+let windowFocused = true;
+if (Platform.OS === 'android') {
+  AppState.addEventListener('focus', () => (windowFocused = true));
+  AppState.addEventListener('blur', () => (windowFocused = false));
+}
 
 // Full-screen lock over the app (section 19). The app stays mounted underneath, so unlocking keeps your place.
 export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
@@ -42,10 +52,12 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     if (!isBiometricEnabled()) return;
     let alive = true;
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+    const ready = () => AppState.currentState === 'active' && windowFocused;
     const inFront = () =>
       new Promise<void>((resolve) => {
-        if (AppState.currentState === 'active') return resolve();
-        const sub = AppState.addEventListener('change', (s) => s === 'active' && (sub.remove(), resolve()));
+        if (ready()) return resolve();
+        const check = () => ready() && (subs.forEach((s) => s.remove()), resolve());
+        const subs = [AppState.addEventListener('change', check), ...(Platform.OS === 'android' ? [AppState.addEventListener('focus', check)] : [])];
       });
     const DELAYS = [300, 700, 1200, 2000];
     const ANSWERED = ['user_cancel', 'user_fallback', 'lockout', 'not_enrolled', 'not_available', 'passcode_not_set'];
