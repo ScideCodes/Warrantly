@@ -61,6 +61,8 @@ test('form validation', () => {
   ]);
   assert.deepEqual(formErrors({ ...ok, warranty_start_date: '2026-10-01' }), ['warranty_start_date']); // before purchase
   assert.deepEqual(formErrors({ ...ok, warranty_months: '12.5' }), ['warranty_months']);
+  assert.deepEqual(formErrors({ ...ok, purchase_date: '2026-11-20', warranty_start_date: '' }, '2026-11-19'), ['purchase_date']); // not bought yet
+  assert.deepEqual(formErrors({ ...ok, purchase_date: '2026-11-19', warranty_start_date: '' }, '2026-11-19'), []); // today is fine
   assert.equal(isValidYmd('2028-02-29'), true);
 });
 

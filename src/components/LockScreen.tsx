@@ -5,7 +5,7 @@ import { AppState, BackHandler, Platform, StyleSheet } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { PinLayout, PinPad } from '@/components/PinPad';
-import { checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
+import { biometricAvailable, checkPin, hasDeviceLock, isBiometricEnabled, storedPinLength, unlockWithBiometrics, verifyDeviceOwner, waitSeconds } from '@/lock/store';
 import { promptClosedBy } from '@/lock/pin.ts';
 import { logError } from '@/errorLog';
 import { showAlert } from '@/components/Dialog';
@@ -31,6 +31,11 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   const [shake, setShake] = useState(0);
   const insets = useSafeAreaInsets();
   const length = storedPinLength();
+  // Fingerprints removed in Android settings: no dead fingerprint key (the setting itself stays for when one is added).
+  const [biometricKey, setBiometricKey] = useState(isBiometricEnabled);
+  useEffect(() => {
+    if (biometricKey) void biometricAvailable().then((ok) => !ok && setBiometricKey(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps -- checked once per lock
 
   const tryBiometrics = useCallback(async () => {
     if ((await unlockWithBiometrics(t('lock.biometricPrompt'), t('lock.usePin'))).success) onUnlock();
@@ -150,7 +155,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
             onDelete={() => setPin((p) => p.slice(0, -1))}
             disabled={wait > 0}
             shake={shake}
-            extra={isBiometricEnabled() ? { icon: 'finger-print', label: t('lock.biometric'), onPress: () => void tryBiometrics() } : undefined}
+            extra={biometricKey ? { icon: 'finger-print', label: t('lock.biometric'), onPress: () => void tryBiometrics() } : undefined}
           />
         }
         footer={

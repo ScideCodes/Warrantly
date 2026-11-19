@@ -36,10 +36,15 @@ export default function Inbox() {
   const next = (s: Step) => { setStep(null); setTimeout(() => setStep(s), 250); }; // one sheet closes, the next opens
 
   async function attach(item: InboxItem, w: Warranty, label: DocLabel) {
-    await assignInbox(await getDb(), item.id, w.id, label);
     setStep(null);
-    reload();
-    showAlert(t('inbox.attached', { name: displayName(t, w) }));
+    try {
+      await assignInbox(await getDb(), item.id, w.id, label);
+      showAlert(t('inbox.attached', { name: displayName(t, w) }));
+    } catch (e) {
+      showAlert(t('inbox.attachFailed', { detail: e instanceof Error ? e.message : String(e) }));
+    } finally {
+      reload();
+    }
   }
   function discard(item: InboxItem) {
     showAlert(t('inbox.discardTitle'), t('inbox.discardBody'), [

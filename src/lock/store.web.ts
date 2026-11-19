@@ -4,6 +4,7 @@ export const storedPinLength = (): number => 4;
 export const setPin = (_pin: string): void => {};
 export const clearLock = async (): Promise<void> => {};
 export const waitSeconds = (): number => 0;
+export const resetFailures = (): void => {};
 export const checkPin = (_pin: string): boolean => true;
 export const biometricAvailable = async (): Promise<boolean> => false;
 export const isBiometricEnabled = (): boolean => false;

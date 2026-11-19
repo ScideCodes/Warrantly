@@ -21,7 +21,8 @@
     "progress": "{{done}}/{{total}} levél beolvasva",
     "error": "Nem sikerült olvasni a Gmailt. Ellenőrizd a kapcsolatot, és próbáld újra.",
     "retry": "Újra",
-    "failed": "{{count}} levelet nem sikerült beolvasni. A következő szinkronizáláskor újra megpróbáljuk. Első hiba: {{detail}}",
+    "failed_one": "{{count}} levelet nem sikerült beolvasni. A következő szinkronizáláskor újra megpróbáljuk. Hiba: {{detail}}",
+    "failed_other": "{{count}} levelet nem sikerült beolvasni. A következő szinkronizáláskor újra megpróbáljuk. Első hiba: {{detail}}",
     "add": "Hozzáadás",
     "tabManual": "Kézzel hozzáadott",
     "reconnect": "Kapcsold össze újra a Beállításokban: {{email}}, hogy tovább szinkronizáljon.",
@@ -47,6 +48,7 @@
     "menuStores": "Boltok",
     "addLong": "Garancia hozzáadása",
     "attentionRow": "Hiányzó adatok",
+    "loadFailed": "Nem sikerült betölteni a garanciákat",
     "syncFailed_one": "{{count}} fiókot nem sikerült ellenőrizni",
     "syncFailed_other": "{{count}} fiókot nem sikerült ellenőrizni",
     "details": "Részletek",
@@ -132,7 +134,7 @@
     "contactPhone": "Bolt telefonszáma",
     "website": "Bolt weboldala",
     "notes": "Jegyzet",
-    "remember": "Jegyezze meg ezt a hosszt ennél az üzletnél: {{store}}",
+    "remember": "Jegyezd meg ezt a hosszt ennél az üzletnél: {{store}}",
     "save": "Garancia mentése",
     "saveFailed": "Nem sikerült menteni a garanciát. Az adataid megmaradtak; próbáld újra. ({{detail}})",
     "loading": "A garancia betöltése…",
@@ -145,6 +147,10 @@
     "errStore": "Add meg az üzletet.",
     "errDate": "Adj meg valós dátumot ÉÉÉÉ-HH-NN formában.",
     "errStart": "Adj meg a vásárlás napján vagy utána lévő dátumot, vagy hagyd üresen.",
+    "errFuture": "A vásárlás napja nem lehet a jövőben.",
+    "unsavedTitle": "Elveted a módosításokat?",
+    "keepEditing": "Szerkesztés folytatása",
+    "discardChanges": "Elvetés",
     "errMonths": "1 és 120 hónap közötti hosszt adj meg.",
     "pickerFailed": "A naptár nem nyílt meg, írd be a dátumot. ({{detail}})",
     "saveTo": "Mentés ide",
@@ -244,7 +250,7 @@
     "duplicate": "Erre a napra már van emlékeztető."
   },
   "lock": {
-    "hint": "Oldd fel a garanciáid és dokumentumaid.",
+    "hint": "Oldd fel a garanciáidat és dokumentumaidat.",
     "title": "Add meg a PIN-kódod",
     "wrong": "Hibás PIN. Próbáld újra.",
     "wait_one": "Túl sok próbálkozás. Próbáld újra {{count}} másodperc múlva.",
@@ -373,7 +379,17 @@
     "needPassword": "Add meg a mentési jelszót.",
     "wrong": "Hibás mentési jelszó.",
     "done": "Visszaállítva.",
+    "doneMissing_one": "Visszaállítva. {{count}} dokumentumot nem sikerült letölteni.",
+    "doneMissing_other": "Visszaállítva. {{count}} dokumentumot nem sikerült letölteni.",
     "working": "Visszaállítás…"
+  },
+  "backupErrors": {
+    "noPassword": "Nincs beállítva mentési jelszó.",
+    "driveNeeded": "Ehhez hozzá kell férnünk a Google Drive-odhoz.",
+    "reconnectDrive": "Már nincs hozzáférésünk a(z) {{email}} Google Drive-jához. A Beállításokban koppints a Google-fiók melletti Módosítás gombra, és válaszd ki újra.",
+    "alreadyDisconnected": "Ez a fiók már le van választva.",
+    "noAccountBackup": "Ehhez a fiókhoz nincs mentés.",
+    "damaged": "Ez a fiókmentés sérült, nem lehet visszaállítani."
   },
   "accounts": {
     "section": "E-mail fiókok",
@@ -586,7 +602,7 @@
       },
       {
         "q": "Elfelejtettem a PIN-kódot.",
-        "a": "Koppints az \"Elfelejtettem a PIN-t\" gombra a zárképernyőn. A telefon saját képernyőzára igazolja, hogy te vagy, aztán új PIN-t választasz."
+        "a": "Koppints az „Elfelejtetted a PIN-t?” gombra a zárképernyőn. A telefon saját képernyőzára igazolja, hogy te vagy, aztán új PIN-t választasz."
       },
       {
         "q": "Hogyan költözöm új telefonra?",
@@ -735,7 +751,8 @@
     "attached": "Hozzáadva: {{name}}.",
     "discard": "Elvetés",
     "discardTitle": "Elveted ezt a fájlt?",
-    "discardBody": "Törlődik a Warrantlyből. Az eredeti a másik appban megmarad."
+    "discardBody": "Törlődik a Warrantlyből. Az eredeti a másik appban megmarad.",
+    "attachFailed": "Nem sikerült hozzáadni a fájlt: {{detail}}"
   },
   "dups": {
     "title": "Lehetséges duplikátumok",
@@ -897,7 +914,7 @@
     "namesAuto": "Mint az appban",
     "namesShow": "Mutasd",
     "namesHide": "Rejtsd el",
-    "namesHint": "A kezdőképernyőn látszanak a nevek. „Az app szerint” elrejti őket, ha az appzár be van kapcsolva.",
+    "namesHint": "A kezdőképernyőn látszanak a nevek. A „Mint az appban” elrejti őket, ha az appzár be van kapcsolva.",
     "photos": "Termékfotók",
     "actions": "Gyorsműveletek (szkennelés, új, keresés)",
     "done": "Kész"
@@ -998,6 +1015,14 @@
     "failed": "Az igény nem készíthető elő",
     "missingDocument": "Egy kijelölt dokumentum hiányzik. Töröld a kijelölést, vagy csatold újra.",
     "tooLarge": "Válassz kevesebb dokumentumot (legfeljebb 50 MB)."
+  },
+  "docFile": {
+    "notDocument": "Ezt a dokumentumot a Warrantly nem tudja megnyitni.",
+    "tooLarge": "Túl nagy a fájl (legfeljebb 30 MB).",
+    "autofillLimit": "Az automatikus kitöltéshez legfeljebb 20 oldalas dokumentumot használj.",
+    "cameraDenied": "Fotózáshoz engedélyezd a kamerát az Android beállításaiban.",
+    "mailNoAttachments": "Itt egyik levelezőalkalmazás sem tud fájlt csatolni. Használd az „Igénycsomag megosztása” gombot, vagy vedd ki a dokumentumokat, és csak az üzenetet küldd el.",
+    "tooManyPages": "Ez a dokumentum {{pages}} oldalas, ez túl sok az itteni megjelenítéshez. Oszd meg, és nyisd meg egy másik alkalmazásban."
   },
   "productTools": {
     "title": "Visszaküldés és csere",

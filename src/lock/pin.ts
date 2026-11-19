@@ -76,6 +76,11 @@ export function shouldRelock(hidden: Stamp | null, now: Stamp): boolean {
   return wall < 0 || mono < 0 || wall > RELOCK_AFTER_MS || mono > RELOCK_AFTER_MS;
 }
 
+// The one start without the lock after the app restarts itself. The pass holds a wall-clock deadline, so a pass
+// further ahead than it was ever written (the phone's clock set back) is refused too.
+export const RELAUNCH_PASS_MS = 30_000;
+export const relaunchPassValid = (until: number, now: number): boolean => until > now && until - now <= RELAUNCH_PASS_MS;
+
 // Who closed the fingerprint prompt that opened by itself. Android 15/16 closes it as USER_CANCEL when the app stops
 // being the top task, on CLOSE_SYSTEM_DIALOGS or on device lock (AOSP AuthController.closeDialog); Android 14 when the
 // window focus moves. expo-local-authentication reports all of these as 'user_cancel', the same as Back. Only "Use PIN"

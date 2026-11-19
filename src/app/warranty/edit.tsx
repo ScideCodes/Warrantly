@@ -5,7 +5,7 @@ import SerialNumbersEditor from '@/components/SerialNumbersEditor';
 import { serialEntries, serialFields, encodeSerialEntries, validSerialEntries, type SerialEntry } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useCallback, useContext, useEffect, useRef, useState, type ComponentRef } from 'react';
-import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useFocusEffect, useLocalSearchParams, usePreventRemove } from 'expo-router';
 import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
 import { FormDone } from '@/components/Dock';
@@ -33,7 +33,9 @@ import { saveKnownText } from '@/docIndex';
 import { whenUnlocked } from '@/lock/gate';
 import { parseScanText } from '@/parser/scan.ts';
 import { getLocales } from 'expo-localization';
-import { getDefaultCurrency } from '@/settings';
+import { getDefaultCurrency, getUsername } from '@/settings';
+import { rescheduleReminders } from '@/reminders';
+import { updateWidget } from '@/widget';
 import { CATEGORIES, formErrors, todayYmd, type FormField } from '@/warranty';
 
 const LENGTH_CHOICES = [6, 12, 24, 36];
@@ -45,7 +47,8 @@ const fromWarranty = (w: Warranty | null): Form => ({
   product_name: w?.product_name ?? '',
   store_name: w?.store_name ?? '',
   purchase_date: w?.purchase_date ?? todayYmd(),
-  warranty_start_date: w?.warranty_start_date ?? '',
+  // Saved as start || purchase: a start equal to the purchase day is "empty", so moving the purchase date moves it too.
+  warranty_start_date: w && w.warranty_start_date !== w.purchase_date ? w.warranty_start_date : '',
   warranty_months: String(w?.warranty_months ?? 24),
   order_number: w?.order_number ?? '',
   contact_email: w?.contact_email ?? '',
@@ -88,6 +91,10 @@ export default function EditWarranty() {
   const saving = useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const groupY = useRef(0); // fieldY is relative to the warranty group; scrolling needs its offset too
+  // The loaded record as the form shows it: leaving an edit that differs from it asks first.
+  const [baseline, setBaseline] = useState<string | null>(null);
+  const snapshot = JSON.stringify({ form, serials, accountId, coverage });
   // Edit and copy start from a stored warranty: the form stays hidden (and Save blocked) until that exact
   // record has loaded, so a missing or failed source can never turn into an accidental new warranty.
   const key = sourceKey(id, copyFrom);
@@ -126,7 +133,7 @@ export default function EditWarranty() {
     const timer = setTimeout(() => {
       const y = fieldY.current[focus];
       if (y !== undefined && scroll.current) {
-        scroll.current.scrollTo({ y: Math.max(0, y - 20), animated: true });
+        scroll.current.scrollTo({ y: Math.max(0, groupY.current + y - 20), animated: true });
       }
     }, 150);
     return () => clearTimeout(timer);
@@ -152,7 +159,7 @@ export default function EditWarranty() {
       scanTarget.current = null;
       if (state.key?.startsWith('copy:')) {
         setForm({ ...fromWarranty(null), product_name: w.product_name ?? '', store_name: w.store_name, purchase_date: w.purchase_date,
-          warranty_start_date: w.warranty_start_date, category: w.category ?? '', order_number: w.order_number ?? '' });
+          warranty_start_date: w.warranty_start_date !== w.purchase_date ? w.warranty_start_date : '', category: w.category ?? '', order_number: w.order_number ?? '' });
         setAccountId(w.account_id);
         setCoverage('extended');
         return;
@@ -162,6 +169,7 @@ export default function EditWarranty() {
       setForm(fromWarranty(w));
       setAccountId(w.account_id ?? null);
       setCoverage(w.coverage ?? null);
+      setBaseline(JSON.stringify({ form: fromWarranty(w), serials: entries.length ? entries : [{ label: '', value: '' }], accountId: w.account_id ?? null, coverage: w.coverage ?? null }));
       // "Next" reuses this screen with a new id: start the item fresh.
       setErrors([]);
       setRemember(false);
@@ -171,7 +179,17 @@ export default function EditWarranty() {
     return () => loader.cancel();
   }, [key, attempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Off while saving, so the save's own navigation goes through.
+  usePreventRemove(!!id && sourceReady && !isSaving && baseline !== null && snapshot !== baseline, ({ repeat }) =>
+    showAlert(t('form.unsavedTitle'), undefined, [
+      { text: t('form.keepEditing'), style: 'cancel' },
+      { text: t('form.discardChanges'), style: 'destructive', onPress: () => { setBaseline(null); repeat(); } },
+    ]),
+  );
+
+  const named = !!getUsername(); // a shortcut or widget link can open the form before onboarding
   useEffect(() => {
+    if (!named) return;
     if (inbox) {
       if (!id && !copyFrom) {
         router.replace({ pathname: '/import-review', params: { inbox } });
@@ -184,10 +202,14 @@ export default function EditWarranty() {
     } else if (scanNow && !id) void whenUnlocked().then(() => runScan(scanDocument)); // shortcut under the lock
   }, [inbox, scanNow]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const set = (key: keyof Form) => (value: string) => setForm((f) => ({ ...f, [key]: value }));
+  const set = (key: keyof Form) => (value: string) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => e.filter((k) => k !== key)); // a fixed field stops being red
+  };
 
   async function save() {
     if (saving.current || draft.current.busy || !sourceReady) return;
+    setSaveError(null);
     const found = formErrors(form);
     setErrors(found);
     const invalidSerials = !validSerialEntries(serials);
@@ -241,7 +263,12 @@ export default function EditWarranty() {
       const gone = await discardInbox(db, Number(inbox)); // its copy now belongs to this warranty
       if (gone) deleteDocuments([gone]);
     }
+    if (saved) {
+      void rescheduleReminders(db).catch(() => {}); // new dates mean new reminders, as on every other save
+      void updateWidget(db).catch(() => {});
+    }
     if (!saved || !mounted.current) return;
+    setBaseline(snapshot); // saved: nothing left to lose
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
     if (!resolving) return finish();
     // Section 9 batch help: offer the same length to this store's other items that are missing it.
@@ -268,6 +295,7 @@ export default function EditWarranty() {
   }
 
   async function notWarranty() {
+    setBaseline(null); // hidden on purpose: no "discard changes?" on the way out
     await ignoreWarranty(await getDb(), existing!.id);
     await goNext();
   }
@@ -287,7 +315,7 @@ export default function EditWarranty() {
   }
 
   // Section 18: scan a paper receipt or warranty card, or import a photo or PDF; what OCR finds fills the
-  // empty fields (an imported PDF is attached as it is, nothing is read from it).
+  // empty fields (an imported PDF is attached as it is; text is read from its first 4 pages).
   async function runScan(source: typeof scanDocument) {
     if (saving.current || draft.current.busy) return;
     const current = draft.current;
@@ -305,8 +333,10 @@ export default function EditWarranty() {
           reviewId = (await db.runAsync('INSERT INTO inbox (local_path, filename, text, source_key, received_at) VALUES (?, ?, ?, ?, ?)',
             [path, 'receipt.pdf', result.text, `scan:${path}`, new Date().toISOString()])).lastInsertRowId;
         });
+        if (!mounted.current) return;
+        setScan(previous); // the Add tab stays mounted under review: it must not stay busy
         // From the Add tab, push: a replace would swap out the whole tab group under it.
-        if (mounted.current) (done ? router.push : router.replace)({ pathname: '/import-review', params: { inbox: String(reviewId) } });
+        (done ? router.push : router.replace)({ pathname: '/import-review', params: { inbox: String(reviewId) } });
         return;
       }
       void saveKnownText(result.localPath, result.text).catch(() => {}); // search reads it without OCR again
@@ -332,13 +362,19 @@ export default function EditWarranty() {
       }
       setScan({ state: result.text ? 'done' : 'attached' });
     } catch (e) {
-      if (mounted.current) setScan({ state: 'failed', detail: e instanceof Error ? e.message : String(e) });
+      if (!mounted.current) return;
+      const detail = e instanceof Error ? e.message : String(e);
+      // A failed re-scan leaves the first document attached: keep its note, say what failed in a dialog.
+      if (previous.state === 'done' || previous.state === 'attached') {
+        setScan(previous);
+        showAlert(t('form.scanFailed', { detail }));
+      } else setScan({ state: 'failed', detail });
     }
   }
 
   const pickDate = (key: 'purchase_date' | 'warranty_start_date') => {
     const current = form[key] || form.purchase_date;
-    openDate({ title: t(key === 'purchase_date' ? 'form.purchaseDate' : 'form.startDate'), value: current, onPick: set(key) });
+    openDate({ title: t(key === 'purchase_date' ? 'form.purchaseDate' : 'form.startDate'), value: current, minimum: key === 'warranty_start_date' ? form.purchase_date : undefined, onPick: set(key) });
   };
 
   // Fields as in the reference's form panels: a label and a filled 44dp field, side by side when the column
@@ -416,6 +452,7 @@ export default function EditWarranty() {
   );
 
   const title = t(id ? 'form.titleEdit' : 'form.titleAdd');
+  if (!named) return <Redirect href="/onboarding" />;
   if (!sourceReady) {
     const status = source.key === key ? source.status : 'loading'; // the route just changed: its load starts now
     const failed = status === 'failed';
@@ -504,8 +541,8 @@ export default function EditWarranty() {
           {field('store_name', t('form.store'), { error: t('form.errStore') })}
         </Group>
         <SectionHeader title={t('form.groupWarranty')} />
-        <Group style={styles.panel}>
-          {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t('form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
+        <Group style={styles.panel} onLayout={(e) => { groupY.current = e.nativeEvent.layout.y; }}>
+          {field('purchase_date', t('form.purchaseDate'), { hint: t('form.dateHint'), error: t(form.purchase_date > todayYmd() ? 'form.errFuture' : 'form.errDate'), keyboard: 'numbers-and-punctuation', date: true })}
 
           <View style={styles.field} onLayout={(e) => { fieldY.current['length_unconfirmed'] = e.nativeEvent.layout.y; fieldY.current['length'] = e.nativeEvent.layout.y; }}>
             <Text style={styles.label}>{t('form.length')}</Text>
@@ -532,7 +569,7 @@ export default function EditWarranty() {
             {errors.includes('warranty_months') && <Text style={styles.error}>{t('form.errMonths')}</Text>}
           </View>
 
-          {accounts.length > 0 && (!existing || existing.origin === 'manual') && (
+          {accounts.length > 0 && (!existing || existing.origin !== 'gmail') && (
             <View style={styles.field}>
               <Text style={styles.label}>{t('form.saveTo')}</Text>
               <View style={styles.wrapChips} accessibilityRole="radiogroup">

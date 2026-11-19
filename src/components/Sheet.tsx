@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { colors, MAX_WIDTH, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
 import { GlassButton, Group, reduceMotion, Row, SolidGlass, springTo, stopSpring, type IconName } from '@/components/ui';
 import { useLocked } from '@/lock/gate';
+import { useIsFocused } from 'expo-router';
 
 export type { IconName };
 
@@ -41,6 +42,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const { height: screenH, width: screenW } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const locked = useLocked();
+  const focused = useIsFocused(); // a screen pushed from outside (reminder, share, widget) must not sit under this sheet
   const [shown, setShown] = useState(open);
   // The translucent Modal can be taller than the activity window on three-button navigation.
   // Measure that actual viewport and use the keyboard's screen position, not its reported height.
@@ -155,7 +157,7 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const [dim] = useState(() => Animated.divide(y, panelH).interpolate({ inputRange: [0, 1], outputRange: [1, 0], extrapolate: 'clamp' }));
   if (!shown) return null;
   return (
-    <Modal visible={!locked} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
+    <Modal visible={!locked && focused} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <SolidGlass.Provider value>
         <Animated.View style={[styles.backdrop, { opacity: dim }]} onLayout={e => setModalHeight(e.nativeEvent.layout.height)}>
           <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('sheet.close')} />
@@ -221,6 +223,10 @@ export function SheetBody({ children }: { children: ReactNode }) {
 // Choices and less-used actions (filter, add a document, more actions) as grouped rows in a sheet.
 export function Sheet({ open, onClose, title, subtitle, sections }: { open: boolean; onClose: () => void; title: string; subtitle?: string; sections: SheetSection[] }) {
   const styles = useStyles();
+  const picked = useRef(false); // one option per opening: a second tap while it springs shut is ignored
+  useEffect(() => {
+    if (open) picked.current = false;
+  }, [open]);
   return (
     <SheetFrame open={open} onClose={onClose} title={title}>
       <ScrollView
@@ -251,6 +257,8 @@ export function Sheet({ open, onClose, title, subtitle, sections }: { open: bool
                   iconInset={!!o.icon}
                   selected={o.selected}
                   onPress={() => {
+                    if (picked.current) return;
+                    picked.current = true;
                     onClose();
                     o.onPress();
                   }}

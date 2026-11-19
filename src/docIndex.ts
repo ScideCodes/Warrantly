@@ -51,13 +51,15 @@ export async function runIndex(limit = 3): Promise<void> {
     const counts = await indexCounts(db);
     set({ done: counts.done, total: counts.total, failed: counts.failed });
     let left = limit;
+    // A file missing from this phone is skipped, not marked failed: a restore may bring it back.
+    const missing = new Set<string>();
     while (left > 0 && !cancelled) {
-      const batch = await unindexedDocuments(db, Math.min(2, left));
+      const batch = (await unindexedDocuments(db, Math.min(2, left) + missing.size)).filter((p) => !missing.has(p)).slice(0, Math.min(2, left));
       if (!batch.length) break;
       for (const path of batch) {
         if (cancelled) break;
+        if (!documentExists(path)) { missing.add(path); continue; }
         try {
-          if (!documentExists(path)) throw new Error('missing');
           await saveDocText(db, path, storedText(await readFile(path)), 'done');
         } catch (error) {
           if (error instanceof IndexCancelled) break;

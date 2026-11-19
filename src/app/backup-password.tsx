@@ -1,6 +1,6 @@
 import { Text, View } from '@/components/themeMotion';
 import { useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { goBack } from '@/nav';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ export default function BackupPassword() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<BackupStep | null>(null);
+  const navigation = useNavigation();
 
   async function save() {
     if (password.length < MIN_PASSWORD) return setError(t('backupPassword.errShort'));
@@ -37,7 +38,7 @@ export default function BackupPassword() {
         setSetting('backup_enabled', '1');
         await runBackup(await getDb(), true, undefined, setStep).catch(() => {}); // Settings shows a backup failure.
       }
-      goBack();
+      if (navigation.isFocused()) goBack(); // the user may have left during the first backup
     } catch {
       setError(t('backupPassword.failed'));
     } finally {

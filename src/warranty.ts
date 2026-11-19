@@ -49,12 +49,13 @@ export function isValidYmd(s: string): boolean {
 
 export type FormField = 'product_name' | 'store_name' | 'purchase_date' | 'warranty_start_date' | 'warranty_months';
 
-// Form check for manual add and edit: required fields, real dates, 1-120 months, start not before purchase.
-export function formErrors(f: { product_name: string; store_name: string; purchase_date: string; warranty_start_date: string; warranty_months: string }): FormField[] {
+// Form check for manual add and edit: required fields, real dates, no purchase in the future, 1-120 months,
+// start not before purchase.
+export function formErrors(f: { product_name: string; store_name: string; purchase_date: string; warranty_start_date: string; warranty_months: string }, today = todayYmd()): FormField[] {
   const errors: FormField[] = [];
   if (!f.product_name.trim()) errors.push('product_name');
   if (!f.store_name.trim()) errors.push('store_name');
-  if (!isValidYmd(f.purchase_date)) errors.push('purchase_date');
+  if (!isValidYmd(f.purchase_date) || f.purchase_date > today) errors.push('purchase_date');
   if (f.warranty_start_date && (!isValidYmd(f.warranty_start_date) || (isValidYmd(f.purchase_date) && f.warranty_start_date < f.purchase_date))) {
     errors.push('warranty_start_date');
   }

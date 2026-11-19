@@ -7,6 +7,7 @@ import * as Sharing from 'expo-sharing';
 import { extractTextFromImage } from 'expo-text-extractor';
 import { Linking } from 'react-native';
 import DocumentScanner, { ScanDocumentResponseStatus } from 'react-native-document-scanner-plugin';
+import i18n from '@/i18n';
 import { mailtoUrl } from '@/claim';
 import { mailToText, parseRfc822 } from '@/mail/rfc822.ts';
 import { imageMime } from '@/safeLinks';
@@ -23,7 +24,7 @@ const folder = () => {
 // Stored names are plain file names. The viewer gets its name from a route parameter, which a link can
 // set, so anything path-like is refused: it must not reach other files of the app.
 const fileFor = (localPath: string) => {
-  if (!/^[\w.-]+$/.test(localPath) || localPath.includes('..')) throw new Error('Not a document');
+  if (!/^[\w.-]+$/.test(localPath) || localPath.includes('..')) throw new Error(i18n.t('docFile.notDocument'));
   return new File(folder(), localPath);
 };
 
@@ -36,7 +37,7 @@ export async function scanDocument(): Promise<{ text: string; localPath: string 
 }
 
 // A photo or PDF already on the phone (gallery, Downloads, Drive). Photos go through the same OCR and PDF
-// step as scans; a PDF is kept as it is and fills nothing in (text = ''). Returns null if the user backs out.
+// step as scans; a PDF is kept as it is and its first pages are read for the form. Returns null if the user backs out.
 export async function importDocument(): Promise<{ text: string; localPath: string } | null> {
   const picked = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
   if (picked.canceled || !picked.assets.length) return null;
@@ -45,13 +46,14 @@ export async function importDocument(): Promise<{ text: string; localPath: strin
 }
 
 const SHARED_MAX_BYTES = 30 * 1024 * 1024; // mail providers cap a message near 25 MB
+const PDF_TEXT_PAGES = 4;
 
 // A file picked or shared from another app. A non-content: path must be in the cache, where the picker and
 // the share module copy files: another app must not make Warrantly read its own private files.
 function sharedFile(uri: string): File {
-  if (!uri.startsWith('content:') && (!uri.startsWith(Paths.cache.uri) || uri.includes('..'))) throw new Error('Not a document');
+  if (!uri.startsWith('content:') && (!uri.startsWith(Paths.cache.uri) || uri.includes('..'))) throw new Error(i18n.t('docFile.notDocument'));
   const file = new File(uri);
-  if ((file.size ?? 0) > SHARED_MAX_BYTES) throw new Error('File too large');
+  if ((file.size ?? 0) > SHARED_MAX_BYTES) throw new Error(i18n.t('docFile.tooLarge'));
   return file;
 }
 
@@ -63,8 +65,12 @@ export async function fileToDocument(uri: string, name: string, mimeType: string
     await file.copy(pdf);
     let text = '';
     try {
+      // Only the first PDF_TEXT_PAGES pages: the receipt facts are near the start, and long PDFs would take minutes.
       text = await readPdfText(
-        (first, count) => PdfPages.renderForText(documentUri(pdf.name), 1400, first, Math.min(count, 4)),
+        async (first, count) => {
+          const batch = await PdfPages.renderForText(documentUri(pdf.name), 1400, first, Math.min(count, PDF_TEXT_PAGES - first));
+          return { ...batch, pageCount: Math.min(batch.pageCount, PDF_TEXT_PAGES) };
+        },
         extractTextFromImage,
         () => false,
       );
@@ -114,10 +120,10 @@ async function imagesToPdf(images: { uri: string; mimeType: string }[]): Promise
 }
 
 // Product photo (section 13): camera or gallery, cropped square, stored next to the documents.
-// Returns the stored file name, or null if the user backs out.
+// Returns the stored file name, or null if the user backs out; throws a readable reason if the camera is not allowed.
 export async function pickPhoto(source: 'camera' | 'library'): Promise<string | null> {
   const options: ImagePicker.ImagePickerOptions = { mediaTypes: 'images', allowsEditing: true, aspect: [1, 1], quality: 0.7 };
-  if (source === 'camera' && !(await ImagePicker.requestCameraPermissionsAsync()).granted) return null;
+  if (source === 'camera' && !(await ImagePicker.requestCameraPermissionsAsync()).granted) throw new Error(i18n.t('docFile.cameraDenied'));
   const res = source === 'camera' ? await ImagePicker.launchCameraAsync(options) : await ImagePicker.launchImageLibraryAsync(options);
   if (res.canceled || !res.assets.length) return null;
   const photo = new File(folder(), `photo-${Date.now()}.jpg`);
@@ -156,7 +162,7 @@ export const documentUri = (localPath: string): string => fileFor(localPath).uri
 export async function readImportDocument(localPath: string, cancelled: () => boolean): Promise<string> {
   return readPdfText(async (first, count) => {
     const batch = await PdfPages.renderForText(documentUri(localPath), 1400, first, count);
-    if (batch.pageCount > 20) throw new Error('Use a document with up to 20 pages for autofill');
+    if (batch.pageCount > 20) throw new Error(i18n.t('docFile.autofillLimit'));
     return batch;
   }, extractTextFromImage, cancelled);
 }
@@ -165,6 +171,11 @@ export function deleteDocuments(localPaths: string[]): void {
   for (const p of localPaths) {
     const f = fileFor(p);
     if (f.exists) f.delete();
+    // The native renderer's page images and thumbnails for this file (modules/pdf-pages).
+    const pages = new Directory(Paths.cache, 'pdf-pages', p);
+    if (pages.exists) pages.delete();
+    const thumbs = new Directory(Paths.cache, 'pdf-thumbs');
+    if (thumbs.exists) for (const t of thumbs.list()) if (t.name.startsWith(`${p}-`)) t.delete();
   }
 }
 
@@ -172,7 +183,7 @@ export function deleteDocuments(localPaths: string[]): void {
 // file in that folder. Returns false if they back out of the picker; throws if writing fails.
 export async function saveDocument(localPath: string, name: string): Promise<boolean> {
   const source = fileFor(localPath);
-  if (!source.exists) throw new Error('missing');
+  if (!source.exists) throw new Error(i18n.t('detail.fileMissing'));
   return saveDocumentCopy(() => source.bytes(), () => Directory.pickDirectoryAsync(), name);
 }
 
@@ -221,12 +232,14 @@ export async function openDocument(localPath: string): Promise<void> {
 }
 
 // Claim helper (section 20): the phone's mail composer with the document attached; plain mailto
-// (no attachment) when no composer is set up.
+// (no attachment) when no composer is set up; with documents chosen that would drop them, so it throws instead.
 // `to` may be empty (feedback before an address is set): the user fills it in.
 export async function sendClaim(to: string, subject: string, body: string, localPaths: string[]): Promise<void> {
+  if (localPaths.some((p) => !fileFor(p).exists)) throw new Error(i18n.t('assistant.missingDocument'));
   if (await MailComposer.isAvailableAsync()) {
     await MailComposer.composeAsync({ recipients: to ? [to] : [], subject, body, attachments: localPaths.map((p) => fileFor(p).uri) });
   } else {
+    if (localPaths.length) throw new Error(i18n.t('docFile.mailNoAttachments'));
     await Linking.openURL(mailtoUrl(to, subject, body));
   }
 }

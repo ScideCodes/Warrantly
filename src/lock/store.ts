@@ -1,6 +1,6 @@
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
-import { encodePin, lockoutSeconds, pinLength, pinMatches } from './pin.ts';
+import { encodePin, lockoutSeconds, pinLength, pinMatches, RELAUNCH_PASS_MS, relaunchPassValid } from './pin.ts';
 
 // App lock state in SecureStore (Keystore / Keychain). No PIN stored = lock off.
 const PIN = 'lock_pin';
@@ -14,11 +14,11 @@ export const isLockEnabled = (): boolean => SecureStore.getItem(PIN) !== null;
 // The app restarts itself after some changes (an update, deleting everything). The user was just unlocked, so that one
 // start skips the lock: a pass valid for 30 seconds, written only from inside the unlocked app.
 const RELAUNCH = 'lock_relaunch_until';
-export const allowRelaunchWithoutLock = (now = Date.now()): void => SecureStore.setItem(RELAUNCH, String(now + 30_000));
+export const allowRelaunchWithoutLock = (now = Date.now()): void => SecureStore.setItem(RELAUNCH, String(now + RELAUNCH_PASS_MS));
 export function takeRelaunchPass(now = Date.now()): boolean {
   const until = Number(SecureStore.getItem(RELAUNCH) ?? 0);
   if (until) void SecureStore.deleteItemAsync(RELAUNCH);
-  return until > now;
+  return relaunchPassValid(until, now);
 }
 export const storedPinLength = (): number => pinLength(SecureStore.getItem(PIN) ?? '::');
 
@@ -61,7 +61,8 @@ export function checkPin(pin: string, at = performance.now()): boolean {
   return false;
 }
 
-function resetFailures() {
+// Any unlock (PIN, fingerprint, the phone's own lock after "Forgot PIN") starts the wrong-PIN count again.
+export function resetFailures(): void {
   SecureStore.setItem(FAILURES, '0');
   SecureStore.setItem(WAIT_LEFT, '0');
 }

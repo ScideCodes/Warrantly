@@ -193,7 +193,7 @@ export async function discardInbox(db: Db, id: number): Promise<string | null> {
 export async function unindexedDocuments(db: Db, limit: number): Promise<string[]> {
   return (await db.getAllAsync<{ local_path: string }>(
     `SELECT DISTINCT a.local_path FROM attachments a JOIN warranties w ON w.id = a.warranty_id
-      WHERE a.deleted_at IS NULL AND w.deleted_at IS NULL AND a.local_path NOT IN (SELECT local_path FROM doc_text) ORDER BY a.id DESC LIMIT ?`,
+      WHERE a.deleted_at IS NULL AND w.deleted_at IS NULL AND w.status != 'ignored' AND a.local_path NOT IN (SELECT local_path FROM doc_text) ORDER BY a.id DESC LIMIT ?`,
     [limit],
   )).map((r) => r.local_path);
 }
@@ -203,7 +203,7 @@ export async function indexCounts(db: Db): Promise<{ total: number; done: number
             COUNT(DISTINCT CASE WHEN t.status = 'done' THEN a.local_path END) AS done,
             COUNT(DISTINCT CASE WHEN t.status = 'failed' THEN a.local_path END) AS failed
        FROM attachments a JOIN warranties w ON w.id = a.warranty_id LEFT JOIN doc_text t ON t.local_path = a.local_path
-      WHERE a.deleted_at IS NULL AND w.deleted_at IS NULL`,
+      WHERE a.deleted_at IS NULL AND w.deleted_at IS NULL AND w.status != 'ignored'`,
     [],
   );
   return { total: row?.total ?? 0, done: row?.done ?? 0, failed: row?.failed ?? 0 };

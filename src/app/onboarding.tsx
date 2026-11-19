@@ -21,12 +21,12 @@ export default function Onboarding() {
 
   function submit() {
     if (!trimmed) return;
-    setUsername(trimmed);
     markWhatsNewSeen(); // a new user has nothing to compare with
     setAskLock(true);
   }
 
   function finish(withPin: boolean) {
+    setUsername(trimmed); // saved only now: the name ends onboarding, so closing the app before this asks about the lock again
     router.replace('/');
     if (withPin) router.push('/pin'); // PIN setup goes back to home when done
   }

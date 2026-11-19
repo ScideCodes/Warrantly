@@ -25,7 +25,13 @@ export default function WidgetPicks() {
   useFocusEffect(useCallback(() => {
     void getDb().then(async (db) => {
       const today = todayYmd();
-      setItems((await listWarranties(db, 'complete')).filter((w) => w.end_date >= today).sort((a, b) => a.end_date.localeCompare(b.end_date)));
+      const active = (await listWarranties(db, 'complete')).filter((w) => w.end_date >= today).sort((a, b) => a.end_date.localeCompare(b.end_date));
+      setItems(active);
+      // Expired or deleted picks are not listed here, so they could never be unticked: drop them.
+      const ids = new Set(active.map((w) => w.id));
+      const kept = getWidgetPicks().filter((id) => ids.has(id));
+      if (kept.length !== getWidgetPicks().length) setWidgetPicks(kept);
+      setPicked(new Set(kept));
       setLoaded(true);
     }).catch(() => setLoaded(true));
   }, []));

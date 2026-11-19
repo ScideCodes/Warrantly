@@ -93,7 +93,7 @@ export default function ImportReview() {
       await saveReviewedImport(db, item.id, draft);
       // Corrections are optional convenience. Failure here must never invite a second import.
       if (remember) { try { rememberChoices(reviewDraft(item.text, todayYmd()).store, correctedChoices(draft.products)); } catch { /* records already saved */ } }
-      router.replace('/');
+      router.dismissTo('/'); // replace would stack a second tab group over the old one
     } catch (e) {
       setError(e instanceof Error ? e.message : t('importReview.saveFailed'));
       saving.current = false; setBusy(false);

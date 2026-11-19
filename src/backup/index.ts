@@ -4,6 +4,7 @@ import { changeCount, markBackedUp } from '@/db/features.ts';
 import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, readDocument, writeDocument } from '@/documents';
 import { ensureDriveAccess, getAccessToken, revokeGoogleAccess, type RevokeResult } from '@/google';
+import i18n from '@/i18n';
 import { applySnapshot, getSetting, setSetting, settingsSnapshot } from '@/settings';
 import { BACKUP_PREFIX, driveClient, uploadAndPrune } from './drive.ts';
 import {
@@ -43,9 +44,9 @@ export type OnBackupStep = (s: BackupStep) => void;
 export async function runBackup(db: Db, interactive: boolean, now = new Date(), onStep?: OnBackupStep): Promise<void> {
   try {
     const stored = storedKey();
-    if (!stored) throw new Error('No backup password set');
+    if (!stored) throw new Error(i18n.t('backupErrors.noPassword'));
     onStep?.({ step: 'drive' });
-    if (!(await ensureDriveAccess(interactive))) throw new Error('Google Drive access is needed');
+    if (!(await ensureDriveAccess(interactive))) throw new Error(i18n.t('backupErrors.driveNeeded'));
     const key = fromBase64(stored.key);
     onStep?.({ step: 'read' });
     const changes = await changeCount(db); // read before the data: an edit made during the upload stays pending
@@ -96,7 +97,7 @@ export async function runDueBackup(db: Db): Promise<void> {
 }
 
 export async function latestBackup(): Promise<{ id: string; createdTime: string } | null> {
-  if (!(await ensureDriveAccess(true))) throw new Error('Google Drive access is needed');
+  if (!(await ensureDriveAccess(true))) throw new Error(i18n.t('backupErrors.driveNeeded'));
   return (await drive().list()).find((f) => f.name.startsWith(BACKUP_PREFIX)) ?? null;
 }
 
@@ -111,7 +112,8 @@ export async function deleteDriveBackups(): Promise<void> {
 export class PasswordNeededError extends Error {}
 
 // Restore replaces everything on this phone. The password is needed unless this phone made the backup.
-export async function restoreBackup(db: Db, id: string, password: string | null, onStep?: OnBackupStep): Promise<void> {
+// Resolves how many documents could not be downloaded (the data itself is restored by then).
+export async function restoreBackup(db: Db, id: string, password: string | null, onStep?: OnBackupStep): Promise<number> {
   onStep?.({ step: 'download' });
   const text = await drive().download(id);
   const stored = storedKey();
@@ -135,15 +137,24 @@ export async function restoreBackup(db: Db, id: string, password: string | null,
   // Documents this phone does not have yet. One that is missing on Drive is skipped; the detail
   // screen then says the file is not on this phone.
   const key = derived ? fromBase64((derived as StoredKey).key) : fromBase64(stored!.key);
-  const files = new Map((await drive().list()).map((f) => [f.name, f.id]));
+  const listed = await drive().list().catch(() => null);
+  if (!listed) return new Set(filesOf(data).filter((path) => !documentExists(path))).size; // next backup marks what Drive has
+  const files = new Map(listed.map((f) => [f.name, f.id]));
   const missing = filesOf(data).filter((path) => files.has(docBackupName(path)) && !documentExists(path));
   if (missing.length) onStep?.({ step: 'docs', done: 0, total: missing.length });
+  // The database is already replaced, so one failed document must not fail the whole restore.
+  let failed = 0;
   for (const [i, path] of missing.entries()) {
-    await writeDocument(path, await unsealBytes(aead, key, await drive().download(files.get(docBackupName(path))!)));
+    try {
+      await writeDocument(path, await unsealBytes(aead, key, await drive().download(files.get(docBackupName(path))!)));
+    } catch {
+      failed++;
+    }
     onStep?.({ step: 'docs', done: i + 1, total: missing.length });
   }
   // What was just restored is exactly what Drive holds: nothing is pending until the next change.
   await markBackedUp(db, await changeCount(db), filesOf(data).filter((p) => files.has(docBackupName(p))));
+  return failed;
 }
 
 // Every file a backup refers to: documents, product photos and found product pictures.
@@ -160,8 +171,10 @@ const filesOf = (data: { tables: Record<string, Record<string, unknown>[] | unde
 // Also removes Warrantly's access at Google; resolves how that went (see revokeGoogleAccess).
 export async function disconnectAccount(db: Db, account: Account, now = new Date()): Promise<RevokeResult> {
   const stored = storedKey();
-  if (!stored) throw new Error('No backup password set');
+  if (!stored) throw new Error(i18n.t('backupErrors.noPassword'));
   const rows = await dumpAccount(db, account.id);
+  // Already gone (a second tap while the first disconnect ran): never replace the good copy with an empty one.
+  if (!rows.account) throw new Error(i18n.t('backupErrors.alreadyDisconnected'));
   const payload = { app: 'warrantly' as const, schema: 0, createdAt: now.toISOString(), tables: { accounts: [rows.account], warranties: rows.warranties, sources: rows.sources, store_rules: [], attachments: rows.attachments!.filter(keptOnDisconnect), returns: [], history: rows.history ?? [], claims: rows.claims ?? [], custom_reminders: rows.custom_reminders ?? [] }, settings: {} };
   const text = await seal(aead, fromBase64(stored.key), stored.kdf, payload);
   await saveDisconnectBackup(db, account.email, text, now.toISOString());
@@ -184,8 +197,10 @@ export async function disconnectBackupDate(db: Db, email: string): Promise<strin
 export async function restoreDisconnected(db: Db, account: Account): Promise<void> {
   const saved = await getDisconnectBackup(db, account.email);
   const stored = storedKey();
-  if (!saved || !stored) throw new Error('No backup for this account');
+  if (!saved || !stored) throw new Error(i18n.t('backupErrors.noAccountBackup'));
   const data = await unseal(aead, saved.envelope, async () => fromBase64(stored.key));
-  const rows: AccountRows = { account: data.tables.accounts![0], warranties: data.tables.warranties ?? [], sources: data.tables.sources ?? [], attachments: data.tables.attachments, history: data.tables.history, claims: data.tables.claims, custom_reminders: data.tables.custom_reminders };
+  const savedAccount = data.tables.accounts?.[0];
+  if (!savedAccount) throw new Error(i18n.t('backupErrors.damaged'));
+  const rows: AccountRows = { account: savedAccount, warranties: data.tables.warranties ?? [], sources: data.tables.sources ?? [], attachments: data.tables.attachments, history: data.tables.history, claims: data.tables.claims, custom_reminders: data.tables.custom_reminders };
   await restoreAccount(db, account.id, rows);
 }

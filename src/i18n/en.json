@@ -21,7 +21,8 @@
     "progress": "{{done}} of {{total}} emails read",
     "error": "Couldn't read Gmail. Check your connection and try again.",
     "retry": "Try again",
-    "failed": "{{count}} emails couldn't be read. They will be retried at the next sync. First error: {{detail}}",
+    "failed_one": "{{count}} email couldn't be read. It will be retried at the next sync. Error: {{detail}}",
+    "failed_other": "{{count}} emails couldn't be read. They will be retried at the next sync. First error: {{detail}}",
     "add": "Add",
     "tabManual": "Added by hand",
     "reconnect": "Connect {{email}} again in Settings to keep syncing it.",
@@ -47,6 +48,7 @@
     "menuStores": "Stores",
     "addLong": "Add a warranty",
     "attentionRow": "Missing details",
+    "loadFailed": "Couldn't load your warranties",
     "syncFailed_one": "Couldn't check {{count}} account",
     "syncFailed_other": "Couldn't check {{count}} accounts",
     "details": "Details",
@@ -145,6 +147,10 @@
     "errStore": "Enter the store.",
     "errDate": "Enter a real date as YYYY-MM-DD.",
     "errStart": "Enter a date on or after the purchase date, or leave it empty.",
+    "errFuture": "The purchase date can't be in the future.",
+    "unsavedTitle": "Discard your changes?",
+    "keepEditing": "Keep editing",
+    "discardChanges": "Discard",
     "errMonths": "Enter a length between 1 and 120 months.",
     "pickerFailed": "The calendar could not open, type the date instead. ({{detail}})",
     "saveTo": "Save to",
@@ -373,7 +379,17 @@
     "needPassword": "Enter the backup password.",
     "wrong": "Wrong backup password.",
     "done": "Restored.",
+    "doneMissing_one": "Restored. {{count}} document could not be downloaded.",
+    "doneMissing_other": "Restored. {{count}} documents could not be downloaded.",
     "working": "Restoring…"
+  },
+  "backupErrors": {
+    "noPassword": "No backup password set.",
+    "driveNeeded": "Google Drive access is needed.",
+    "reconnectDrive": "Google Drive access for {{email}} is gone. In Settings, tap Change next to the Google account and choose it again.",
+    "alreadyDisconnected": "This account is already disconnected.",
+    "noAccountBackup": "There is no backup for this account.",
+    "damaged": "This account backup is damaged and can't be restored."
   },
   "accounts": {
     "section": "Email accounts",
@@ -735,7 +751,8 @@
     "attached": "Added to {{name}}.",
     "discard": "Discard",
     "discardTitle": "Discard this file?",
-    "discardBody": "It is removed from Warrantly. The original in the other app stays."
+    "discardBody": "It is removed from Warrantly. The original in the other app stays.",
+    "attachFailed": "Could not add the file: {{detail}}"
   },
   "dups": {
     "title": "Possible duplicates",
@@ -998,6 +1015,14 @@
     "failed": "Could not prepare claim",
     "missingDocument": "A selected document is missing. Remove it or attach it again.",
     "tooLarge": "Choose fewer documents (maximum 50 MB)."
+  },
+  "docFile": {
+    "notDocument": "This is not a document Warrantly can open.",
+    "tooLarge": "The file is too large (maximum 30 MB).",
+    "autofillLimit": "Use a document with up to 20 pages for autofill.",
+    "cameraDenied": "Allow camera access in Android settings to take a photo.",
+    "mailNoAttachments": "No email app here can attach files. Use “Share claim package”, or clear the documents to send only the message.",
+    "tooManyPages": "This document has {{pages}} pages, too many to show here. Share it to open it in another app."
   },
   "productTools": {
     "title": "Returns & replacements",

@@ -1,7 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import * as Notifications from 'expo-notifications';
 import { AndroidImportance, AndroidNotificationVisibility } from 'expo-notifications';
-import { router, type Href } from 'expo-router';
+import { router, usePathname, type Href } from 'expo-router';
 import { Platform } from 'react-native';
 import i18n from '@/i18n';
 import { listWarranties, type Db, type Warranty } from '@/db/repo.ts';
@@ -31,19 +31,20 @@ async function ensureChannels() {
 // Replace all scheduled reminders with the nearest ones for confirmed warranties (rolling window).
 // The home screen calls this on every load. Runs wait for each other (two at once would both cancel and
 // then both schedule, so every reminder would arrive twice), and an unchanged plan is left alone.
-let queue: Promise<void> = Promise.resolve();
+let queue: Promise<unknown> = Promise.resolve();
 let scheduled = '';
-export function rescheduleReminders(db: Db): Promise<void> {
+// Resolves 'denied' when there were reminders to schedule but notifications are not allowed.
+export function rescheduleReminders(db: Db): Promise<void | 'denied'> {
   const run = queue.then(() => reschedule(db));
   queue = run.catch(() => {});
   return run;
 }
 
-async function reschedule(db: Db): Promise<void> {
+async function reschedule(db: Db): Promise<void | 'denied'> {
   const warranties = await listWarranties(db, 'complete');
   const byId = new Map(warranties.map((w) => [w.id, w]));
   const now = new Date();
-  const returns = getReturnRemindersEnabled();
+  const returns = getRemindersEnabled() && getReturnRemindersEnabled(); // its row is hidden while reminders are off
   const items = warranties.map((w) => ({ ...w, return_by: returns ? returnDeadline(w) : null }));
   // The phone calendar copy follows the same dates; a calendar error never blocks the reminders.
   void syncCalendar(items, todayYmd(now)).catch((e) => console.warn('calendar', e));
@@ -71,7 +72,7 @@ async function reschedule(db: Db): Promise<void> {
   if (jobs.length) {
     await ensureChannels(); // Android 13 only shows the permission prompt once a channel exists
     const { granted } = await Notifications.requestPermissionsAsync();
-    if (!granted) return;
+    if (!granted) return 'denied';
     for (const { content, date, channelId } of jobs) {
       await Notifications.scheduleNotificationAsync({ content, trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date, channelId } });
     }
@@ -111,10 +112,16 @@ export async function sendTestReminder(w: Warranty, daysLeft: number): Promise<b
 // Tapping a reminder opens that warranty, also when the tap launched the app.
 export function useReminderTaps(): void {
   const last = Notifications.useLastNotificationResponse();
+  // A ref, not a dependency: leaving the warranty later must not replay the same tap.
+  const pathname = usePathname();
+  const here = useRef(pathname);
+  useEffect(() => {
+    here.current = pathname;
+  }, [pathname]);
   useEffect(() => {
     const url = last?.notification.request.content.data?.url;
     if (typeof url !== 'string' || last?.actionIdentifier !== Notifications.DEFAULT_ACTION_IDENTIFIER) return;
-    router.push(url as Href);
+    if (here.current !== url) router.push(url as Href); // that warranty already open: no second copy on the stack
     void Notifications.clearLastNotificationResponseAsync(); // so the next app open does not navigate again
   }, [last]);
 }

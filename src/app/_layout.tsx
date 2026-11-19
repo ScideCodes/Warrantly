@@ -13,7 +13,7 @@ import i18n, { appLanguage } from '@/i18n';
 import { LockScreen } from '@/components/LockScreen';
 import { DialogHost, showAlert } from '@/components/Dialog';
 import { shouldRelock, stampNow, type Stamp } from '@/lock/pin.ts';
-import { isLockEnabled, takeRelaunchPass } from '@/lock/store';
+import { isLockEnabled, resetFailures, takeRelaunchPass } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
 import { useReminderTaps } from '@/reminders';
@@ -70,7 +70,11 @@ export default function RootLayout() {
     setLockShowing(on); // before any screen's first effect (a shortcut's scan waits for it)
     return on;
   });
-  const unlock = useCallback(() => setLocked(false), []); // stable, so the lock screen's fingerprint prompt starts once
+  // Stable, so the lock screen's fingerprint prompt starts once. Every unlock (fingerprint, "Forgot PIN") clears the wrong-PIN count.
+  const unlock = useCallback(() => {
+    resetFailures();
+    setLocked(false);
+  }, []);
   const hiddenAt = useRef<Stamp | null>(null);
   // Covers the app while it is in the background; inside the 3-minute grace it is lifted without the PIN.
   const [covered, setCovered] = useState(false);

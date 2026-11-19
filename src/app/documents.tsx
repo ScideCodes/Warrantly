@@ -129,8 +129,8 @@ export default function Documents() {
         subtitle={chosen ? `${t(`docLabel.${chosen.label}`)} · ${chosen.filename}` : undefined}
         sections={chosen ? [{ options: documentExists(chosen.local_path) ? [
           { key: 'open', icon: 'eye-outline', label: t('docs.open'), onPress: () => openViewer(chosen, name(chosen)) },
-          { key: 'save', icon: 'download-outline', label: t('detail.saveCopy'), onPress: () => void saveDocument(chosen.local_path, chosen.filename).catch((e) => showAlert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }))) },
-          { key: 'share', icon: 'share-outline', label: t('docs.share'), onPress: () => void openDocument(chosen.local_path).catch(() => {}) },
+          { key: 'save', icon: 'download-outline', label: t('detail.saveCopy'), onPress: () => void saveDocument(chosen.local_path, chosen.filename).then((saved) => { if (saved) showAlert(t('detail.saved')); }, (e) => showAlert(t('detail.saveFailed', { detail: e instanceof Error ? e.message : String(e) }))) },
+          { key: 'share', icon: 'share-outline', label: t('docs.share'), onPress: () => void openDocument(chosen.local_path).catch((e) => showAlert(t('detail.shareFailed', { detail: e instanceof Error ? e.message : String(e) }))) },
           { key: 'item', icon: 'shield-checkmark-outline', label: t('docs.openWarranty'), onPress: () => router.push(`/warranty/${chosen.warranty_id}`) },
         ] : [
           { key: 'item', icon: 'shield-checkmark-outline', label: t('docs.openWarranty'), onPress: () => router.push(`/warranty/${chosen.warranty_id}`) },

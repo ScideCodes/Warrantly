@@ -13,7 +13,7 @@ import { getWarranty, listAttachments, sharedWarranties, type Attachment, type W
 import { claimEmail } from '@/claim';
 import { serialSummary } from '@/serialNumbers';
 import { getUsername } from '@/settings';
-import { sendClaim } from '@/documents';
+import { documentExists, sendClaim } from '@/documents';
 import { shareClaimPackage } from '@/dataTools';
 import { transferHtml } from '@/transfer';
 import { colors, TYPE, themed } from '@/theme';
@@ -37,7 +37,7 @@ export default function ClaimAssistant() {
         const draft = claimEmail(t, { product: displayName(t, found), purchaseDate: formatDate(found.purchase_date, i18n.language), endDate: formatDate(found.end_date, i18n.language), orderNumber: found.order_number, serialNumber: serialSummary(found), name: getUsername() });
         setTo(found.contact_email ?? ''); setSubject(draft.subject); setBody(draft.body);
       }
-      setW(found); setDocs(files); setSelected(new Set(files.map(d => d.id))); setLoaded(true);
+      setW(found); setDocs(files); setSelected(new Set(files.filter(d => documentExists(d.local_path)).map(d => d.id))); setLoaded(true);
     }).catch(e => { if (live) { setLoaded(true); showAlert(t('assistant.failed'), String(e)); } });
     return () => { live = false; };
   }, [id, t, i18n.language]);
@@ -72,7 +72,10 @@ export default function ClaimAssistant() {
       <SectionHeader title={t('transfer.documents')} />
       <Group>{!docs.length ? <Text style={styles.empty}>{t('assistant.noDocs')}</Text> : docs.map((d, i) => <Row key={d.id} separator={i > 0} disabled={busy} accessibilityRole="checkbox" accessibilityState={{ checked: selected.has(d.id) }} onPress={() => setSelected(s => { const next = new Set(s); if (!next.delete(d.id)) next.add(d.id); return next; })}>
         <AppIcon name={selected.has(d.id) ? 'checkmark-circle' : 'ellipse-outline'} size={22} color={selected.has(d.id) ? colors.tint : colors.ink2} />
-        <Text style={styles.name}>{d.filename}</Text>
+        <View style={styles.name}>
+          <Text style={styles.file}>{d.filename}</Text>
+          {!documentExists(d.local_path) && <Text style={styles.missing}>{t('detail.fileMissing')}</Text>}
+        </View>
       </Row>)}</Group>
       <Text style={styles.hint}>{t('assistant.packageHint')}</Text>
       <View style={styles.actions}>
@@ -85,5 +88,5 @@ export default function ClaimAssistant() {
 const useStyles = themed(() => StyleSheet.create({
   form: { padding: 16, gap: 12 }, body: { minHeight: 240, textAlignVertical: 'top' },
   hint: { ...TYPE.foot, color: colors.ink2, marginTop: 12, paddingHorizontal: 4 },
-  empty: { ...TYPE.body, color: colors.ink2, padding: 16 }, name: { ...TYPE.body, color: colors.ink, flex: 1 }, actions: { gap: 12, marginTop: 20 },
+  empty: { ...TYPE.body, color: colors.ink2, padding: 16 }, name: { flex: 1, gap: 2 }, file: { ...TYPE.body, color: colors.ink }, missing: { ...TYPE.foot, color: colors.bad }, actions: { gap: 12, marginTop: 20 },
 }));

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'node:test';
-import { encodePin, lockoutSeconds, pinLength, pinMatches, promptClosedBy, QUICK_CANCEL_MS, sha256, shouldRelock } from './pin.ts';
+import { encodePin, lockoutSeconds, pinLength, pinMatches, promptClosedBy, QUICK_CANCEL_MS, RELAUNCH_PASS_MS, relaunchPassValid, sha256, shouldRelock } from './pin.ts';
 
 test('sha256 matches node:crypto, across block boundaries and UTF-8', () => {
   for (const s of ['', 'abc', 'a'.repeat(55), 'a'.repeat(56), 'a'.repeat(64), 'a'.repeat(200), 'jótállás ő ű 🔒']) {
@@ -42,4 +42,13 @@ test('who closed the fingerprint prompt', () => {
   assert.equal(by('not_available', undefined, 50), 'person');
   assert.equal(by('system_cancel', undefined, 3000), 'system');
   assert.equal(by('app_cancel', undefined, 10), 'system');
+});
+
+test('relaunch pass: only inside its 30 seconds', () => {
+  const now = 1e12;
+  assert.equal(relaunchPassValid(now + RELAUNCH_PASS_MS, now), true);
+  assert.equal(relaunchPassValid(now + 1, now), true);
+  assert.equal(relaunchPassValid(now, now), false); // expired
+  assert.equal(relaunchPassValid(0, now), false); // none written
+  assert.equal(relaunchPassValid(now + RELAUNCH_PASS_MS + 1, now), false); // clock set back after it was written
 });

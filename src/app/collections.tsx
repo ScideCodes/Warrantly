@@ -1,6 +1,6 @@
 import { EmptyState } from '@/components/EmptyState';
 import { Text, View } from '@/components/themeMotion';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -23,22 +23,30 @@ export default function Collections() {
   const { add } = useLocalSearchParams<{ add?: string }>();
   const [list, setList] = useState<Collection[]>([]);
   const [editing, setEditing] = useState<Editing | null>(add ? { id: null, name: '', kind: 'none' } : null);
+  const pendingAdd = useRef(add); // the bulk items go into the first new collection only
+  const [saving, setSaving] = useState(false);
   const reload = useCallback(() => void getDb().then(listCollections).then(setList), []);
   useFocusEffect(reload);
 
   async function save() {
-    if (!editing) return;
+    if (!editing || saving) return;
     const name = editing.name.trim();
     if (!name) return;
-    const db = await getDb();
-    const kind = editing.kind === 'none' ? null : editing.kind;
-    if (editing.id === null) {
-      const id = await createCollection(db, name, kind);
-      const ids = (add ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
-      if (ids.length) await setMembership(db, id, ids, true);
-    } else await renameCollection(db, editing.id, name, kind);
-    setEditing(null);
-    reload();
+    setSaving(true);
+    try {
+      const db = await getDb();
+      const kind = editing.kind === 'none' ? null : editing.kind;
+      if (editing.id === null) {
+        const id = await createCollection(db, name, kind);
+        const ids = (pendingAdd.current ?? '').split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0);
+        pendingAdd.current = undefined;
+        if (ids.length) await setMembership(db, id, ids, true);
+      } else await renameCollection(db, editing.id, name, kind);
+      setEditing(null);
+      reload();
+    } finally {
+      setSaving(false);
+    }
   }
   function remove(c: Collection) {
     showAlert(t('collections.deleteTitle', { name: c.name }), t('collections.deleteBody'), [
@@ -75,7 +83,7 @@ export default function Collections() {
                 value={editing.kind}
                 onChange={(kind) => setEditing({ ...editing, kind })}
               />
-              <Button title={t('collections.save')} onPress={() => void save()} disabled={!editing.name.trim()} />
+              <Button title={t('collections.save')} onPress={() => void save()} disabled={!editing.name.trim()} busy={saving} />
               {editing.id !== null && <Button kind="glass" title={t('collections.delete')} onPress={() => remove(list.find((c) => c.id === editing.id)!)} />}
             </View>
           )}

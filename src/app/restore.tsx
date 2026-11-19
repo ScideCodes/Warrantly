@@ -1,5 +1,5 @@
 import { Text, View } from '@/components/themeMotion';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import { ActivityIndicator, StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -9,8 +9,11 @@ import { WrongPasswordError } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
+import { setGlass } from '@/components/GlassFill';
 import { Button, Group, Input } from '@/components/ui';
-import { colors, TYPE, themed } from '@/theme';
+import { appLanguage } from '@/i18n';
+import { getGlassEnabled } from '@/settings';
+import { applyTheme, colors, TYPE, themed } from '@/theme';
 
 // Restore the newest backup from Google Drive (section 17). Replaces everything on this phone.
 export default function Restore() {
@@ -22,14 +25,23 @@ export default function Restore() {
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState<BackupStep | null>(null);
 
-  useEffect(() => {
+  const [lookFailed, setLookFailed] = useState(false);
+  const look = useCallback(() => {
     latestBackup()
       .then(setBackup)
       .catch((e) => {
         setBackup(null);
+        setLookFailed(true);
         setMessage(e instanceof Error ? e.message : String(e));
       });
   }, []);
+  useEffect(look, [look]);
+  function retryLook() {
+    setBackup(undefined);
+    setMessage(null);
+    setLookFailed(false);
+    look();
+  }
 
   const date = backup ? new Date(backup.createdTime).toLocaleString(i18n.language) : '';
 
@@ -45,9 +57,13 @@ export default function Restore() {
     setStep(null);
     setMessage(null);
     try {
-      await restoreBackup(await getDb(), backup!.id, password || null, setStep);
-      showAlert(t('restore.done'));
-      router.replace('/');
+      const missingDocs = await restoreBackup(await getDb(), backup!.id, password || null, setStep);
+      // The restored appearance and language apply now, not at the next start.
+      applyTheme();
+      setGlass(getGlassEnabled());
+      await i18n.changeLanguage(appLanguage());
+      showAlert(missingDocs ? i18n.t('restore.doneMissing', { count: missingDocs }) : i18n.t('restore.done'));
+      router.dismissTo('/'); // back to the one home screen; replace would stack a second tabs group
     } catch (e) {
       setMessage(e instanceof PasswordNeededError ? t('restore.needPassword') : e instanceof WrongPasswordError ? t('restore.wrong') : e instanceof Error ? e.message : String(e));
     } finally {
@@ -87,6 +103,7 @@ export default function Restore() {
             {message}
           </Text>
         )}
+        {lookFailed && <Button kind="glass" title={t('home.retry')} onPress={retryLook} />}
     </Page>
   );
 }

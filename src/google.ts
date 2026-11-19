@@ -1,6 +1,8 @@
 import { GoogleOneTapSignIn, isSuccessResponse } from 'react-native-nitro-google-signin';
 import GoogleAccountToken from '../modules/google-account-token';
+import Storage from 'expo-sqlite/kv-store';
 import { isGmailImportEnabled } from '@/features';
+import i18n from '@/i18n';
 import { getSetting, setSetting } from '@/settings';
 
 // Public identifier of the "Warrantly Web" OAuth client (not a secret). Credential Manager needs
@@ -76,9 +78,10 @@ export async function revokeGoogleAccess(email: string): Promise<RevokeResult> {
     return 'failed';
   }
   if (getSetting('backup_account') !== email) return 'revoked';
-  setSetting('backup_account', '');
-  setSetting('backup_enabled', '0');
+  Storage.removeItemSync('backup_account'); // unset, as before any backup (readers treat null as "not chosen")
   cached = null;
+  if (getSetting('backup_enabled') !== '1') return 'revoked'; // backup was already off: nothing to tell
+  setSetting('backup_enabled', '0');
   return 'backupOff';
 }
 
@@ -86,7 +89,21 @@ export async function revokeGoogleAccess(email: string): Promise<RevokeResult> {
 // The account that granted Drive access is remembered: "the signed-in user" changes whenever another
 // Gmail account is connected, and backups must keep going to the same Drive.
 export async function ensureDriveAccess(interactive: boolean): Promise<boolean> {
-  if (getSetting('backup_account')) return true;
+  const account = getSetting('backup_account');
+  if (account) {
+    if (!interactive) return true;
+    try {
+      await getAccessToken();
+      return true;
+    } catch (e) {
+      if (!needsReconnect(e)) throw e;
+      // The grant is gone at Google. Ask again only for that same account: backups must stay in its Drive.
+      if (GoogleOneTapSignIn.getCurrentUser()?.user.email !== account) throw new Error(i18n.t('backupErrors.reconnectDrive', { email: account }));
+      const auth = await GoogleOneTapSignIn.requestScopes([DRIVE_FILE]);
+      cached = auth.accessToken ? { token: auth.accessToken, at: Date.now() } : null;
+      return true;
+    }
+  }
   // With the person present, ask Google directly (the saved scope list can be stale; see connectGmail).
   if (interactive || !GoogleOneTapSignIn.getCurrentUser()?.scopes.includes(DRIVE_FILE)) {
     if (!interactive) return false;

@@ -464,12 +464,13 @@ export async function addManualWithDocument(db: Db, w: WarrantyInput, localPath:
   return id;
 }
 
-// Editing confirms the item: suggested labels go, and a needs-input item becomes complete.
+// Editing confirms the item: suggested labels go, and a needs-input item becomes complete. The origin stays:
+// a mail import keeps its 14-day return window and its account.
 export async function updateWarranty(db: Db, id: number, w: WarrantyInput, now = new Date().toISOString()): Promise<void> {
   const previous = w.serial_numbers === undefined ? await db.getFirstAsync<{ serial_number: string | null; serial_numbers: string | null }>('SELECT serial_number, serial_numbers FROM warranties WHERE id = ?', [id]) : null;
   w = { ...w, ...serialFields(w, previous ?? undefined) };
   await db.runAsync(
-    `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, origin = 'manual', start_is_suggested = 0, length_is_suggested = 0,
+    `UPDATE warranties SET ${FIELDS.map((f) => `${f} = ?`).join(', ')}, start_is_suggested = 0, length_is_suggested = 0,
        status = 'complete', missing_fields = '[]', updated_at = ? WHERE id = ?`,
     [...FIELDS.map((f) => w[f] ?? null), now, id],
   );
@@ -702,6 +703,7 @@ export async function tableColumns(db: Db, table: string): Promise<Set<string>> 
 // since then can collide; sources and documents follow their warranty. Mail PDFs are not in the backup:
 // docs_backfilled = 0 makes the next sync download them again.
 export async function restoreAccount(db: Db, accountId: number, rows: AccountRows): Promise<void> {
+  if (!rows.account || typeof rows.account !== 'object') throw new Error('This account backup is damaged: it has no account in it');
   const known = new Map<string, Set<string>>();
   const insert = async (table: string, row: Record<string, unknown>) => {
     // Column names come from the backup file, so only ones this table has reach the SQL.
@@ -737,6 +739,8 @@ export async function restoreAccount(db: Db, accountId: number, rows: AccountRow
       if (warrantyId) await insert('attachments', { ...a, warranty_id: warrantyId, ...('claim_id' in a ? { claim_id: claimIds.get(a.claim_id) ?? null } : {}) });
     }
     await db.runAsync('UPDATE accounts SET last_synced_at = ?, docs_backfilled = 0 WHERE id = ?', [rows.account.last_synced_at as string | null, accountId]);
+    // Restored once: a later reconnect must not offer (and duplicate) it again.
+    await db.runAsync('DELETE FROM disconnect_backups WHERE email = (SELECT email FROM accounts WHERE id = ?)', [accountId]);
   });
 }
 
@@ -872,7 +876,7 @@ export async function getIgnoredDetail(db: Db, id: number): Promise<IgnoredDetai
   if (!row) return null;
 
   const attachments = await db.getAllAsync<{ id: number; filename: string; local_path: string }>(
-    `SELECT id, filename, local_path FROM attachments WHERE warranty_id = ?`,
+    `SELECT id, filename, local_path FROM attachments WHERE warranty_id = ? AND deleted_at IS NULL`,
     [id],
   );
 

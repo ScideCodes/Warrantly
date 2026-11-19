@@ -46,6 +46,14 @@ export async function runUndo(): Promise<void> {
   state = null;
   emit();
   await current.action.undo();
+  undone.forEach((l) => l());
+}
+
+// Screens that show the undone rows (home) reload on this; an undo can come from a screen already closed.
+const undone = new Set<() => void>();
+export function onUndone(listener: () => void): () => void {
+  undone.add(listener);
+  return () => { undone.delete(listener); };
 }
 
 export const dismissUndo = (): Promise<void> => end(true);

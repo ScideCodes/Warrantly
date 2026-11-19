@@ -1,6 +1,6 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { createContext, useEffect, useState } from 'react';
-import { Animated, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, Keyboard, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import type { BottomTabBarProps } from 'expo-router/tabs';
@@ -41,6 +41,13 @@ export function Dock({ state, emitter, navigateToTab }: BottomTabBarProps) {
     if (reduceMotion()) x.setValue(at * tabW);
     else Animated.spring(x, { toValue: at * tabW, useNativeDriver: true, ...SPRING }).start();
   }, [at, tabW, x]);
+  // The custom dock ignores tabBarHideOnKeyboard, so it hides itself instead of covering inputs.
+  const [keyboard, setKeyboard] = useState(false);
+  useEffect(() => {
+    const subs = [Keyboard.addListener('keyboardDidShow', () => setKeyboard(true)), Keyboard.addListener('keyboardDidHide', () => setKeyboard(false))];
+    return () => subs.forEach((s) => s.remove());
+  }, []);
+  if (keyboard) return null;
   const press = (name: string) => {
     const route = state.routes.find((r) => r.name === name);
     if (!route) return;

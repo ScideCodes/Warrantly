@@ -7,7 +7,7 @@ import { colors, themed } from '@/theme';
 
 // First-page preview (shortlist 14). Made once per file and size by the native side and cached there; here
 // a module cache avoids asking again while the list scrolls. A missing or broken file shows a plain icon.
-const cache = new Map<string, string | null>();
+const cache = new Map<string, string>();
 
 export const DocThumb = memo(function DocThumb({ localPath, size = 40 }: { localPath: string; size?: number }) {
   const styles = useStyles();
@@ -18,7 +18,7 @@ export const DocThumb = memo(function DocThumb({ localPath, size = 40 }: { local
     let live = true;
     // Rendered at 2x for sharpness; the PNG is small (a 80px wide page).
     void documentThumbnail(localPath, size * 2).then((u) => {
-      cache.set(key, u);
+      if (u) cache.set(key, u); // a missing file may come back (restore), so null is asked again next time
       if (live) setUri(u);
     });
     return () => { live = false; };

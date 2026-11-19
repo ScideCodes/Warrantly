@@ -1,6 +1,6 @@
 import { Text } from '@/components/themeMotion';
 import { useEffect, useState } from 'react';
-import { useLocalSearchParams } from 'expo-router';
+import { useLocalSearchParams, useNavigation } from 'expo-router';
 import { goBack } from '@/nav';
 import { StyleSheet } from 'react-native';
 import { useTranslation } from 'react-i18next';
@@ -30,23 +30,26 @@ export default function SyncRange() {
   const [days, setDays] = useState(730);
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // After a long sync the user may have left or opened another screen: going back then would pop that one.
+  const navigation = useNavigation();
+  const leave = () => navigation.isFocused() && goBack();
 
   // Only a connected account: this screen can also be opened by a link, which must not create one.
   const account = async () => (await listAccounts(await getDb())).find((a) => a.email === email);
   useEffect(() => {
-    void account().then((a) => (a ? a.first_sync_days !== null && setDays(a.first_sync_days) : goBack()));
+    void account().then((a) => (a ? a.first_sync_days !== null && setDays(a.first_sync_days) : leave()));
   }, [email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function start() {
     const a = await account();
-    if (!a) return goBack();
+    if (!a) return void leave();
     setBusy(true);
     setStatus(t('accounts.syncing'));
     try {
       const db = await getDb();
       await setSyncRange(db, a.id, days);
       const problems = await syncAllAccounts(db, (mail, done, total) => setStatus(`${mail}: ${t('home.progress', { done, total })}`));
-      if (!problems.length) return goBack();
+      if (!problems.length) return void leave();
       setStatus(problems.join('\n')); // stays on screen; Start can be tapped again
     } catch (e) {
       setStatus(e instanceof Error ? e.message : String(e));

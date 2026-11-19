@@ -72,6 +72,9 @@ export const BACKUP_PREFIX = 'warrantly-backup-';
 // Upload a new backup and keep only the newest few backups. Document files in the folder are left alone.
 export async function uploadAndPrune(drive: ReturnType<typeof driveClient>, name: string, text: string): Promise<void> {
   await drive.upload(name, text);
-  const backups = (await drive.list()).filter((f) => f.name.startsWith(BACKUP_PREFIX));
-  for (const old of backups.slice(KEEP)) await drive.remove(old.id);
+  // Best effort: the new backup is safe on Drive; old ones are pruned again next time.
+  await (async () => {
+    const backups = (await drive.list()).filter((f) => f.name.startsWith(BACKUP_PREFIX));
+    for (const old of backups.slice(KEEP)) await drive.remove(old.id);
+  })().catch(() => {});
 }

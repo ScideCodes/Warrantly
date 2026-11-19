@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { test } from 'node:test';
-import { addAttachment, addManual, migrate, saveStoreRule } from '../db/repo.ts';
+import { addAttachment, addManual, deleteAccount, dumpAccount, getDisconnectBackup, migrate, restoreAccount, saveDisconnectBackup, saveStoreRule, upsertAccount } from '../db/repo.ts';
 import { nodeDb } from '../db/testDb.ts';
 import { driveClient, uploadAndPrune, FOLDER_NAME } from './drive.ts';
 import { backupDue, checkKdf, deriveKey, sharedPdf, docBackupName, dumpDb, readEnvelope, resealDisconnectBackups, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
@@ -171,4 +171,28 @@ test('an older backup without disconnect copies re-seals the kept ones with the 
   const rows = await db.getAllAsync<{ email: string; envelope: string }>('SELECT email, envelope FROM disconnect_backups ORDER BY email', []);
   assert.equal(rows[0].envelope, 'not an envelope'); // unreadable with the old key: left as it was
   assert.equal((await unseal(nodeAead, rows[1].envelope, async () => newKey)).tables.warranties?.[0].product_name, 'Philips vízforraló');
+});
+
+test('an account backup is restored once, and a damaged one fails clearly without being used up', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const account = await upsertAccount(db, 'work@example.com');
+  await addManual(db, {
+    account_id: account.id, product_name: 'Kettle', store_name: 'Shop', purchase_date: '2026-01-01', warranty_start_date: '2026-01-01',
+    warranty_months: 24, order_number: null, serial_number: null, contact_email: null, contact_phone: null, website_url: null, notes: null,
+  });
+  const rows = await dumpAccount(db, account.id);
+  await saveDisconnectBackup(db, account.email, 'sealed');
+  await deleteAccount(db, account.id);
+
+  // A second disconnect finds no account: dumpAccount has nothing to seal (disconnectAccount refuses then).
+  assert.ok(!(await dumpAccount(db, account.id)).account);
+
+  const again = await upsertAccount(db, 'work@example.com');
+  await assert.rejects(restoreAccount(db, again.id, { ...rows, account: undefined as never }), /no account/);
+  assert.ok(await getDisconnectBackup(db, 'work@example.com')); // still there to restore properly
+
+  await restoreAccount(db, again.id, rows);
+  assert.equal(await getDisconnectBackup(db, 'work@example.com'), null); // used up: reconnecting again offers nothing
+  assert.equal((await db.getAllAsync('SELECT id FROM warranties WHERE account_id = ?', [again.id])).length, 1);
 });

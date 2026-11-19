@@ -10,6 +10,7 @@ import { getDb } from '@/db/client';
 import { isLockEnabled, setPin } from '@/lock/store';
 import { setWidgetNames } from '@/settings';
 import { updateWidget } from '@/widget';
+import { rescheduleReminders } from '@/reminders';
 import { NavBar } from '@/components/Page';
 import { Button } from '@/components/ui';
 import { BAR_H, themed } from '@/theme';
@@ -34,6 +35,7 @@ export default function PinSetup() {
       if (!isLockEnabled()) setWidgetNames(null); // lock turned on: names go back to hidden on the widget
       setPin(next);
       void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
+      void getDb().then(rescheduleReminders).catch((e) => console.warn('reminders', e)); // titles stop naming products
       return goBack();
     }
     setFirst(null);

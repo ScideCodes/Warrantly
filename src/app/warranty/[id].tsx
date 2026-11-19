@@ -32,6 +32,7 @@ import { saveKnownText } from '@/docIndex';
 import { recordWarranty } from '@/recentStore';
 import { purgeBefore, showUndo } from '@/undo';
 import { shareWarranties } from '@/dataTools';
+import { openViewer } from '@/docOpen';
 import { deleteDocuments, documentExists, importDocument, openDocument, pickPhoto, saveDocument, scanDocument } from '@/documents';
 import { DocumentDraft } from '@/documentDraft';
 import { useProductPhoto } from '@/components/useProductPhoto';
@@ -105,6 +106,7 @@ export default function WarrantyDetail() {
   // View and Save side by side while their words fit (the document card's padding is 2 × 10)
   const stackActions = !useRoom()(pairWidth(t('detail.view'), t('detail.save'), 20));
   const operation = useRef(false);
+  const adding = useRef(false); // a double tap on Add note / Start claim inserts once
   const mounted = useRef(false);
   const draft = useRef(new DocumentDraft(deleteDocuments));
   const [documentBusy, setDocumentBusy] = useState<number | 'attach' | 'share' | null>(null);
@@ -158,7 +160,7 @@ export default function WarrantyDetail() {
           <View style={{ gap: 16 }}>
             <Text style={{ ...TYPE.body, color: colors.ink2 }}>{t(loadError ? 'form.loadFailedBody' : 'form.missingBody', { detail: loadError })}</Text>
             {loadError && <Button title={t('home.retry')} onPress={() => { setLoading(true); setLoadAttempt((n) => n + 1); }} />}
-            <Button title={t('form.backToList')} kind="glass" onPress={() => router.replace('/')} />
+            <Button title={t('form.backToList')} kind="glass" onPress={() => router.dismissTo('/')} />
           </View>
         )}
       </Page>
@@ -200,7 +202,7 @@ export default function WarrantyDetail() {
   }
 
   const viewDocument = (d: Attachment) =>
-    documentExists(d.local_path) ? router.push({ pathname: '/document', params: { path: d.local_path, title: product, name: d.filename } }) : showAlert(t('detail.documentMissing'));
+    openViewer({ ...d, warranty_id: w!.id }, product) || showAlert(t('detail.documentMissing'));
 
   // Save asks Android where to put the copy; backing out of the folder picker is not an error.
   async function save(d: Attachment) {
@@ -261,11 +263,16 @@ export default function WarrantyDetail() {
 
   // Repairs, claims, calls with the shop: dated notes, newest first.
   async function addNote() {
-    if (!note.trim()) return;
-    const db = await getDb();
-    await addHistory(db, w!.id, today, note.trim());
-    setNote('');
-    setHistory(await listHistory(db, w!.id));
+    if (!note.trim() || adding.current) return;
+    adding.current = true;
+    try {
+      const db = await getDb();
+      await addHistory(db, w!.id, today, note.trim());
+      setNote('');
+      setHistory(await listHistory(db, w!.id));
+    } finally {
+      adding.current = false;
+    }
   }
 
   function confirmDeleteNote(h: HistoryEntry) {
@@ -333,7 +340,7 @@ export default function WarrantyDetail() {
     const on = !w!.archived_at;
     await setArchived(db, [w!.id], on);
     if (!on) return reloadExtras();
-    showUndo({ message: t('bulk.archived', { count: 1 }), undo: async () => { await setArchived(db, [w!.id], false); } });
+    showUndo({ message: t('bulk.archived', { count: 1 }), undo: async () => { await setArchived(db, [w!.id], false); await rescheduleReminders(db).catch(() => {}); } });
     goBack();
   }
 
@@ -344,10 +351,15 @@ export default function WarrantyDetail() {
 
   // Claims (shortlist 6): one per repair or return case, with its status.
   async function startClaim() {
-    if (!claimTitle.trim()) return;
-    await addClaim(await getDb(), w!.id, { title: claimTitle.trim(), submitted_on: today });
-    setClaimTitle('');
-    await reloadExtras();
+    if (!claimTitle.trim() || adding.current) return;
+    adding.current = true;
+    try {
+      await addClaim(await getDb(), w!.id, { title: claimTitle.trim(), submitted_on: today });
+      setClaimTitle('');
+      await reloadExtras();
+    } finally {
+      adding.current = false;
+    }
   }
   async function setClaimStatus(c: Claim, status: ClaimStatus) {
     await updateClaim(await getDb(), c.id, { status, notes: c.notes }, today);
@@ -616,7 +628,7 @@ export default function WarrantyDetail() {
         {/* 3. Purchase and coverage details. */}
         <Section title={t('detail.details')}>
           {details.map((f, i) => (
-            <Field key={f.label} label={f.label} value={f.value} last={i === details.length - 1} />
+            <Field key={`${f.label}-${i}`} label={f.label} value={f.value} last={i === details.length - 1} />
           ))}
         </Section>
 

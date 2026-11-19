@@ -57,7 +57,7 @@ export default function Redact() {
   const displayWidth = page ? Math.max(80, Math.min(width - 32, 680, Math.max(200, height - 430) * page.width / page.height)) : 1;
   const displayHeight = page ? displayWidth * page.height / page.width : 1;
   const add = (mask: Mask) => {
-    if (mask.width > .002 && mask.height > .002) setMasks(s => ({ ...s, [index]: [...(s[index] ?? []), mask] }));
+    if (mask.width > .002 && mask.height > .002) { setError(null); setMasks(s => ({ ...s, [index]: [...(s[index] ?? []), mask] })); }
   };
   async function preview() {
     if (working.current) return;
@@ -88,7 +88,7 @@ export default function Redact() {
   return <Page title={t(output ? 'redact.previewTitle' : 'redact.title')} lead={t(output ? 'redact.previewHint' : 'redact.hint')} scrollEnabled={!marking}
     footer={page ? <Button title={t(output ? 'redact.share' : 'redact.preview')} onPress={() => void (output ? share() : preview())} busy={busy} disabled={busy || (output ? !confirmed || visited.size !== pages.length : !Object.values(masks).some(m => m.length))} /> : undefined}>
     {!page && !error && <ActivityIndicator color={colors.ink2} />}
-    {error && <><Text style={styles.error}>{error}</Text>{!page && <Button kind="glass" title={t('home.retry')} onPress={() => { setError(null); setAttempt(a => a + 1); }} />}</>}
+    {error && <><Text style={styles.error}>{error}</Text>{!page && error !== t('redact.pageLimit') && <Button kind="glass" title={t('home.retry')} onPress={() => { setError(null); setAttempt(a => a + 1); }} />}</>}
     {page && <>
       <View style={styles.pager}><Button kind="glass" title={t('redact.previous')} disabled={index === 0 || busy} onPress={() => move(index - 1)} /><Text style={styles.count}>{index + 1} / {pages.length}</Text><Button kind="glass" title={t('redact.next')} disabled={index === pages.length - 1 || busy} onPress={() => move(index + 1)} /></View>
       {!output && <Group style={styles.toggle}><Text style={styles.flex}>{t('redact.draw')}</Text><Switch value={marking} onValueChange={setMarking} disabled={busy} accessibilityLabel={t('redact.draw')} /></Group>}

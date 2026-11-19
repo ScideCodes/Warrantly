@@ -1,7 +1,7 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { Children, cloneElement, Fragment, isValidElement, useCallback, useRef, useState, type ReactElement, type ReactNode } from 'react';
+import { Children, cloneElement, Fragment, isValidElement, useCallback, useEffect, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
-import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
+import { ActivityIndicator, AppState, Platform, StyleSheet } from 'react-native';
 import { SheetFrame, SheetBody, SheetHost, type SheetControl } from '@/components/Sheet';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { AFTER_SLIDE_MS } from '@/components/Dock';
@@ -13,6 +13,7 @@ import { dumpDb, type BackupInterval } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
 import { listAccounts, listWarranties, type Account } from '@/db/repo.ts';
 import { biometricAvailable, clearLock, isBiometricEnabled, isLockEnabled, setBiometricEnabled, unlockWithBiometrics } from '@/lock/store';
+import { syncScreenCapture } from '@/lock/gate';
 import { rescheduleReminders } from '@/reminders';
 import { disableCalendarSync, enableCalendarSync, getCalendarSync } from '@/calendarSync';
 import { restartIntoUpdate, versionLine } from '@/appUpdate';
@@ -31,7 +32,7 @@ import { showAlert } from '@/components/Dialog';
 import { setGlass, useGlassEnabled } from '@/components/GlassFill';
 import { Button, Group, IconTile, Input, Row, SectionHeader, Segmented, Switch, TILE } from '@/components/ui';
 import { applyTheme, colors, RADIUS, ROW_X, TYPE, themed, useRoom } from '@/theme';
-import { ALL_GROUPS, reminderSummary, type ReminderGroup } from '@/warranty';
+import { ALL_GROUPS, reminderSummary, todayYmd, type ReminderGroup } from '@/warranty';
 import { useGmailImport } from '@/features';
 
 const INTERVALS: BackupInterval[] = ['weekly', 'monthly', '3m', '6m'];
@@ -52,6 +53,7 @@ export default function Settings() {
   // Menu open state lives in each SheetHost: opening a menu does not redraw the whole settings page.
   const reminderMenu = useRef<SheetControl>(null);
   const intervalMenu = useRef<SheetControl>(null);
+  const disconnecting = useRef(new Set<string>());
   const [language, setLanguage] = useState(getLanguageSetting);
   const [defaultCurrency, setDefaultCurrencyState] = useState(getDefaultCurrency);
   const currencyMenu = useRef<SheetControl>(null);
@@ -77,14 +79,37 @@ export default function Settings() {
   const [draftName, setDraftName] = useState('');
   const gmailImport = useGmailImport();
 
-  // Back from PIN setup: show whether the lock is now on.
+  // One PIN screen per tap: a second tap before it opens would stack another.
+  const pinOpening = useRef(false);
+  const openPin = () => {
+    if (pinOpening.current) return;
+    pinOpening.current = true;
+    router.push('/pin');
+  };
+
+  // Back from PIN setup: show whether the lock is now on. Back from a restore: every value here may have changed.
   useFocusEffect(
     useCallback(() => {
+      pinOpening.current = false;
       const id = setTimeout(() => {
       setName(getUsername());
       setLock(isLockEnabled());
+      setTheme(getThemeSetting());
+      setLanguage(getLanguageSetting());
+      setReminders(getRemindersEnabled());
+      setGroups(getReminderGroups());
+      setReturnReminders(getReturnRemindersEnabled());
+      setDefaultCurrencyState(getDefaultCurrency());
+      setDensityState(getDensity());
+      setWidgetTrackState(getWidgetTrack());
+      setCalendarOn(getCalendarSync());
       setWidgetNamesState(widgetShowsNames()); // the default follows the lock
-      setWidgetPicksCount(getWidgetPicks().length); // back from choosing widget warranties
+      // Back from choosing widget warranties; expired or deleted picks are not counted.
+      void getDb().then((db) => listWarranties(db, 'complete')).then((list) => {
+        const today = todayYmd();
+        const active = new Set(list.filter((w) => w.end_date >= today).map((w) => w.id));
+        setWidgetPicksCount(getWidgetPicks().filter((id) => active.has(id)).length);
+      }).catch((e) => console.warn('widget picks', e));
       void getDb().then(updateWidget).catch((e) => console.warn('widget', e));
       setBiometric(isBiometricEnabled());
       void biometricAvailable().then(setCanBiometric);
@@ -97,14 +122,24 @@ export default function Settings() {
       return () => clearTimeout(id);
     }, []),
   );
+  // A fingerprint added or removed in Android settings while this screen stays open.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void biometricAvailable().then(setCanBiometric);
+    });
+    return () => sub.remove();
+  }, []);
 
   async function toggleLock(on: boolean) {
-    if (on) return router.push('/pin');
+    if (on) return openPin();
     await clearLock();
     setLock(false);
     setBiometric(false);
     setWidgetNamesState(widgetShowsNames());
-    await updateWidget(await getDb());
+    void syncScreenCapture(); // screenshots allowed again now, not at the next navigation
+    const db = await getDb();
+    await updateWidget(db);
+    await rescheduleReminders(db); // titles may name products again
   }
 
   async function toggleBiometric(on: boolean) {
@@ -167,7 +202,7 @@ export default function Settings() {
   async function toggleReminders(on: boolean) {
     setRemindersEnabled(on);
     setReminders(on);
-    await rescheduleReminders(await getDb());
+    if ((await rescheduleReminders(await getDb())) === 'denied' && on) showAlert(t('detail.noPermission'));
   }
 
   async function addAccount() {
@@ -187,6 +222,7 @@ export default function Settings() {
 
   // Section 15: an encrypted backup of the account is made first; it needs the backup password.
   function disconnect(account: Account) {
+    if (disconnecting.current.has(account.email)) return; // a second run would find nothing left to back up
     if (!hasBackupPassword()) {
       return showAlert(t('accounts.needPassword'), undefined, [
         { text: t('restore.cancel'), style: 'cancel' },
@@ -199,6 +235,8 @@ export default function Settings() {
         text: t('accounts.disconnect'),
         style: 'destructive',
         onPress: async () => {
+          if (disconnecting.current.has(account.email)) return;
+          disconnecting.current.add(account.email);
           const db = await getDb();
           try {
             const revoke = await disconnectAccount(db, account);
@@ -207,6 +245,8 @@ export default function Settings() {
             showAlert(t(revoke === 'failed' ? 'accounts.doneAccessKept' : 'accounts.done', { email: account.email }), revoke === 'backupOff' ? t('accounts.backupOff') : undefined);
           } catch (e) {
             showAlert(e instanceof Error ? e.message : String(e));
+          } finally {
+            disconnecting.current.delete(account.email);
           }
           setAccounts(await listAccounts(db));
         },
@@ -260,6 +300,7 @@ export default function Settings() {
     const run = async (drive: boolean) => {
       try {
         await deleteAllData(await getDb(), drive);
+        void syncScreenCapture(); // the lock went with the data
         await restartIntoUpdate().catch(() => router.replace('/onboarding')); // starts fresh, like a new install
       } catch (e) {
         showAlert(e instanceof Error ? e.message : String(e));
@@ -482,9 +523,12 @@ export default function Settings() {
       {section(
         t('settings.security'),
         <>
+          {/* eslint-disable-next-line react-hooks/refs -- the ref is read only when the row is tapped */}
           {row('lock-closed-outline', TILE.grey, t('settings.lock'), null, lock, toggleLock)}
-          {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), () => router.push('/pin'))}
-          {lock && canBiometric && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
+          {/* eslint-disable-next-line react-hooks/refs -- the ref is read only when the row is tapped */}
+          {lock && link('keypad-outline', TILE.grey, t('settings.changePin'), openPin)}
+          {/* Also shown while on without a fingerprint enrolled, so it can be switched off. */}
+          {lock && (canBiometric || biometric) && row('finger-print-outline', TILE.red, t('settings.biometric'), null, biometric, toggleBiometric)}
           {Platform.OS === 'android' && row('apps-outline', TILE.indigo, t('settings.widgetNames'), null, widgetNames, toggleWidgetNames)}
           {link('time-outline', TILE.grey, t('recent.clear'), () => { forgetRecent(); showAlert(t('recent.cleared')); })}
         </>,
@@ -517,7 +561,7 @@ export default function Settings() {
             <View style={styles.rowText}>
               <Text style={styles.label}>{t('backup.account')}</Text>
               <Text style={styles.hint} numberOfLines={1}>
-                {backupAccount ?? t('backup.accountNone')}
+                {backupAccount || t('backup.accountNone')}
               </Text>
             </View>
             <Pressable onPress={changeBackupAccount} disabled={backupBusy} accessibilityRole="button" accessibilityLabel={`${t('backup.account')}: ${t('backup.change')}`} hitSlop={8}>

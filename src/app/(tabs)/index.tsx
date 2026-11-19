@@ -3,7 +3,7 @@ import { Pressable, Text, TextInput, View } from '@/components/themeMotion';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
 import { Redirect, router, useFocusEffect, useLocalSearchParams, useScrollToTop } from 'expo-router';
-import { ActivityIndicator, Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, Animated, BackHandler, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -40,7 +40,7 @@ import { Button, GlassButton, Group, Row, SectionHeader } from '@/components/ui'
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
 import { AFTER_SLIDE_MS } from '@/components/Dock';
 import { showAlert } from '@/components/Dialog';
-import { finishPendingDeletes, showUndo } from '@/undo';
+import { finishPendingDeletes, onUndone, showUndo } from '@/undo';
 import { CATEGORIES, daysUntil, filterWarranties, plain, todayYmd, totalValue, warrantyFacets } from '@/warranty';
 import { updateWidget } from '@/widget';
 import { isGmailImportEnabled, useGmailImport } from '@/features';
@@ -91,6 +91,7 @@ export default function Home() {
   const [docSheet, setDocSheet] = useState<{ w: Warranty; docs: DocumentRow[] } | null>(null);
   const allDocs = useRef<DocumentRow[]>([]); // the list's own load, for the row's document button without a read
   const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
+  const [loadFailed, setLoadFailed] = useState(false);
   const updateReady = useUpdateReady();
   const gmailImport = useGmailImport();
   const syncing = useRef(false);
@@ -117,6 +118,7 @@ export default function Home() {
       listCollections(db), collectionMembers(db), dismissedPairs(db), listAllDocuments(db), missingDetails(db),
     ]);
     if (version !== loadVersion.current) return;
+    setLoadFailed(false);
     setAccounts(nextAccounts);
     setWarranties(nextWarranties);
     setArchivedList(nextArchived);
@@ -125,6 +127,10 @@ export default function Home() {
     setCollections(nextCollections);
     setMembers(nextMembers);
     setDocuments(docs);
+    // A filter whose collection or account is gone, or an emptied archive, falls back to everything.
+    setFilter((f) => (f.kind === 'collection' && !nextCollections.some((c) => c.id === f.id))
+      || (f.kind === 'account' && !nextAccounts.some((a) => a.id === f.id))
+      || (f.kind === 'archived' && !nextArchived.length) ? { kind: 'all' } : f);
     allDocs.current = docs;
     setDuplicates(duplicatePairs([...nextWarranties, ...needsInput, ...nextArchived], dismissed).length);
     void readBackupHealth().then((h) => setBackupFailed(h.state === 'failed' || h.state === 'overdue')).catch(() => {});
@@ -155,13 +161,16 @@ export default function Home() {
     }
   }, [load]);
 
+  // A failed read of the list is not a Gmail problem: it gets its own row, whose retry reads again.
+  const tryLoad = useCallback(() => void load().catch((e) => { console.warn('load', e); setLoadFailed(true); }), [load]);
   // Reload when coming back from another screen; sync once on app open (section 7).
   useFocusEffect(
     useCallback(() => {
-      const id = setTimeout(() => void load().catch((e) => setSync({ kind: 'idle', problems: [e instanceof Error ? e.message : String(e)] })), AFTER_SLIDE_MS);
+      const id = setTimeout(tryLoad, AFTER_SLIDE_MS);
       return () => clearTimeout(id);
-    }, [load]),
+    }, [tryLoad]),
   );
+  useEffect(() => onUndone(tryLoad), [tryLoad]); // an undo from the detail page lands after home already reloaded
   useEffect(() => {
     if (name && isGmailImportEnabled()) void Promise.resolve().then(runSync);
     if (name && shouldShowWhatsNew()) router.push('/whats-new');
@@ -258,7 +267,7 @@ export default function Home() {
     };
   }, [warranties, archived, listFilter, listQuick, listSortKey, matches, members, today]);
   const hiddenOpen = showHidden || searchQuery.trim() !== '';
-  const expiredOpen = showExpired || searchQuery.trim() !== '' || listQuick === 'nodocs'; // search includes expired items
+  const expiredOpen = showExpired || searchQuery.trim() !== ''; // search includes expired items; "no documents" counts covered ones, so expired stay folded
   const sections = useMemo(() => [
     { key: 'pinned' as const, data: visible.pinned },
     { key: 'soon' as const, data: visible.soon },
@@ -315,6 +324,12 @@ export default function Home() {
     [styles.card], [styles.card, styles.cardFirst], [styles.card, styles.cardLast], [styles.card, styles.cardFirst, styles.cardLast],
   ], [styles]);
   const selecting = selected !== null;
+  // Android back leaves selecting first, as the Cancel button does.
+  useFocusEffect(useCallback(() => {
+    if (!selecting) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => { setSelected(null); setBulk(null); return true; });
+    return () => sub.remove();
+  }, [selecting]));
   const renderWarranty = useCallback(({ item, index, section }: { item: Warranty; index: number; section: { data: readonly Warranty[] } }) => (
     <WarrantyRow
       warranty={item}
@@ -352,6 +367,7 @@ export default function Home() {
     ...(attention > 0 ? [{ key: 'attention', icon: 'alert-circle-outline' as const, color: colors.warn, label: t('home.attentionRow'), action: String(attention), onPress: () => router.push('/attention') }] : []),
     ...(inbox > 0 ? [{ key: 'inbox', icon: 'file-tray-full-outline' as const, color: colors.tint, label: t('inbox.row', { count: inbox }), action: t('inbox.review'), onPress: () => router.push('/inbox') }] : []),
     ...(duplicates > 0 ? [{ key: 'dups', icon: 'copy-outline' as const, color: colors.tint, label: t('dups.row', { count: duplicates }), action: t('dups.review'), onPress: () => router.push('/duplicates') }] : []),
+    ...(loadFailed ? [{ key: 'load', icon: 'alert-circle-outline' as const, color: colors.bad, label: t('home.loadFailed'), action: t('home.retry'), onPress: tryLoad }] : []),
     ...(problems.length > 0 ? [{ key: 'sync', icon: 'cloud-offline-outline' as const, color: colors.bad, label: t('home.syncFailed', { count: problems.length }), action: t('home.details'), onPress: showProblems }] : []),
     ...(backupFailed ? [{ key: 'backup', icon: 'cloud-offline-outline' as const, color: colors.bad, label: t('health.failedRow'), action: t('home.details'), onPress: () => router.push('/backup-status') }] : []),
   ];
@@ -364,7 +380,7 @@ export default function Home() {
     {
       title: t('home.show'),
       options: [
-        menuItem(all),
+        { ...menuItem(all), selected: filter.kind === 'all' && !quick, onPress: () => { Keyboard.dismiss(); setFilter(all); setQuick(null); scrollTop(); } },
         { key: 'q-expiring', label: t('home.quickExpiring'), count: counts.expiring, selected: quick === 'expiring', onPress: () => chooseQuick('expiring') },
         { key: 'q-nodocs', label: t('home.quickNoDocs'), count: counts.noDocs, selected: quick === 'nodocs', onPress: () => chooseQuick('nodocs') },
         ...(archived.length ? [menuItem({ kind: 'archived' })] : []),
@@ -438,8 +454,9 @@ export default function Home() {
         // Shortlist 1: one slim line of counts; each count is a button for its results.
         <View style={[styles.summary, (width - 2 * gutter(width)) / fontScale < 280 && { flexDirection: 'column' }]} accessibilityRole="toolbar">
           <SummaryItem value={counts.covered} label={t('summary.covered')} on={!quick && filter.kind === 'all'} onPress={() => { setQuick(null); setFilter(all); scrollTop(); }} />
-          <SummaryItem value={counts.expiring} label={t('summary.expiring')} on={quick === 'expiring'} tone={counts.expiring ? colors.warn : undefined} onPress={() => chooseQuick('expiring')} />
-          <SummaryItem value={counts.noDocs} label={t('summary.noDocs')} on={quick === 'nodocs'} onPress={() => chooseQuick('nodocs')} />
+          <SummaryItem value={counts.expiring} label={t('summary.expiring')} on={quick === 'expiring'} tone={counts.expiring ? colors.warn : undefined} onPress={() => { setFilter(all); chooseQuick('expiring'); }} />
+          {/* The counts are over all items, so a tap also drops another filter to show what was counted. */}
+          <SummaryItem value={counts.noDocs} label={t('summary.noDocs')} on={quick === 'nodocs'} onPress={() => { setFilter(all); chooseQuick('nodocs'); }} />
         </View>
       )}
       {sync.kind === 'syncing' && (
@@ -521,8 +538,9 @@ export default function Home() {
     </View>
   );
 
-  const showHiddenToggleInFooter = visible.hidden.length > 0 && searchQuery.trim() === '' && listFilter.kind !== 'archived' && !showHidden && !expiredOpen;
-  const showExpiredToggleInFooter = visible.expired.length > 0 && searchQuery.trim() === '' && listQuick !== 'nodocs' && listFilter.kind !== 'archived' && !showExpired;
+  // The expired section's header carries the hidden toggle only when that section is drawn.
+  const showHiddenToggleInFooter = visible.hidden.length > 0 && searchQuery.trim() === '' && listFilter.kind !== 'archived' && !showHidden && !(expiredOpen && visible.expired.length > 0);
+  const showExpiredToggleInFooter = visible.expired.length > 0 && searchQuery.trim() === '' && listFilter.kind !== 'archived' && !showExpired;
   const footer = (showHiddenToggleInFooter || showExpiredToggleInFooter) ? (
     <View>
       {showHiddenToggleInFooter && (
@@ -545,7 +563,7 @@ export default function Home() {
   ) : undefined;
 
   // --- Bulk actions (shortlist 5) on the current selection ---
-  const chosen = selected ? [...selected] : [];
+  const chosen = selected ? shownIds.filter((id) => selected.has(id)) : []; // rows a search or filter took off screen are not acted on
   const endSelect = () => { setSelected(null); setBulk(null); };
   async function bulkExport() {
     const db = await getDb();
@@ -599,7 +617,7 @@ export default function Home() {
     } : bulk === 'collection' ? {
       title: t('bulk.addToCollection'),
       sections: [{ options: [...collections.map((c) => ({ key: String(c.id), label: c.name, count: c.count, onPress: () => void bulkCollection(c.id) })),
-        { key: 'new', icon: 'add-circle-outline' as const, label: t('collections.new'), onPress: () => router.push({ pathname: '/collections', params: { add: chosen.join(',') } }) }] }],
+        { key: 'new', icon: 'add-circle-outline' as const, label: t('collections.new'), onPress: () => { const add = chosen.join(','); endSelect(); router.push({ pathname: '/collections', params: { add } }); } }] }],
     } : null;
 
   return (
@@ -631,7 +649,7 @@ export default function Home() {
                     </Row>
                   </Group>
                 )}
-                {searchQuery.trim() === '' && listQuick !== 'nodocs' && listFilter.kind !== 'archived' ? (
+                {searchQuery.trim() === '' && listFilter.kind !== 'archived' ? (
                   <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
                     <Row onPress={() => setShowExpired(false)} accessibilityState={{ expanded: true }}>
                       <Text style={styles.expiredToggleText}>{t('home.hideExpired')}</Text>

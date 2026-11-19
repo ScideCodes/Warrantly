@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { addAttachment, addHistory, addManual, deleteAttachment, deleteWarranty, getWarranty, importShared, listArchived, listAttachments, listWarranties, migrate, type Db } from './repo.ts';
+import { addAttachment, addHistory, addManual, deleteAttachment, deleteWarranty, getWarranty, ignoreWarranty, importShared, listArchived, listAttachments, listWarranties, migrate, type Db } from './repo.ts';
 import {
   addClaim, addCustomReminder, addInbox, assignInbox, bundleMembers, bundleTogether, changeCount, cleanDocText, collectionsOf, createCollection,
   deleteCollection, discardInbox, indexCounts, leaveBundle, listClaims, listCollections, listCustomReminders, listInbox, markBackedUp, mergeWarranties,
@@ -157,6 +157,9 @@ test('text index: unread files are listed once, searched by every word, cleaned 
   const d = await addAttachment(db, a, 'r.pdf', 'r.pdf');
   await addAttachment(db, b, 'r.pdf', 'r.pdf'); // shared file: read once
   await addAttachment(db, b, 's.pdf', 's.pdf');
+  const ignored = await addManual(db, { ...base, product_name: 'Not mine' });
+  await addAttachment(db, ignored, 'x.pdf', 'x.pdf');
+  await ignoreWarranty(db, ignored); // left out like on the Documents screen
   assert.deepEqual((await unindexedDocuments(db, 10)).sort(), ['r.pdf', 's.pdf']);
   await saveDocText(db, 'r.pdf', 'order no 260427-380724 serial sn12345', 'done');
   await saveDocText(db, 's.pdf', '', 'failed');

@@ -22,7 +22,10 @@ export async function addGmailAccount(db: Db): Promise<{ email: string; needsRan
   if (!email) return null;
   const account = await upsertAccount(db, email);
   const date = await disconnectBackupDate(db, email);
-  if (date && hasBackupPassword()) {
+  // Skip keeps the copy, but an account that already has warranties (connected again, or synced since)
+  // is never offered it: restoring then would add every warranty twice.
+  const has = await db.getFirstAsync('SELECT 1 FROM warranties WHERE account_id = ? LIMIT 1', [account.id]);
+  if (date && !has && hasBackupPassword()) {
     const when = new Date(date).toLocaleString(i18n.language);
     if (await ask(i18n.t('accounts.restoreTitle', { email }), i18n.t('accounts.restoreBody', { date: when }), i18n.t('accounts.restore'), i18n.t('accounts.skip'))) {
       await restoreDisconnected(db, account);
