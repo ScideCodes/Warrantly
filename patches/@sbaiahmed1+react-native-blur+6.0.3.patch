@@ -1,5 +1,5 @@
 diff --git a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
-index ab47c96..5887057 100644
+index ab47c96..6de7eb9 100644
 --- a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
 +++ b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
 @@ -3,8 +3,10 @@ package com.sbaiahmed1.reactnativeblur
@@ -296,7 +296,7 @@ index ab47c96..5887057 100644
    }
  
    override fun onDetachedFromWindow() {
-@@ -210,154 +199,240 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -210,154 +199,248 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
    }
  
    fun cleanup() {
@@ -368,6 +368,9 @@ index ab47c96..5887057 100644
 +  @RequiresApi(Build.VERSION_CODES.S)
 +  private fun recordBackdrop() {
 +    val node = ensureNode()
++    // Under a sheet, picker or dialog window the screen behind barely changes: keep the last backdrop, so a
++    // press bounce behind an opening sheet does not re-blur every glass view per frame on the UI thread.
++    if (!hasWindowFocus() && node.hasDisplayList()) return
 +    val source = resolveSource()
 +    if (source == null || !toSource.invert(fromSource)) {
 +      node.discardDisplayList()
@@ -425,6 +428,11 @@ index ab47c96..5887057 100644
 -    // (SHARED_CAPTURE_MAX_AGE_MS, driven by the ticker) once still.
 -    if (offsetX != appliedOffsetX || offsetY != appliedOffsetY) {
 -      SharedBackdropCapture.acquire(source, CAPTURE_DOWNSAMPLE, BACKDROP_REFRESH_MS)
++  override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
++    super.onWindowFocusChanged(hasWindowFocus)
++    if (hasWindowFocus) invalidate() // the next pre-draw records what changed while another window was on top
++  }
++
 +  private fun resolveSource(): View? {
 +    toSource.reset()
 +    var v: View = this
@@ -648,7 +656,7 @@ index ab47c96..5887057 100644
      }
    }
  
-@@ -371,77 +446,15 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -371,77 +454,15 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
        .use { it.readText() }
    }
  
@@ -731,7 +739,7 @@ index ab47c96..5887057 100644
    }
  
    /**
-@@ -450,12 +463,12 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -450,12 +471,12 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
     */
    fun setGlassTintColor(color: Int?) {
      glassTintColor = color ?: Color.TRANSPARENT
@@ -746,7 +754,7 @@ index ab47c96..5887057 100644
    }
  
    fun setIsInteractive(isInteractive: Boolean) {
-@@ -567,7 +580,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -567,7 +588,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
  
      clipToOutline = true
      invalidateOutline()
