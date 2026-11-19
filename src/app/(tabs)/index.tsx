@@ -301,7 +301,7 @@ export default function Home() {
   const toggle = useCallback((id: number) => setSelected((s) => {
     const next = new Set(s ?? []);
     if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
+    return next.size ? next : null; // deselecting the last row ends selecting
   }), []);
   const startSelect = useCallback((id?: number) => setSelected(new Set(id === undefined ? [] : [id])), []);
   // Answers the tap at once from the documents loaded with the list (reloaded on every visit and after sync).
@@ -687,9 +687,9 @@ export default function Home() {
             <GlassButton icon="funnel-outline" label={t('home.filter')} color={filter.kind !== 'all' || quick ? colors.tint : colors.ink} selected={filter.kind !== 'all' || quick !== null} onPress={() => filterMenu.current?.open()} />
           </>}
       />
-      {selecting && (
+      {chosen.length > 0 && (
         <View style={[styles.bulkBar, { bottom: insets.bottom + 84 }]}>
-          <Button title={t('bulk.actions', { count: chosen.length })} icon="ellipsis-horizontal-circle-outline" onPress={() => setBulk('actions')} disabled={!chosen.length} style={styles.flex} />
+          <Button title={t('bulk.actions', { count: chosen.length })} icon="ellipsis-horizontal-circle-outline" onPress={() => setBulk('actions')} style={styles.flex} />
         </View>
       )}
       <SheetHost control={filterMenu}>
