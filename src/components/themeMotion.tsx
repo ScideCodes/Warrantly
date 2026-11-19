@@ -74,7 +74,7 @@ export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, Pressa
       onPressIn={(event) => { if (tracksPress) setPressed(true); to(pressScale ?? 1, 100); props.onPressIn?.(event); }}
       onPressOut={(event) => { if (tracksPress) setPressed(false); to(1, 140); props.onPressOut?.(event); }}
       style={[
-        typeof style === 'function' ? style({ pressed }) : style,
+        typeof style === 'function' ? style({ pressed, hovered: false }) : style,
         pressScale !== undefined && { transform: [{ scale }] },
       ]}
     />
