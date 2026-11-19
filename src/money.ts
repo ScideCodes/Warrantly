@@ -1,12 +1,21 @@
 import { currencyData } from './currencyData.ts';
 
 export const moneyLocale = (language: string) => language.startsWith('hu') ? 'hu-HU' : 'en-US';
+// Hermes on Android builds a new ICU formatter per toLocaleString call; reuse one per locale and options.
+const numberFormats = new Map<string, Intl.NumberFormat>();
+function numberFormat(locale: string, options: Intl.NumberFormatOptions): Intl.NumberFormat {
+  const key = `${locale}|${JSON.stringify(options)}`;
+  let format = numberFormats.get(key);
+  if (!format) numberFormats.set(key, (format = new Intl.NumberFormat(locale, options)));
+  return format;
+}
 export const fractionDigits = (currency: string) => currencyData[currency]?.digits ?? 2;
 export const currencyName = (currency: string, language: string) => currencyData[currency]?.[language.startsWith('hu') ? 'hu' : 'en'] ?? currency;
 export function currencyChoices(language: string, selected?: string) {
   const codes = Object.keys(currencyData);
   if (selected && !codes.includes(selected)) codes.push(selected); // Retain a historical currency on an existing receipt.
-  return codes.map(code => ({ code, name: currencyName(code, language) })).sort((a, b) => a.name.localeCompare(b.name, moneyLocale(language)) || a.code.localeCompare(b.code));
+  const collator = new Intl.Collator(moneyLocale(language));
+  return codes.map(code => ({ code, name: currencyName(code, language) })).sort((a, b) => collator.compare(a.name, b.name) || a.code.localeCompare(b.code));
 }
 
 // Canonical state uses a dot and no grouping. Reject letters, signs and excess precision rather than
@@ -39,18 +48,18 @@ export function priceNumber(raw: string, currency: string): number | null {
 }
 export function priceDisplay(raw: string, currency: string, language: string): string {
   const value = priceNumber(raw, currency);
-  return value === null ? '' : new Intl.NumberFormat(moneyLocale(language), { useGrouping: true, minimumFractionDigits: fractionDigits(currency), maximumFractionDigits: fractionDigits(currency) }).format(value);
+  return value === null ? '' : numberFormat(moneyLocale(language), { useGrouping: true, minimumFractionDigits: fractionDigits(currency), maximumFractionDigits: fractionDigits(currency) }).format(value);
 }
 export const editingPrice = (raw: string, language: string) => moneyLocale(language) === 'hu-HU' ? raw.replace('.', ',') : raw;
 export function currencyFirst(language: string): boolean {
-  const parts = new Intl.NumberFormat(moneyLocale(language), { style: 'currency', currency: 'USD', currencyDisplay: 'code' }).formatToParts(1);
+  const parts = numberFormat(moneyLocale(language), { style: 'currency', currency: 'USD', currencyDisplay: 'code' }).formatToParts(1);
   return parts.findIndex(p => p.type === 'currency') < parts.findIndex(p => p.type === 'integer');
 }
 
 // Preserve compact whole amounts, but never drop KWD/BHD's third or CLF's fourth decimal in details/totals.
 export function formatMoney(amount: number, currency: string, language: string): string {
   try {
-    return amount.toLocaleString(language, { style: 'currency', currency, maximumFractionDigits: Number.isInteger(amount) ? 0 : fractionDigits(currency) });
+    return numberFormat(language, { style: 'currency', currency, maximumFractionDigits: Number.isInteger(amount) ? 0 : fractionDigits(currency) }).format(amount);
   } catch {
     return `${amount} ${currency}`;
   }

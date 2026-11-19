@@ -13,3 +13,12 @@ export function initialDate(value: string, minimum?: string): string {
   const date = isValidYmd(value) ? value : todayYmd();
   return minimum && isValidYmd(minimum) && date < minimum ? minimum : date;
 }
+
+// Hermes on Android builds a new ICU formatter on every toLocaleDateString call; reuse one per locale and options.
+const dateFormats = new Map<string, Intl.DateTimeFormat>();
+export function dateFormat(locale: string, options: Intl.DateTimeFormatOptions): Intl.DateTimeFormat {
+  const key = `${locale}|${JSON.stringify(options)}`;
+  let format = dateFormats.get(key);
+  if (!format) dateFormats.set(key, (format = new Intl.DateTimeFormat(locale, options)));
+  return format;
+}

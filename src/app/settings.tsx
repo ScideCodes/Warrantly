@@ -1,8 +1,8 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { Children, cloneElement, Fragment, isValidElement, useCallback, useState, type ReactElement, type ReactNode } from 'react';
+import { Children, cloneElement, Fragment, isValidElement, useCallback, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { router, useFocusEffect } from 'expo-router';
 import { ActivityIndicator, Platform, StyleSheet } from 'react-native';
-import { SheetFrame, SheetBody } from '@/components/Sheet';
+import { SheetFrame, SheetBody, SheetHost, type SheetControl } from '@/components/Sheet';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { useTranslation } from 'react-i18next';
 import { addGmailAccount, syncAllAccounts } from '@/accounts';
@@ -48,11 +48,12 @@ export default function Settings() {
   const [canBiometric, setCanBiometric] = useState(false);
   const [reminders, setReminders] = useState(getRemindersEnabled);
   const [returnReminders, setReturnReminders] = useState(getReturnRemindersEnabled);
-  const [reminderMenu, setReminderMenu] = useState(false);
-  const [intervalMenu, setIntervalMenu] = useState(false);
+  // Menu open state lives in each SheetHost: opening a menu does not redraw the whole settings page.
+  const reminderMenu = useRef<SheetControl>(null);
+  const intervalMenu = useRef<SheetControl>(null);
   const [language, setLanguage] = useState(getLanguageSetting);
   const [defaultCurrency, setDefaultCurrencyState] = useState(getDefaultCurrency);
-  const [currencyMenu, setCurrencyMenu] = useState(false);
+  const currencyMenu = useRef<SheetControl>(null);
   const [theme, setTheme] = useState(getThemeSetting);
   const glassOn = useGlassEnabled();
   const [density, setDensityState] = useState<Density>(getDensity);
@@ -429,7 +430,8 @@ export default function Settings() {
         t('settings.remindersSection'),
         <>
           {row('notifications-outline', TILE.red, t('settings.reminders'), null, reminders, toggleReminders)}
-          {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => setReminderMenu(true), { hint: reminderSummary(groups, (k, o) => t(k, o ?? {})) || t('settings.noReminderDates') })}
+          {/* eslint-disable-next-line react-hooks/refs -- the ref is read only when the row is tapped */}
+          {reminders && link('calendar-outline', TILE.orange, t('settings.reminderSchedule'), () => reminderMenu.current?.open(), { hint: reminderSummary(groups, (k, o) => t(k, o ?? {})) || t('settings.noReminderDates') })}
           {reminders && row('return-down-back-outline', TILE.purple, t('settings.returnReminders'), t('settings.returnRemindersHint'), returnReminders, toggleReturnReminders)}
           {Platform.OS === 'android' && row('today-outline', TILE.blue, t('calendarSync.title'), t('calendarSync.hint'), calendarOn, (on) => void toggleCalendar(on).catch((e) => showAlert(String(e))))}
         </>,
@@ -463,7 +465,8 @@ export default function Settings() {
             (d: string) => { setDensity(d as Density); setDensityState(d as Density); },
           )}
           {choices('globe-outline', TILE.blue, t('settings.language'), ['system', ...Object.keys(resources)].map((key) => ({ key, label: t(`settings.lang_${key}`) })), language, chooseLanguage)}
-          {link('cash-outline', TILE.green, t('settings.currency'), () => setCurrencyMenu(true), { value: defaultCurrency })}
+          {/* eslint-disable-next-line react-hooks/refs -- the ref is read only when the row is tapped */}
+          {link('cash-outline', TILE.green, t('settings.currency'), () => currencyMenu.current?.open(), { value: defaultCurrency })}
           {Platform.OS === 'android' && choices('apps-outline', TILE.indigo, t('settings.widgetTrack'), [
             { key: 'soon', label: t('settings.widgetTrack_soon') },
             { key: 'chosen', label: t('settings.widgetTrack_chosen') },
@@ -489,7 +492,8 @@ export default function Settings() {
           {row('cloud-upload-outline', TILE.cyan, t('backup.enable'), t('backup.enableHint'), backup, toggleBackup)}
           {backup && (
             <>
-              {link('repeat-outline', TILE.cyan, t('backup.interval'), () => setIntervalMenu(true), { value: t(`backup.${interval}`) })}
+              {/* eslint-disable-next-line react-hooks/refs -- the ref is read only when the row is tapped */}
+              {link('repeat-outline', TILE.cyan, t('backup.interval'), () => intervalMenu.current?.open(), { value: t(`backup.${interval}`) })}
               <Row key="backup-status" iconInset style={styles.block}>
                 <Text style={backupError && !backupBusy ? styles.error : styles.hint} accessibilityLiveRegion="polite">
                   {backupBusy
@@ -544,7 +548,8 @@ export default function Settings() {
       <Text style={styles.version}>
         {t('settings.version', { version: versionLine(i18n.language) })}
       </Text>
-      <SheetFrame open={reminderMenu} onClose={() => setReminderMenu(false)} title={t('settings.reminderSchedule')}>
+      <SheetHost control={reminderMenu}>{(open, close) => (
+      <SheetFrame open={open} onClose={close} title={t('settings.reminderSchedule')}>
         <SheetBody><Group inSheet>{[...ALL_GROUPS, 'daily' as ReminderGroup].map((g, index) => (
           <Row key={g} separator={index > 0} onPress={() => { void toggleGroup(g).catch(error => showAlert(t('settings.reminderFailed'), String(error))); }} accessibilityRole="checkbox" accessibilityState={{ checked: groups.includes(g) }}>
             <View style={styles.tileSpace}><View style={[styles.check, groups.includes(g) && styles.checkOn]}>{groups.includes(g) && <AppIcon name="checkmark" size={15} color="#fff" />}</View></View>
@@ -552,7 +557,9 @@ export default function Settings() {
           </Row>
         ))}</Group></SheetBody>
       </SheetFrame>
-      <SheetFrame open={intervalMenu} onClose={() => setIntervalMenu(false)} title={t('backup.interval')}>
+      )}</SheetHost>
+      <SheetHost control={intervalMenu}>{(open, close) => (
+      <SheetFrame open={open} onClose={close} title={t('backup.interval')}>
         <SheetBody>
           <Group inSheet>
             {INTERVALS.map((i, index) => (
@@ -562,7 +569,7 @@ export default function Settings() {
                 onPress={() => {
                   setSetting('backup_interval', i);
                   setIntervalChoice(i);
-                  setIntervalMenu(false);
+                  close();
                 }}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: interval === i }}
@@ -578,7 +585,9 @@ export default function Settings() {
           </Group>
         </SheetBody>
       </SheetFrame>
-      <SheetFrame open={currencyMenu} onClose={() => setCurrencyMenu(false)} title={t('settings.currency')}>
+      )}</SheetHost>
+      <SheetHost control={currencyMenu}>{(open, close) => (
+      <SheetFrame open={open} onClose={close} title={t('settings.currency')}>
         <SheetBody>
           <Group inSheet>
             {CURRENCIES.map((code, index) => (
@@ -587,7 +596,7 @@ export default function Settings() {
                 separator={index > 0}
                 onPress={() => {
                   chooseCurrency(code);
-                  setCurrencyMenu(false);
+                  close();
                 }}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: defaultCurrency === code }}
@@ -603,6 +612,7 @@ export default function Settings() {
           </Group>
         </SheetBody>
       </SheetFrame>
+      )}</SheetHost>
     </Page>
   );
 }

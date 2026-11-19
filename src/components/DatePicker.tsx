@@ -5,7 +5,7 @@ import { Pressable, Text, View } from '@/components/themeMotion';
 import { SheetFrame } from '@/components/Sheet';
 import { Button, GlassButton } from '@/components/ui';
 import { colors, TYPE, themed } from '@/theme';
-import { calendarDate, initialDate, monthDays } from '@/calendar';
+import { calendarDate, dateFormat, initialDate, monthDays } from '@/calendar';
 import { todayYmd } from '@/warranty';
 
 type Request = { title: string; value: string; minimum?: string; onPick: (date: string) => void };
@@ -31,7 +31,7 @@ function Calendar({ request, open, close }: { request: Request; open: boolean; c
   const [month, setMonth] = useState(initial.getMonth());
   const [mode, setMode] = useState<'days' | 'months' | 'years'>('days');
   const [yearPage, setYearPage] = useState(Math.floor(initial.getFullYear() / 12) * 12);
-  const monthName = (m: number) => new Date(year, m, 1).toLocaleDateString(locale, { month: 'long' });
+  const monthName = (m: number) => dateFormat(locale, { month: 'long' }).format(new Date(year, m, 1));
   const days = monthDays(year, month, mondayFirst);
   while (days.length % 7) days.push(null);
   const weeks = Array.from({ length: days.length / 7 }, (_, i) => days.slice(i * 7, i * 7 + 7));
@@ -62,12 +62,12 @@ function Calendar({ request, open, close }: { request: Request; open: boolean; c
         <GlassButton icon="chevron-forward" label={t(mode === 'years' ? 'calendar.nextYears' : mode === 'months' ? 'calendar.nextYear' : 'calendar.nextMonth')} onPress={() => navigate(1)} />
       </View>
       {mode === 'days' && <>
-        <View style={styles.week}>{Array.from({ length: 7 }, (_, i) => <View key={i} style={styles.cell}><Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.weekday}>{new Date(2026, 10, 1 + i + (mondayFirst ? 1 : 0)).toLocaleDateString(locale, { weekday: 'narrow' })}</Text></View>)}</View>
-        {weeks.map((week, w) => <View key={w} style={styles.week}>{week.map((date, i) => date ? cell(String(calendarDate(date).getDate()), () => setSelected(date), { selected: selected === date, disabled: !!request.minimum && date < request.minimum, accessibilityLabel: calendarDate(date).toLocaleDateString(locale, { dateStyle: 'full' }) }) : <View key={`blank-${i}`} style={styles.cell} />)}</View>)}
+        <View style={styles.week}>{Array.from({ length: 7 }, (_, i) => <View key={i} style={styles.cell}><Text numberOfLines={1} maxFontSizeMultiplier={1.3} style={styles.weekday}>{dateFormat(locale, { weekday: 'narrow' }).format(new Date(2026, 10, 1 + i + (mondayFirst ? 1 : 0)))}</Text></View>)}</View>
+        {weeks.map((week, w) => <View key={w} style={styles.week}>{week.map((date, i) => date ? cell(String(calendarDate(date).getDate()), () => setSelected(date), { selected: selected === date, disabled: !!request.minimum && date < request.minimum, accessibilityLabel: dateFormat(locale, { dateStyle: 'full' }).format(calendarDate(date)) }) : <View key={`blank-${i}`} style={styles.cell} />)}</View>)}
       </>}
-      {mode === 'months' && <View style={styles.grid}>{Array.from({ length: 12 }, (_, m) => cell(new Date(year, m, 1).toLocaleDateString(locale, { month: 'short' }), () => { setMonth(m); setMode('days'); }, { wide: true, selected: m === month }))}</View>}
+      {mode === 'months' && <View style={styles.grid}>{Array.from({ length: 12 }, (_, m) => cell(dateFormat(locale, { month: 'short' }).format(new Date(year, m, 1)), () => { setMonth(m); setMode('days'); }, { wide: true, selected: m === month }))}</View>}
       {mode === 'years' && <View style={styles.grid}>{Array.from({ length: 12 }, (_, i) => cell(String(yearPage + i), () => { setYear(yearPage + i); setMode('months'); }, { wide: true, selected: yearPage + i === year, disabled: yearPage + i < 1900 || yearPage + i > 9999 }))}</View>}
-      <Text style={styles.summary}>{calendarDate(selected).toLocaleDateString(locale, { dateStyle: 'long' })}</Text>
+      <Text style={styles.summary}>{dateFormat(locale, { dateStyle: 'long' }).format(calendarDate(selected))}</Text>
     </ScrollView>
       <View style={styles.actions}>
         <Button kind="glass" title={t('calendar.today')} disabled={!!request.minimum && todayYmd() < request.minimum} onPress={() => { const now = calendarDate(todayYmd()); setSelected(todayYmd()); setYear(now.getFullYear()); setMonth(now.getMonth()); setMode('days'); }} />

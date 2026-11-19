@@ -12,6 +12,7 @@ import { colors, TONE, TYPE, themed, useRoom } from '@/theme';
 import { Row, TILE } from '@/components/ui';
 import type { Density } from '@/settings';
 import { ago, daysUntil, productIcon, shortName, todayYmd, urgency } from '@/warranty';
+import { dateFormat } from '@/calendar';
 
 export function daysLabel(t: TFunction, daysLeft: number): string {
   if (daysLeft < 0) return t('warranty.expiredAgo', { count: -daysLeft });
@@ -40,7 +41,7 @@ export { formatMoney } from '@/money';
 
 export function formatDate(ymd: string, language: string): string {
   const [y, m, d] = ymd.split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString(language, { year: 'numeric', month: 'short', day: 'numeric' }).replace(/\s+/g, '\u00A0');
+  return dateFormat(language, { year: 'numeric', month: 'short', day: 'numeric' }).format(new Date(y, m - 1, d)).replace(/\s+/g, '\u00A0');
 }
 
 // One row for a warranty everywhere (home, attention list, other covers on the detail screen), laid out like

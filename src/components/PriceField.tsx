@@ -19,7 +19,8 @@ export default function PriceField({ amount, currency, onAmount, onCurrency, dis
   const [query, setQuery] = useState('');
   const choices = useMemo(() => currencyChoices(i18n.language, currency), [i18n.language, currency]);
   const search = query.trim().toLocaleLowerCase(i18n.language).normalize('NFD').replace(/\p{M}/gu, '');
-  const shown = choices.filter(item => `${item.name} ${item.code}`.toLocaleLowerCase(i18n.language).normalize('NFD').replace(/\p{M}/gu, '').includes(search));
+  // Memoized: 170 locale lower-casings per render would rerun on the open tap and on every amount keystroke.
+  const shown = useMemo(() => choices.filter(item => `${item.name} ${item.code}`.toLocaleLowerCase(i18n.language).normalize('NFD').replace(/\p{M}/gu, '').includes(search)), [choices, search, i18n.language]);
   const first = currencyFirst(i18n.language);
   const finish = () => {
     setFocused(false);

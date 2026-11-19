@@ -1,5 +1,5 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
 import AppIcon from '@/components/Icon';
 import { Animated, Keyboard, Modal, PanResponder, Platform, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -51,13 +51,11 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const height = useRef(600); // for the drag handlers
   const [panelH, setPanelH] = useState(600); // for the scrim
   const y = useState(() => new Animated.Value(screenH))[0];
+  // Tracked by the drag handlers: a y.addListener would stream every native spring frame to JS on each open.
   const yNow = useRef(screenH);
-  useEffect(() => {
-    const id = y.addListener(({ value }) => (yNow.current = value));
-    return () => y.removeListener(id);
-  }, [y]);
 
   const settle = (to: number, velocity = 0, done?: () => void) => {
+    yNow.current = to; // a drag released before its first move reads this, not the stale start
     if (reduceMotion()) {
       y.setValue(to);
       done?.();
@@ -88,8 +86,8 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const [drag] = useState(() =>
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderGrant: () => y.stopAnimation(),
-      onPanResponderMove: (_, g) => y.setValue(g.dy < 0 ? g.dy * 0.15 : g.dy),
+      onPanResponderGrant: () => y.stopAnimation((value) => (yNow.current = value)),
+      onPanResponderMove: (_, g) => y.setValue((yNow.current = g.dy < 0 ? g.dy * 0.15 : g.dy)),
       onPanResponderRelease: (_, g) => {
         if (yNow.current + g.vy * 1000 * 0.18 > Math.min(130, height.current * 0.35)) onCloseRef.current();
         else settle(0, g.vy);
@@ -98,8 +96,9 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
     }),
   );
 
+  // A new interpolation node per render would re-link the native animation graph mid-spring.
+  const dim = useMemo(() => y.interpolate({ inputRange: [0, Math.max(panelH, 1)], outputRange: [1, 0], extrapolate: 'clamp' }), [y, panelH]);
   if (!shown) return null;
-  const dim = y.interpolate({ inputRange: [0, Math.max(panelH, 1)], outputRange: [1, 0], extrapolate: 'clamp' });
   return (
     <Modal visible={!locked} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
       <Animated.View style={[styles.backdrop, { opacity: dim }]} onLayout={e => setModalHeight(e.nativeEvent.layout.height)}>
@@ -129,6 +128,14 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
       </Animated.View>
     </Modal>
   );
+}
+
+export type SheetControl = { open: () => void; close: () => void };
+// Holds a sheet's open state so opening or closing re-renders only the sheet, not the long screen behind it.
+export function SheetHost({ control, children }: { control: Ref<SheetControl>; children: (open: boolean, close: () => void) => ReactNode }) {
+  const [open, setOpen] = useState(false);
+  useImperativeHandle(control, () => ({ open: () => setOpen(true), close: () => setOpen(false) }), []);
+  return children(open, () => setOpen(false));
 }
 
 // Free content in a sheet, scrolling with the same insets as the option lists.
