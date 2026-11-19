@@ -17,6 +17,8 @@ appId: dev.warrantly.app
 - tapOn: { id: "store_name" }
 - inputText: "Example retailer"
 - hideKeyboard
+# The Add tab keeps the dock under the Save footer; on small screens the scan buttons scroll off the top.
+- scrollUntilVisible: { element: "Import a photo or PDF", direction: UP, centerElement: true }
 - tapOn: "Import a photo or PDF"
 - runFlow: { file: pick-file.yaml, env: { FILE: fixture-invoice.pdf } }
 - extendedWaitUntil: { visible: "Document attached. Fill in the details below.", timeout: 30000 }

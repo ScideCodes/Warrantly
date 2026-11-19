@@ -5,7 +5,7 @@ appId: dev.warrantly.app
 - launchApp
 - extendedWaitUntil: { visible: "Search warranties", timeout: 20000 }
 - tapOn: "Settings"
-- scrollUntilVisible: { element: "Magyar", timeout: 20000 }
+- scrollUntilVisible: { element: "Magyar", timeout: 20000, centerElement: true } # not behind the floating dock
 - tapOn: "Magyar"
 - back
 - extendedWaitUntil: { visible: "Garanciák keresése", timeout: 20000 }
