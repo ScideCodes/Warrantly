@@ -1,5 +1,6 @@
 import { Text, View, useThemeTransition } from '@/components/themeMotion';
-import { forwardRef, useState, type ComponentRef, type ReactNode } from 'react';
+import { forwardRef, useContext, useState, type ComponentRef, type ReactNode } from 'react';
+import { DOCK_SPACE, InDock } from '@/components/Dock';
 import { Animated, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, useWindowDimensions, type FlatListProps, type ScrollViewProps } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -94,6 +95,7 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const edge = useScrollEdge();
+  const dock = useContext(InDock) ? DOCK_SPACE : 0; // a tab page leaves room for the dock floating over it
   return (
     <View style={styles.screen}>
       <KeyboardAvoidingView style={styles.keyboard} behavior="padding">
@@ -105,14 +107,14 @@ export const Page = forwardRef<ComponentRef<typeof ScrollView>, PageProps>(funct
         removeClippedSubviews={Platform.OS === 'android'}
         keyboardShouldPersistTaps="handled"
         {...scroll}
-        contentContainerStyle={[{ maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (footer ? 0 : insets.bottom) + 32 }, contentContainerStyle]}
+        contentContainerStyle={[{ maxWidth: MAX_WIDTH, width: '100%', alignSelf: 'center', paddingTop: insets.top + BAR_H, paddingHorizontal: gutter(width), paddingBottom: (footer ? 0 : insets.bottom + dock) + 32 }, contentContainerStyle]}
       >
         {head ? <View onLayout={(e) => edge.onTitleLayout(e.nativeEvent.layout.height)}>{head}</View> : <LargeTitle title={title} lead={lead} onLayout={edge.onTitleLayout} />}
         {children}
       </Animated.ScrollView>
-      {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + 12, paddingHorizontal: gutter(width) }]}>{footer}</View> : null}
+      {footer ? <View style={[styles.footer, { paddingBottom: insets.bottom + dock + 12, paddingHorizontal: gutter(width) }]}>{footer}</View> : null}
       </KeyboardAvoidingView>
-      <NavBar title={title} t={edge.t} back={back} trailing={trailing} />
+      <NavBar title={title} t={edge.t} back={back ?? !dock} trailing={trailing} />
     </View>
   );
 });

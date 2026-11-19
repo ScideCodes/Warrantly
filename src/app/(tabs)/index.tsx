@@ -2,7 +2,7 @@ import { serialSummary } from '@/serialNumbers';
 import { Pressable, Text, TextInput, View } from '@/components/themeMotion';
 import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import AppIcon from '@/components/Icon';
-import { Redirect, router, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import { Redirect, router, useFocusEffect, useLocalSearchParams, useScrollToTop } from 'expo-router';
 import { ActivityIndicator, Animated, Keyboard, Platform, RefreshControl, SectionList, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
@@ -35,9 +35,8 @@ import { forgetRecent, readRecent } from '@/recentStore';
 import { rescheduleReminders } from '@/reminders';
 import { readBackupHealth } from '@/backupStatus';
 import { getBundleLead, getDensity, getListSort, getUsername, setListSort, type Density } from '@/settings';
-import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, isDarkNow, RADIUS, SPRING_BOUNCE, TYPE, themed } from '@/theme';
-import { Button, glass, GlassButton, Group, reduceMotion, Row, SectionHeader } from '@/components/ui';
-import { GlassFill } from '@/components/GlassFill';
+import { BAR_H, colors, CONTROL_H, FIELD_RADIUS, gutter, MAX_WIDTH, RADIUS, TYPE, themed } from '@/theme';
+import { Button, GlassButton, Group, Row, SectionHeader } from '@/components/ui';
 import { LargeTitle, NavBar, useScrollEdge } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { finishPendingDeletes, showUndo } from '@/undo';
@@ -95,6 +94,7 @@ export default function Home() {
   const gmailImport = useGmailImport();
   const syncing = useRef(false);
   const listRef = useRef<SectionList<Warranty, WarrantySection>>(null);
+  useScrollToTop(listRef as never); // SectionList works at runtime (getScrollResponder); its types do not match. tapping the list's dock tab again scrolls to the top
   const searchRef = useRef<React.ComponentRef<typeof TextInput>>(null);
   const { width, fontScale } = useWindowDimensions();
   const insets = useSafeAreaInsets();
@@ -514,7 +514,7 @@ export default function Home() {
     <View style={styles.connect}>
       <Text style={styles.connectTitle}>{t('home.emptyTitle')}</Text>
       <Text style={styles.connectBody}>{t('home.emptyBody')}</Text>
-      <Button title={t('home.addLong')} onPress={() => router.push('/warranty/edit')} />
+      <Button title={t('home.addLong')} onPress={() => router.navigate('/add')} />
       {gmailImport && <Button title={t('home.connectGmail')} onPress={connect} kind="glass" />}
     </View>
   );
@@ -690,14 +690,6 @@ export default function Home() {
           <Button title={t('bulk.actions', { count: chosen.length })} icon="ellipsis-horizontal-circle-outline" onPress={() => setBulk('actions')} disabled={!chosen.length} style={styles.flex} />
         </View>
       )}
-      <TabBar
-        tabs={[
-          { key: 'list', icon: 'shield-checkmark-outline', iconOn: 'shield-checkmark', label: t('home.title'), onPress: () => listRef.current?.getScrollResponder()?.scrollTo({ y: 0 }) },
-          { key: 'add', icon: 'add-circle-outline', label: t('home.add'), accessibilityLabel: t('home.addLong'), onPress: () => router.push('/warranty/edit') },
-          { key: 'settings', icon: 'settings-outline', label: t('settings.title'), onPress: () => router.push('/settings') },
-        ]}
-        current="list"
-      />
       <SheetHost control={filterMenu}>
         {(open, close) => <Sheet open={open} onClose={close} title={t('home.filter')} subtitle={total ? t('home.total', { total }) : undefined} sections={menu} />}
       </SheetHost>
@@ -742,53 +734,6 @@ function StatusRow({ icon, color, label, action, onPress, separator }: { icon: I
   );
 }
 
-type Tab = { key: string; icon: IconName; iconOn?: IconName; label: string; accessibilityLabel?: string; onPress: () => void };
-// Stable navigation: all three destinations remain one tap away while scrolling.
-function TabBar({ tabs, current }: { tabs: Tab[]; current: string }) {
-  const styles = useStyles();
-  const insets = useSafeAreaInsets();
-  const { width } = useWindowDimensions();
-  const [tabH, setTabH] = useState(46);
-  const barW = Math.min(300, width - 64);
-  const tabW = (barW - 8) / tabs.length;
-  const at = Math.max(0, tabs.findIndex((tab) => tab.key === current));
-  return (
-    <>
-      <View style={[styles.scrollEdge, { height: 80 + insets.bottom }]} pointerEvents="none" />
-      <View style={[styles.tabbar, glass(), { width: barW, bottom: insets.bottom + 8 }]} accessibilityRole="tablist">
-        <GlassFill flow radius={27} sheen={false} style={styles.tabRow}>
-          <View style={[styles.lens, { top: 4, height: tabH, width: tabW, left: 4 + at * tabW }]} pointerEvents="none" />
-          {tabs.map((tab, i) => (
-            <View key={tab.key} style={styles.tabSlot} onLayout={i === at ? (e) => setTabH(e.nativeEvent.layout.height) : undefined}>
-              <TabButton tab={tab} on={i === at} />
-            </View>
-          ))}
-        </GlassFill>
-      </View>
-    </>
-  );
-}
-
-function TabButton({ tab, on }: { tab: Tab; on: boolean }) {
-  const styles = useStyles();
-  const scale = useState(() => new Animated.Value(1))[0];
-  const press = (v: number) => {
-    if (!reduceMotion()) Animated.spring(scale, { toValue: v, useNativeDriver: true, ...SPRING_BOUNCE }).start();
-  };
-  return (
-    <Pressable testID={`tab-${tab.key}`} style={styles.tab} onPress={tab.onPress}
-      onPressIn={() => press(0.86)} onPressOut={() => press(1)}
-      accessibilityRole="tab" accessibilityLabel={tab.accessibilityLabel ?? tab.label} accessibilityState={{ selected: on }}>
-      <Animated.View style={{ transform: [{ scale }] }}>
-        <AppIcon name={on && tab.iconOn ? tab.iconOn : tab.icon} size={22} color={on ? colors.tint : colors.ink} />
-      </Animated.View>
-      <Text style={[styles.tabLabel, on && { color: colors.tintInk }]} numberOfLines={1} maxFontSizeMultiplier={1.3}>{tab.label}</Text>
-    </Pressable>
-  );
-}
-
-// The page colour as an rgb triple, for the scroll-edge gradients.
-const rgb = () => (isDarkNow() ? '0,0,0' : '242,242,247');
 const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
   list: { flexGrow: 1 },
@@ -829,19 +774,4 @@ const useStyles = themed(() => StyleSheet.create({
   connect: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12, paddingTop: 48 },
   connectTitle: { ...TYPE.title3, color: colors.ink, textAlign: 'center' },
   connectBody: { ...TYPE.sub, color: colors.ink2, textAlign: 'center', maxWidth: 320 },
-  // The phone scroll edge under the tab bar (ios.css lines 704-706); dark mode at .35.
-  scrollEdge: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    opacity: isDarkNow() ? 0.35 : 1,
-    backgroundImage: `linear-gradient(rgba(${rgb()},0) 0%, rgba(${rgb()},0.45) 60%, rgba(${rgb()},0.75) 100%)`,
-  },
-  tabbar: { position: 'absolute', alignSelf: 'center', borderRadius: 27 },
-  tabRow: { flexDirection: 'row', padding: 4 },
-  lens: { position: 'absolute', borderRadius: 23, backgroundColor: colors.select },
-  tabSlot: { flex: 1, minWidth: 0 },
-  tab: { flex: 1, minHeight: 46, alignItems: 'center', justifyContent: 'center', gap: 1, borderRadius: 23, paddingHorizontal: 2 },
-  tabLabel: { ...TYPE.tab, color: colors.ink, maxWidth: '100%' },
 }));

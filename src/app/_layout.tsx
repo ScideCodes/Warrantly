@@ -21,7 +21,7 @@ import { colors, useTheme } from '@/theme';
 
 
 // A screen opened by a link (widget tap) gets the home screen under it, so Back lands there.
-export const unstable_settings = { anchor: 'index' };
+export const unstable_settings = { anchor: '(tabs)' };
 
 // Share into Warrantly (section 18, shortlist 16): a PDF, photo, mail (.eml) or text sent from another app is stored at once in
 // the document inbox, so it survives the app closing; the inbox then offers to add or attach it. The same
@@ -105,7 +105,7 @@ export default function RootLayout() {
         <StatusBar style={dark ? 'light' : 'dark'} />
         {/* Tablets and wide screens: screens keep a readable width, centred. */}
         <Stack screenOptions={{ headerShown: false, contentStyle: { width: '100%', maxWidth: 720, alignSelf: 'center', backgroundColor: colors.bg } }}>
-          <Stack.Screen name="index" options={{ title: 'Warrantly' }} />
+          <Stack.Screen name="(tabs)" options={{ title: 'Warrantly' }} />
         </Stack>
         <UndoHost />
         {locked && <LockScreen onUnlock={unlock} />}

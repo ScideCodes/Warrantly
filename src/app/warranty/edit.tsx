@@ -4,10 +4,11 @@ import { priceNumber } from '@/money';
 import SerialNumbersEditor from '@/components/SerialNumbersEditor';
 import { serialEntries, serialFields, encodeSerialEntries, validSerialEntries, type SerialEntry } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { useCallback, useEffect, useRef, useState, type ComponentRef } from 'react';
+import { useCallback, useContext, useEffect, useRef, useState, type ComponentRef } from 'react';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { takeScannedSerial } from '@/serial';
 import { goBack } from '@/nav';
+import { FormDone } from '@/components/Dock';
 import { ActivityIndicator, ScrollView, StyleSheet, useWindowDimensions, type KeyboardTypeOptions } from 'react-native';
 import { useDatePicker } from '@/components/DatePicker';
 import { useTranslation } from 'react-i18next';
@@ -65,6 +66,8 @@ export default function EditWarranty() {
   // copyFrom: "Add another warranty" for the same purchase (extended plan, store warranty).
   // inbox: a file waiting in the document inbox becomes this warranty's document.
   // scan: opened from the app icon's "Scan receipt" shortcut.
+  const done = useContext(FormDone); // set on the dock's Add tab: saving shows the list there instead of going back
+  const finish = done ?? goBack;
   const { id, copyFrom, inbox, scan: scanNow, more: moreParam, focus, replacementFor } = useLocalSearchParams<{ id?: string; copyFrom?: string; inbox?: string; scan?: string; more?: string; focus?: string; replacementFor?: string }>();
   const { t, i18n } = useTranslation();
   const [existing, setExisting] = useState<Warranty | null>(null);
@@ -240,7 +243,7 @@ export default function EditWarranty() {
     }
     if (!saved || !mounted.current) return;
     if (remember && existing?.store_domain) await saveStoreRule(db, existing.store_domain, input.warranty_months);
-    if (!resolving) return goBack();
+    if (!resolving) return finish();
     // Section 9 batch help: offer the same length to this store's other items that are missing it.
     const others = existing?.store_domain ? await storeItemsMissingLength(db, existing.store_domain, existing.id) : 0;
     if (others && (await askApply(input.warranty_months, others, input.store_name))) {
@@ -302,7 +305,8 @@ export default function EditWarranty() {
           reviewId = (await db.runAsync('INSERT INTO inbox (local_path, filename, text, source_key, received_at) VALUES (?, ?, ?, ?, ?)',
             [path, 'receipt.pdf', result.text, `scan:${path}`, new Date().toISOString()])).lastInsertRowId;
         });
-        if (mounted.current) router.replace({ pathname: '/import-review', params: { inbox: String(reviewId) } });
+        // From the Add tab, push: a replace would swap out the whole tab group under it.
+        if (mounted.current) (done ? router.push : router.replace)({ pathname: '/import-review', params: { inbox: String(reviewId) } });
         return;
       }
       void saveKnownText(result.localPath, result.text).catch(() => {}); // search reads it without OCR again
@@ -434,7 +438,7 @@ export default function EditWarranty() {
               {failed ? t('form.loadFailedBody', { detail: source.error }) : t('form.missingBody')}
             </Text>
             {failed && <Button title={t('home.retry')} onPress={() => setAttempt((n) => n + 1)} style={styles.sourceButton} />}
-            <Button kind={failed ? 'glass' : 'prominent'} title={t('form.backToList')} onPress={() => goBack()} style={styles.sourceButton} />
+            <Button kind={failed ? 'glass' : 'prominent'} title={t('form.backToList')} onPress={() => finish()} style={styles.sourceButton} />
           </>
         )}
         <NavBar title={title} />
