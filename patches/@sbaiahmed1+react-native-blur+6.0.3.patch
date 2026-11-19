@@ -1,5 +1,5 @@
 diff --git a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
-index ab47c96..d3ed966 100644
+index ab47c96..5887057 100644
 --- a/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
 +++ b/node_modules/@sbaiahmed1/react-native-blur/android/src/main/java/com/sbaiahmed1/reactnativeblur/ReactNativeLiquidGlassView.kt
 @@ -3,8 +3,10 @@ package com.sbaiahmed1.reactnativeblur
@@ -296,7 +296,7 @@ index ab47c96..d3ed966 100644
    }
  
    override fun onDetachedFromWindow() {
-@@ -210,154 +199,237 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -210,154 +199,240 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
    }
  
    fun cleanup() {
@@ -460,6 +460,8 @@ index ab47c96..d3ed966 100644
 +      val child = zOrdered?.get(i) ?: parent.getChildAt(drawingIndex(parent, i, count)) ?: continue
 +      if (child === this) return true
 +      if (child.visibility != VISIBLE && child.animation == null) continue
++      // Invisible views (opacity 0, e.g. a capsule button's sizing label) would show through the lens.
++      if (child.alpha <= 0f && child.animation == null) continue
 +      // Glass this view sits inside is opened like any ancestor (its own lens is left out).
 +      if (child is ReactNativeLiquidGlassView && !isDescendantOf(child)) continue
 +      if (child is ViewGroup && child in glassAncestors()) {
@@ -528,6 +530,7 @@ index ab47c96..d3ed966 100644
 +      // Inline copy of the child's own drawing; its children are still references.
 +      applyNodeTransform(canvas, child)
 +      if (parent.clipChildren) canvas.clipRect(0f, 0f, child.width.toFloat(), child.height.toFloat())
++      if (child.alpha < 1f) canvas.saveLayerAlpha(0f, 0f, child.width.toFloat(), child.height.toFloat(), (child.alpha * 255).toInt())
 +      canvas.translate(-child.scrollX.toFloat(), -child.scrollY.toFloat())
 +      child.draw(canvas)
 +    } finally {
@@ -645,7 +648,7 @@ index ab47c96..d3ed966 100644
      }
    }
  
-@@ -371,77 +443,15 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -371,77 +446,15 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
        .use { it.readText() }
    }
  
@@ -728,7 +731,7 @@ index ab47c96..d3ed966 100644
    }
  
    /**
-@@ -450,12 +460,12 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -450,12 +463,12 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
     */
    fun setGlassTintColor(color: Int?) {
      glassTintColor = color ?: Color.TRANSPARENT
@@ -743,7 +746,7 @@ index ab47c96..d3ed966 100644
    }
  
    fun setIsInteractive(isInteractive: Boolean) {
-@@ -567,7 +577,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
+@@ -567,7 +580,7 @@ class ReactNativeLiquidGlassView(context: Context) : FrameLayout(context) {
  
      clipToOutline = true
      invalidateOutline()
