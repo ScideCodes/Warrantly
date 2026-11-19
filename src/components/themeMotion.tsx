@@ -10,7 +10,9 @@ import {
   type TextInputProps,
   type TextProps,
   type ViewProps,
+  type ViewStyle,
 } from 'react-native';
+import type { CSSTransitionProperties } from 'react-native-reanimated';
 
 // One preference listener for the app, including changes made while it is open.
 let reduced = false;
@@ -34,12 +36,13 @@ const subscribe = (notify: () => void) => {
 };
 export const reduceMotion = () => reduced;
 
-export function useThemeTransition() {
+// Reanimated 4 CSS transition props: they only animate on a Reanimated component (Reanimated.View, createAnimatedComponent).
+export function useThemeTransition(): CSSTransitionProperties<ViewStyle> {
   const reduce = useSyncExternalStore(subscribe, reduceMotion, () => false);
   return {
     transitionProperty: ['backgroundColor', 'borderColor', 'borderTopColor', 'borderBottomColor', 'borderLeftColor', 'borderRightColor'],
     transitionDuration: reduce ? '0ms' : '220ms',
-    transitionTimingFunction: 'ease-out' as const,
+    transitionTimingFunction: 'ease-out',
   };
 }
 
@@ -71,7 +74,7 @@ export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, Pressa
       onPressIn={(event) => { if (tracksPress) setPressed(true); to(pressScale ?? 1, 100); props.onPressIn?.(event); }}
       onPressOut={(event) => { if (tracksPress) setPressed(false); to(1, 140); props.onPressOut?.(event); }}
       style={[
-        typeof style === 'function' ? style({ pressed, hovered: false }) : style,
+        typeof style === 'function' ? style({ pressed }) : style,
         pressScale !== undefined && { transform: [{ scale }] },
       ]}
     />

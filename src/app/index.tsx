@@ -19,7 +19,7 @@ import { DocumentSheet } from '@/components/DocumentSheet';
 import { DocThumb } from '@/components/DocThumb';
 import { displayName, formatMoney, WarrantyRow } from '@/components/WarrantyRow';
 import { getDb } from '@/db/client';
-import { listAccounts, listArchived, listAttachments, listReturnPrompts, listWarranties, type Account, type Attachment, type Warranty } from '@/db/repo.ts';
+import { listAccounts, listArchived, listAttachments, listReturnPrompts, listWarranties, type Account, type Warranty } from '@/db/repo.ts';
 import {
   collectionMembers, dismissedPairs, listAllDocuments, listCollections, listInbox, setArchived, setCategory, setMembership, restoreCategories,
   warrantiesWithText, type Collection, type DocumentRow,
@@ -88,7 +88,8 @@ export default function Home() {
   const [recentVersion, setRecentVersion] = useState(0);
   const [selected, setSelected] = useState<Set<number> | null>(null); // null: not selecting
   const [bulk, setBulk] = useState<null | 'actions' | 'category' | 'collection'>(null);
-  const [docSheet, setDocSheet] = useState<{ w: Warranty; docs: Attachment[] } | null>(null);
+  const [docSheet, setDocSheet] = useState<{ w: Warranty; docs: DocumentRow[] } | null>(null);
+  const allDocs = useRef<DocumentRow[]>([]); // the list's own load, for the row's document button without a read
   const [sync, setSync] = useState<SyncState>({ kind: 'idle', problems: [] });
   const updateReady = useUpdateReady();
   const gmailImport = useGmailImport();
@@ -123,6 +124,7 @@ export default function Home() {
     setCollections(nextCollections);
     setMembers(nextMembers);
     setDocuments(docs);
+    allDocs.current = docs;
     setDuplicates(duplicatePairs([...nextWarranties, ...needsInput, ...nextArchived], dismissed).length);
     void readBackupHealth().then((h) => setBackupFailed(h.state === 'failed' || h.state === 'overdue')).catch(() => {});
     setDensityState(getDensity());
@@ -300,8 +302,9 @@ export default function Home() {
     return next;
   }), []);
   const startSelect = useCallback((id?: number) => setSelected(new Set(id === undefined ? [] : [id])), []);
-  const openDocs = useCallback(async (w: Warranty) => {
-    const docs = await listAttachments(await getDb(), w.id);
+  // Answers the tap at once from the documents loaded with the list (reloaded on every visit and after sync).
+  const openDocs = useCallback((w: Warranty) => {
+    const docs = allDocs.current.filter((d) => d.warranty_id === w.id).reverse(); // oldest first, as on the detail page
     if (docs.length === 1 && openViewer({ ...docs[0], warranty_id: w.id }, displayName(t, w))) return;
     setDocSheet({ w, docs });
   }, [t]);

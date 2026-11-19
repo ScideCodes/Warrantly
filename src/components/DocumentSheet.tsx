@@ -14,7 +14,7 @@ import { colors, ROW_X, TYPE, themed } from '@/theme';
 // The document picker behind the row's document button (shortlist 2): every document of the product with
 // its first page and label; a file that is not on this phone says so and offers to restore or replace it;
 // with no document, ways to add one. The row itself still opens the details.
-export function DocumentSheet({ warranty, docs, title, onClose }: { warranty: Warranty | null; docs: Attachment[]; title: string; onClose: () => void }) {
+export function DocumentSheet({ warranty, docs, title, onClose }: { warranty: Warranty | null; docs: Pick<Attachment, 'id' | 'filename' | 'local_path' | 'label'>[]; title: string; onClose: () => void }) {
   const styles = useStyles();
   const { t } = useTranslation();
   const go = (attach: 'add' | null) => {

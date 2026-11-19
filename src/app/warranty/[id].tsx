@@ -1,7 +1,7 @@
 import { dismissMissingDetails } from '@/db/productTools';
 import { serialEntries } from '@/serialNumbers';
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import AppIcon, { ProductIcon } from '@/components/Icon';
 import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
@@ -99,7 +99,9 @@ export default function WarrantyDetail() {
   const floatOpacity = floatAnim.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
   // From the row's document button with no document yet: the add sheet is open on arrival.
   const { pickDate, datePicker } = useDatePicker();
-  const [sheet, setSheet] = useState<SheetKind>(attachParam ? 'add' : null);
+  // Which sheet is open lives in SheetSlot: opening or closing one re-renders only the sheets, not this page.
+  const sheetSlot = useRef<SheetSlotControl>(null);
+  const setSheet = (kind: SheetKind) => sheetSlot.current?.set(kind);
   // View and Save side by side while their words fit (the document card's padding is 2 × 10)
   const stackActions = !useRoom()(pairWidth(t('detail.view'), t('detail.save'), 20));
   const operation = useRef(false);
@@ -446,6 +448,7 @@ export default function WarrantyDetail() {
       ],
     },
   };
+  const sheetFor = (sheet: SheetKind) => {
   const selectedDoc = typeof sheet === 'object' && sheet && 'doc' in sheet ? sheet.doc : null;
   const docSheet: { title: string; sections: SheetSection[] } | null = selectedDoc ? {
     title: selectedDoc.filename,
@@ -473,7 +476,8 @@ export default function WarrantyDetail() {
           { key: 'manage', icon: 'albums-outline' as const, label: t('collections.manage'), onPress: () => router.push('/collections') },
         ] }] }
         : null;
-  const openSheet = sheet === null || sheet === 'bundle' ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet ?? extraSheet;
+  return sheet === null || sheet === 'bundle' ? null : sheet === 'more' || sheet === 'add' ? sheets[sheet] : docSheet ?? extraSheet;
+  };
   const issues = completeness(w, docs);
   const toggleMissingDetails = () => {
     const dismissed = !w.details_dismissed;
@@ -745,6 +749,9 @@ export default function WarrantyDetail() {
         </Section>
       </Page>
       {datePicker}
+      <SheetSlot control={sheetSlot} initial={attachParam ? 'add' : null}>{(sheet) => {
+      const openSheet = sheetFor(sheet);
+      return <>
       <Sheet open={openSheet !== null} onClose={() => setSheet(null)} title={openSheet?.title ?? ''} sections={openSheet?.sections ?? []} />
       <SheetFrame open={sheet === 'bundle'} onClose={() => { setSheet(null); setSelectedBundleIds(new Set()); }} title={t('bundle.add')}>
         <View style={styles.bundleSheetContainer}>
@@ -798,8 +805,18 @@ export default function WarrantyDetail() {
           )}
         </View>
       </SheetFrame>
+      </>;
+      }}</SheetSlot>
     </>
   );
+}
+
+type SheetSlotControl = { set: (kind: SheetKind) => void };
+// Like SheetHost (components/Sheet), for the detail page's several sheets: holds which one is open.
+function SheetSlot({ control, initial, children }: { control: Ref<SheetSlotControl>; initial: SheetKind; children: (sheet: SheetKind) => ReactNode }) {
+  const [sheet, setSheet] = useState(initial);
+  useImperativeHandle(control, () => ({ set: setSheet }), []);
+  return children(sheet);
 }
 
 const CandidateRow = memo(function CandidateRow({

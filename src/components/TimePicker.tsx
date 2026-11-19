@@ -1,4 +1,4 @@
-import { useRef, useState, type ComponentRef } from 'react';
+import { memo, useRef, useState, type ComponentRef } from 'react';
 import { Keyboard, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useTranslation } from 'react-i18next';
 import { Text, View } from '@/components/themeMotion';
@@ -26,28 +26,33 @@ function TimeSheet({ request, open, close }: { request: Request; open: boolean; 
   const { t } = useTranslation();
   const styles = useStyles();
   const [initial] = useState(() => Number.isInteger(request.value) && request.value >= 0 && request.value < 1440 ? request.value : 540);
-  const [hour, setHour] = useState(Math.floor(initial / 60));
-  const [minute, setMinute] = useState(initial % 60);
+  // Read on Done only: the wheels keep their own highlight, so scrolling one does not redraw the sheet or the other wheel.
+  const time = useRef({ hour: Math.floor(initial / 60), minute: initial % 60 });
   return <SheetFrame open={open} onClose={close} title={t('settings.reminderTime')}>
     <View style={styles.content}>
       <View style={styles.wheels}>
-        <Wheel label={t('calendar.hours')} count={24} value={hour} onChange={setHour} />
+        <Wheel label={t('calendar.hours')} count={24} initial={Math.floor(initial / 60)} onChange={(h) => (time.current.hour = h)} />
         <Text style={styles.colon} importantForAccessibility="no">:</Text>
-        <Wheel label={t('calendar.minutes')} count={60} value={minute} onChange={setMinute} />
+        <Wheel label={t('calendar.minutes')} count={60} initial={initial % 60} onChange={(m) => (time.current.minute = m)} />
       </View>
-      <Button title={t('calendar.done')} onPress={() => { request.onPick(hour * 60 + minute); close(); }} />
+      <Button title={t('calendar.done')} onPress={() => { request.onPick(time.current.hour * 60 + time.current.minute); close(); }} />
     </View>
   </SheetFrame>;
 }
 
-function Wheel({ label, count, value, onChange }: { label: string; count: number; value: number; onChange: (value: number) => void }) {
+function Wheel({ label, count, initial, onChange }: { label: string; count: number; initial: number; onChange: (value: number) => void }) {
   const styles = useStyles();
   const { fontScale, height } = useWindowDimensions();
   const row = Math.max(44, Math.ceil(28 * fontScale + 12));
   const visibleRows = height / fontScale < 600 ? 3 : 5;
   const inset = row * ((visibleRows - 1) / 2);
   const scroll = useRef<ComponentRef<typeof ScrollView>>(null);
-  const [initial] = useState(value);
+  const [value, setValue] = useState(initial);
+  // Runs every scroll frame; the state (and so a redraw) changes only when the middle row changes.
+  const pick = (next: number) => {
+    setValue(next);
+    onChange(next);
+  };
   return <View style={styles.column}>
     <Text style={styles.label}>{label}</Text>
     <View accessible accessibilityRole="adjustable" accessibilityLabel={label}
@@ -55,7 +60,7 @@ function Wheel({ label, count, value, onChange }: { label: string; count: number
       accessibilityActions={[{ name: 'increment' }, { name: 'decrement' }]}
       onAccessibilityAction={event => {
         const next = Math.max(0, Math.min(count - 1, value + (event.nativeEvent.actionName === 'increment' ? 1 : -1)));
-        onChange(next);
+        pick(next);
         scroll.current?.scrollTo({ y: next * row, animated: false });
       }}>
       <View pointerEvents="none" style={[styles.selection, { top: inset, height: row }]} />
@@ -63,14 +68,20 @@ function Wheel({ label, count, value, onChange }: { label: string; count: number
         contentOffset={{ x: 0, y: initial * row }} showsVerticalScrollIndicator={false}
         snapToInterval={row} decelerationRate="fast" bounces={false} scrollEventThrottle={16} overScrollMode="never"
         importantForAccessibility="no-hide-descendants"
-        onScroll={event => onChange(Math.max(0, Math.min(count - 1, Math.round(event.nativeEvent.contentOffset.y / row))))}>
-        {Array.from({ length: count }, (_, i) => <View key={i} style={[styles.item, { height: row }]}>
-          <Text style={[styles.number, i === value && styles.chosen]}>{pad(i)}</Text>
-        </View>)}
+        onScroll={event => pick(Math.max(0, Math.min(count - 1, Math.round(event.nativeEvent.contentOffset.y / row))))}>
+        {Array.from({ length: count }, (_, i) => <WheelRow key={i} i={i} height={row} chosen={i === value} />)}
       </ScrollView>
     </View>
   </View>;
 }
+
+// Memo: a new middle row redraws only the two rows whose highlight changed, not the whole wheel.
+const WheelRow = memo(function WheelRow({ i, height, chosen }: { i: number; height: number; chosen: boolean }) {
+  const styles = useStyles();
+  return <View style={[styles.item, { height }]}>
+    <Text style={[styles.number, chosen && styles.chosen]}>{pad(i)}</Text>
+  </View>;
+});
 
 const useStyles = themed(() => StyleSheet.create({
   content: { paddingHorizontal: 20, paddingBottom: 20, gap: 20 },
