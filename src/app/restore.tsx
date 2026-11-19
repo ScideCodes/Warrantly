@@ -7,6 +7,7 @@ import { latestBackup, PasswordNeededError, restoreBackup, type BackupStep } fro
 import { backupStepText } from '@/backupSteps';
 import { WrongPasswordError } from '@/backup/format.ts';
 import { getDb } from '@/db/client';
+import { rescheduleReminders } from '@/reminders';
 import { Page } from '@/components/Page';
 import { showAlert } from '@/components/Dialog';
 import { setGlass } from '@/components/GlassFill';
@@ -62,6 +63,7 @@ export default function Restore() {
       applyTheme();
       setGlass(getGlassEnabled());
       await i18n.changeLanguage(appLanguage());
+      void rescheduleReminders(await getDb()).catch(() => {}); // restored reminders and texts in the restored language
       showAlert(missingDocs ? i18n.t('restore.doneMissing', { count: missingDocs }) : i18n.t('restore.done'));
       router.dismissTo('/'); // back to the one home screen; replace would stack a second tabs group
     } catch (e) {
