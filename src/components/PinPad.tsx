@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';
 import { glass, reduceMotion } from '@/components/ui';
 import { GlassFill } from '@/components/GlassFill';
-import { colors, CONTROL_H, EASE, TYPE, themed } from '@/theme';
+import { colors, CONTROL_H, EASE, isDarkNow, TYPE, themed } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -134,44 +134,56 @@ export function PinLayout({ icon, title, message, error, pad, footer, top = 0, s
   const usableHeight = height - top - insets.bottom - 36;
   const compact = usableHeight / Math.max(1, fontScale) < 650;
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={[styles.content, { justifyContent: compact ? 'flex-start' : 'center', gap: compact ? 16 : 24, paddingTop: top + 16, paddingBottom: insets.bottom + 24 }]} bounces={false} overScrollMode="never">
-      <View style={styles.head}>
-        {/* Decorative: short phones drop it so the keys and the button fit without scrolling. */}
-        {!compact && (
-          <View
-            style={[
-              styles.tile,
-              glass(),
-            ]}
-            importantForAccessibility="no-hide-descendants"
-          >
-            <GlassFill radius={22} sheen={false} style={styles.key}>
-              <AppIcon name={icon} size={28} color={colors.tint} />
-            </GlassFill>
-          </View>
-        )}
-        {!compact && <Text style={styles.brand}>Warrantly</Text>}
-        <Text style={[styles.title, { minHeight: 30 * fontScale * (fontScale > 1.2 ? 2 : 1) }]} accessibilityRole="header">
-          {title}
-        </Text>
-        <Text style={[styles.message, { minHeight: (TYPE.sub.lineHeight ?? 20) * 2 * Math.min(fontScale, 2) }, error && styles.error]} accessibilityLiveRegion="polite">
-          {message}
-        </Text>
-        {step && <View style={styles.steps} accessible accessibilityRole="progressbar" accessibilityLabel={t('pin.step', { current: step })} accessibilityValue={{ min: 1, max: 2, now: step }}>
-          <View style={[styles.step, styles.stepActive]} />
-          <View style={[styles.step, step === 2 && styles.stepActive]} />
-          <Text style={styles.stepLabel}>{t('pin.step', { current: step })}</Text>
-        </View>}
-      </View>
-      {/* The same keypad geometry is used in every state. */}
-      <View style={styles.pad}>{pad}</View>
-      <View style={styles.footer}>{footer}</View>
-    </ScrollView>
+    <View style={styles.screen}>
+      {/* Stands in for the blurred wallpaper behind the system passcode: the glass keys get colour to refract,
+          and a dark screen that is not flat black is less likely to be dimmed by the phone. */}
+      <View pointerEvents="none" style={styles.backdrop} />
+      <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, { justifyContent: compact ? 'flex-start' : 'center', gap: compact ? 16 : 24, paddingTop: top + 16, paddingBottom: insets.bottom + 24 }]} bounces={false} overScrollMode="never">
+        <View style={styles.head}>
+          {/* Decorative: short phones drop it so the keys and the button fit without scrolling. */}
+          {!compact && (
+            <View
+              style={[
+                styles.tile,
+                glass(),
+              ]}
+              importantForAccessibility="no-hide-descendants"
+            >
+              <GlassFill radius={22} sheen={false} style={styles.key}>
+                <AppIcon name={icon} size={28} color={colors.tint} />
+              </GlassFill>
+            </View>
+          )}
+          {!compact && <Text style={styles.brand}>Warrantly</Text>}
+          <Text style={[styles.title, { minHeight: 30 * fontScale * (fontScale > 1.2 ? 2 : 1) }]} accessibilityRole="header">
+            {title}
+          </Text>
+          <Text style={[styles.message, { minHeight: (TYPE.sub.lineHeight ?? 20) * 2 * Math.min(fontScale, 2) }, error && styles.error]} accessibilityLiveRegion="polite">
+            {message}
+          </Text>
+          {step && <View style={styles.steps} accessible accessibilityRole="progressbar" accessibilityLabel={t('pin.step', { current: step })} accessibilityValue={{ min: 1, max: 2, now: step }}>
+            <View style={[styles.step, styles.stepActive]} />
+            <View style={[styles.step, step === 2 && styles.stepActive]} />
+            <Text style={styles.stepLabel}>{t('pin.step', { current: step })}</Text>
+          </View>}
+        </View>
+        {/* The same keypad geometry is used in every state. */}
+        <View style={styles.pad}>{pad}</View>
+        <View style={styles.footer}>{footer}</View>
+      </ScrollView>
+    </View>
   );
 }
 
 const useStyles = themed(() => StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
+  backdrop: {
+    ...StyleSheet.absoluteFill,
+    backgroundImage: isDarkNow()
+      ? `radial-gradient(130% 55% at 50% 0%, ${colors.tint}66, transparent 75%), radial-gradient(120% 50% at 50% 100%, ${colors.tint}40, transparent 75%)`
+      : `radial-gradient(130% 55% at 50% 0%, ${colors.tint}38, transparent 75%), radial-gradient(120% 50% at 50% 100%, ${colors.tint}24, transparent 75%)`,
+  },
+  scroll: { flex: 1 },
   content: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 20, gap: 24 },
   pad: { alignItems: 'center' },
   head: { alignItems: 'center', gap: 8, maxWidth: 312, width: '100%' },
