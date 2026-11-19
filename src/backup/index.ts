@@ -3,11 +3,11 @@ import * as SecureStore from 'expo-secure-store';
 import { changeCount, markBackedUp } from '@/db/features.ts';
 import { deleteAccount, dumpAccount, getDisconnectBackup, restoreAccount, saveDisconnectBackup, type Account, type AccountRows, type Db } from '@/db/repo.ts';
 import { deleteDocuments, documentExists, readDocument, writeDocument } from '@/documents';
-import { ensureDriveAccess, getAccessToken, revokeGoogleAccess } from '@/google';
+import { ensureDriveAccess, getAccessToken, revokeGoogleAccess, type RevokeResult } from '@/google';
 import { applySnapshot, getSetting, setSetting, settingsSnapshot } from '@/settings';
 import { BACKUP_PREFIX, driveClient, uploadAndPrune } from './drive.ts';
 import {
-  backupDue, deriveKey, docBackupName, dumpDb, fromBase64, KDF, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes,
+  backupDue, deriveKey, docBackupName, dumpDb, fromBase64, KDF, resealDisconnectBackups, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes,
   type Aead, type BackupInterval, type KdfParams,
 } from './format.ts';
 
@@ -126,6 +126,10 @@ export async function restoreBackup(db: Db, id: string, password: string | null,
   onStep?.({ step: 'restore' });
   await restoreDb(db, data);
   applySnapshot(data.settings);
+  const next = derived as StoredKey | null;
+  if (next && stored && next.key !== stored.key && data.tables.disconnect_backups === undefined) {
+    await resealDisconnectBackups(db, aead, fromBase64(stored.key), fromBase64(next.key), next.kdf); // kept rows, old key
+  }
   if (derived) SecureStore.setItem(KEY, JSON.stringify(derived)); // keep backing up with the same password
 
   // Documents this phone does not have yet. One that is missing on Drive is skipped; the detail
@@ -133,9 +137,10 @@ export async function restoreBackup(db: Db, id: string, password: string | null,
   const key = derived ? fromBase64((derived as StoredKey).key) : fromBase64(stored!.key);
   const files = new Map((await drive().list()).map((f) => [f.name, f.id]));
   const missing = filesOf(data).filter((path) => files.has(docBackupName(path)) && !documentExists(path));
+  if (missing.length) onStep?.({ step: 'docs', done: 0, total: missing.length });
   for (const [i, path] of missing.entries()) {
-    onStep?.({ step: 'docs', done: i, total: missing.length });
     await writeDocument(path, await unsealBytes(aead, key, await drive().download(files.get(docBackupName(path))!)));
+    onStep?.({ step: 'docs', done: i + 1, total: missing.length });
   }
   // What was just restored is exactly what Drive holds: nothing is pending until the next change.
   await markBackedUp(db, await changeCount(db), filesOf(data).filter((p) => files.has(docBackupName(p))));
@@ -152,8 +157,8 @@ const filesOf = (data: { tables: Record<string, Record<string, unknown>[] | unde
 
 // Encrypted with the backup key (so a backup password must exist), kept on the phone, and also uploaded
 // when automatic backup is on. Then the account's warranties are removed. Manual entries stay.
-// Also removes Warrantly's access at Google; resolves true when that turned Drive backup off.
-export async function disconnectAccount(db: Db, account: Account, now = new Date()): Promise<boolean> {
+// Also removes Warrantly's access at Google; resolves how that went (see revokeGoogleAccess).
+export async function disconnectAccount(db: Db, account: Account, now = new Date()): Promise<RevokeResult> {
   const stored = storedKey();
   if (!stored) throw new Error('No backup password set');
   const rows = await dumpAccount(db, account.id);

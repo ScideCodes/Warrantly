@@ -506,7 +506,7 @@ export default function Home() {
   const groupTitle = { pinned: 'home.sectionPinned', soon: 'home.sectionSoon', covered: 'home.sectionCovered', hidden: 'home.sectionHidden', expired: 'home.sectionExpired', archived: 'home.sectionArchived' } as const;
 
   const clearSearchAndFilters = () => { setQuery(''); setFilter(all); setQuick(null); Keyboard.dismiss(); };
-  const hasSearch = searchQuery.trim() !== '' || filter.kind !== 'all' || quick !== null;
+  const hasSearch = searchQuery.trim() !== '' || listFilter.kind !== 'all' || listQuick !== null;
   const empty = accounts === null ? <HomeListSkeleton /> : accounts.length || warranties.length || archived.length ? (
     <View style={styles.connect}>
       <Text style={styles.connectBody}>{sync.kind === 'syncing' ? t('home.syncing', { email: sync.email }) : hasSearch ? t('home.noMatch') : t('home.empty_active')}</Text>
@@ -521,8 +521,8 @@ export default function Home() {
     </View>
   );
 
-  const showHiddenToggleInFooter = visible.hidden.length > 0 && searchQuery.trim() === '' && filter.kind !== 'archived' && !showHidden && !expiredOpen;
-  const showExpiredToggleInFooter = visible.expired.length > 0 && searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' && !showExpired;
+  const showHiddenToggleInFooter = visible.hidden.length > 0 && searchQuery.trim() === '' && listFilter.kind !== 'archived' && !showHidden && !expiredOpen;
+  const showExpiredToggleInFooter = visible.expired.length > 0 && searchQuery.trim() === '' && listQuick !== 'nodocs' && listFilter.kind !== 'archived' && !showExpired;
   const footer = (showHiddenToggleInFooter || showExpiredToggleInFooter) ? (
     <View>
       {showHiddenToggleInFooter && (
@@ -589,7 +589,7 @@ export default function Home() {
         { key: 'export', icon: 'download-outline', label: t('bulk.exportDocs'), onPress: () => void bulkExport() },
         { key: 'category', icon: 'pricetag-outline', label: t('bulk.categorize'), onPress: () => setTimeout(() => setBulk('category'), 250) },
         { key: 'collection', icon: 'albums-outline', label: t('bulk.addToCollection'), onPress: () => setTimeout(() => setBulk('collection'), 250) },
-        filter.kind === 'archived'
+        listFilter.kind === 'archived'
           ? { key: 'unarchive', icon: 'arrow-undo-outline', label: t('bulk.unarchive'), onPress: () => void bulkArchive(false) }
           : { key: 'archive', icon: 'archive-outline', label: t('bulk.archive'), onPress: () => void bulkArchive(true) },
       ] }],
@@ -610,7 +610,7 @@ export default function Home() {
         keyExtractor={(w: Warranty) => String(w.id)}
         renderItem={renderWarranty}
         renderSectionHeader={({ section }: { section: { key: GroupKey; data: readonly Warranty[] } }) => {
-          if (section.key === 'hidden' && searchQuery.trim() === '' && filter.kind !== 'archived') {
+          if (section.key === 'hidden' && searchQuery.trim() === '' && listFilter.kind !== 'archived') {
             return (
               <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
                 <Row onPress={() => setShowHidden(false)} accessibilityState={{ expanded: true }}>
@@ -623,7 +623,7 @@ export default function Home() {
           if (section.key === 'expired') {
             return (
               <View>
-                {visible.hidden.length > 0 && searchQuery.trim() === '' && filter.kind !== 'archived' && !showHidden && (
+                {visible.hidden.length > 0 && searchQuery.trim() === '' && listFilter.kind !== 'archived' && !showHidden && (
                   <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
                     <Row onPress={() => setShowHidden(true)} accessibilityState={{ expanded: false }}>
                       <Text style={styles.expiredToggleText}>{t('home.showHidden', { count: visible.hidden.length })}</Text>
@@ -631,7 +631,7 @@ export default function Home() {
                     </Row>
                   </Group>
                 )}
-                {searchQuery.trim() === '' && quick !== 'nodocs' && filter.kind !== 'archived' ? (
+                {searchQuery.trim() === '' && listQuick !== 'nodocs' && listFilter.kind !== 'archived' ? (
                   <Group style={[styles.expiredToggle, { marginBottom: 10 }]}>
                     <Row onPress={() => setShowExpired(false)} accessibilityState={{ expanded: true }}>
                       <Text style={styles.expiredToggleText}>{t('home.hideExpired')}</Text>

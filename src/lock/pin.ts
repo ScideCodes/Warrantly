@@ -65,7 +65,16 @@ export function lockoutSeconds(failures: number): number {
 
 // Section 19: back from the background after more than 3 minutes locks again.
 export const RELOCK_AFTER_MS = 3 * 60_000;
-export const shouldRelock = (hiddenAt: number | null, now: number): boolean => hiddenAt !== null && now - hiddenAt > RELOCK_AFTER_MS;
+// Both clocks: the monotonic one (performance.now) cannot be set back, but it may pause while the phone sleeps; the
+// wall clock keeps counting in sleep but can be changed. Either one past 3 minutes, or going backwards, locks.
+export type Stamp = { wall: number; mono: number };
+export const stampNow = (): Stamp => ({ wall: Date.now(), mono: performance.now() });
+export function shouldRelock(hidden: Stamp | null, now: Stamp): boolean {
+  if (!hidden) return false;
+  const wall = now.wall - hidden.wall;
+  const mono = now.mono - hidden.mono;
+  return wall < 0 || mono < 0 || wall > RELOCK_AFTER_MS || mono > RELOCK_AFTER_MS;
+}
 
 // Who closed the fingerprint prompt that opened by itself. Android 15/16 closes it as USER_CANCEL when the app stops
 // being the top task, on CLOSE_SYSTEM_DIALOGS or on device lock (AOSP AuthController.closeDialog); Android 14 when the

@@ -4,7 +4,7 @@ import { test } from 'node:test';
 import { addAttachment, addManual, migrate, saveStoreRule } from '../db/repo.ts';
 import { nodeDb } from '../db/testDb.ts';
 import { driveClient, uploadAndPrune, FOLDER_NAME } from './drive.ts';
-import { backupDue, checkKdf, deriveKey, sharedPdf, docBackupName, dumpDb, readEnvelope, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
+import { backupDue, checkKdf, deriveKey, sharedPdf, docBackupName, dumpDb, readEnvelope, resealDisconnectBackups, restoreDb, seal, sealBytes, toBase64, unseal, unsealBytes, WrongPasswordError, type Aead } from './format.ts';
 
 // Same AES-256-GCM as expo-crypto, from node:crypto; tag appended to the ciphertext.
 const nodeAead: Aead = {
@@ -154,4 +154,21 @@ test('a shared file keeps only PDFs of a bounded size', () => {
   assert.equal(sharedPdf(toBase64(new TextEncoder().encode('<html>'))), null);
   assert.equal(sharedPdf(42), null);
   assert.equal(sharedPdf('JVBERi'.padEnd(41943044, 'A')), null); // over 30 MB, refused before decoding
+});
+
+test('an older backup without disconnect copies re-seals the kept ones with the restored key', async () => {
+  const db = nodeDb();
+  await migrate(db);
+  const oldKey = await deriveKey('phone B', kdf);
+  const newKdf = { ...kdf, salt: toBase64(randomBytes(16)) };
+  const newKey = await deriveKey('other install', newKdf);
+  const copy = await seal(nodeAead, oldKey, kdf, await dumpDb(await seeded(), {}));
+  await db.runAsync(`INSERT INTO disconnect_backups (email, created_at, envelope) VALUES ('x@example.com', '2026-01-01', ?), ('bad@example.com', '2026-01-01', 'not an envelope')`, [copy]);
+  const old = await dumpDb(db, {});
+  delete old.tables.disconnect_backups;
+  await restoreDb(db, old);
+  await resealDisconnectBackups(db, nodeAead, oldKey, newKey, newKdf);
+  const rows = await db.getAllAsync<{ email: string; envelope: string }>('SELECT email, envelope FROM disconnect_backups ORDER BY email', []);
+  assert.equal(rows[0].envelope, 'not an envelope'); // unreadable with the old key: left as it was
+  assert.equal((await unseal(nodeAead, rows[1].envelope, async () => newKey)).tables.warranties?.[0].product_name, 'Philips vízforraló');
 });

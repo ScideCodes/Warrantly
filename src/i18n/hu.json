@@ -384,6 +384,7 @@
     "needPassword": "Leválasztás előtt titkosított mentés készül a fiókról. A folytatáshoz állíts be mentési jelszót.",
     "setPassword": "Jelszó beállítása",
     "done": "{{email}} leválasztva. A mentés ezen a telefonon van, a Google-hozzáférés pedig megszűnt.",
+    "doneAccessKept": "{{email}} leválasztva, a mentés ezen a telefonon van, de a Google-hozzáférést nem sikerült megszüntetni. A myaccount.google.com/permissions oldalon tudod megszüntetni.",
     "backupOff": "Ehhez a fiókhoz be volt kapcsolva a Drive mentés, ezért most ki van kapcsolva. A Beállításokban újra bekapcsolhatod.",
     "syncing": "Szinkronizálás…",
     "restoreTitle": "Visszaállítod: {{email}}?",

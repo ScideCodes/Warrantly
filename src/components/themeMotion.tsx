@@ -63,6 +63,8 @@ export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, Pressa
   const [pressed, setPressed] = useState(false);
   const scale = useState(() => new Animated.Value(1))[0];
   const tracksPress = typeof style === 'function';
+  // Not an inline literal: Expo's types need hovered, older RN types reject it as an excess property.
+  const pressState = { pressed, hovered: false };
   const to = (value: number, duration: number) => {
     if (pressScale === undefined || reduceMotion()) return;
     Animated.timing(scale, { toValue: value, duration, useNativeDriver: true }).start();
@@ -74,7 +76,7 @@ export const Pressable = forwardRef<ComponentRef<typeof NativePressable>, Pressa
       onPressIn={(event) => { if (tracksPress) setPressed(true); to(pressScale ?? 1, 100); props.onPressIn?.(event); }}
       onPressOut={(event) => { if (tracksPress) setPressed(false); to(1, 140); props.onPressOut?.(event); }}
       style={[
-        typeof style === 'function' ? style({ pressed, hovered: false }) : style,
+        typeof style === 'function' ? style(pressState) : style,
         pressScale !== undefined && { transform: [{ scale }] },
       ]}
     />

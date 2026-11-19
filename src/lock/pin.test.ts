@@ -22,9 +22,14 @@ test('PIN encode and check', () => {
 
 test('lockout and relock timing', () => {
   assert.deepEqual([0, 4, 5, 6, 7, 20].map(lockoutSeconds), [0, 0, 30, 60, 120, 3600]);
-  assert.equal(shouldRelock(null, 1e9), false);
-  assert.equal(shouldRelock(0, 3 * 60_000), false);
-  assert.equal(shouldRelock(0, 3 * 60_000 + 1), true);
+  const at = (wall: number, mono: number) => ({ wall, mono });
+  const t0 = at(1e12, 5000);
+  assert.equal(shouldRelock(null, at(2e12, 1e9)), false);
+  assert.equal(shouldRelock(t0, at(1e12 + 3 * 60_000, 5000 + 3 * 60_000)), false);
+  assert.equal(shouldRelock(t0, at(1e12 + 3 * 60_000 + 1, 5000 + 3 * 60_000 + 1)), true);
+  assert.equal(shouldRelock(t0, at(1e12 + 1000, 5000 + 10 * 60_000)), true); // wall clock set back: monotonic still counts
+  assert.equal(shouldRelock(t0, at(1e12 - 1, 5000 + 1000)), true); // wall clock went backwards
+  assert.equal(shouldRelock(t0, at(1e12 + 10 * 60_000, 5000 + 1000)), true); // phone slept: monotonic paused, wall counts
 });
 
 test('who closed the fingerprint prompt', () => {

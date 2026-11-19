@@ -118,6 +118,21 @@ export async function unseal(aead: Aead, text: string, keyFor: (kdf: KdfParams) 
   return JSON.parse(new TextDecoder().decode(plain)) as BackupData;
 }
 
+// After restoring an older backup without disconnect_backups, this phone's kept rows are still sealed with its
+// old key while the restored key replaces it: seal them again with the new key. A row the old key cannot open
+// is left as it was rather than dropped.
+export async function resealDisconnectBackups(db: Db, aead: Aead, oldKey: Uint8Array, newKey: Uint8Array, newKdf: KdfParams): Promise<void> {
+  for (const row of await db.getAllAsync<{ email: string; envelope: string }>('SELECT email, envelope FROM disconnect_backups', [])) {
+    let payload: BackupData;
+    try {
+      payload = await unseal(aead, row.envelope, async () => oldKey);
+    } catch {
+      continue;
+    }
+    await db.runAsync('UPDATE disconnect_backups SET envelope = ? WHERE email = ?', [await seal(aead, newKey, newKdf, payload), row.email]);
+  }
+}
+
 // Documents (PDFs) are backed up as their own encrypted files, uploaded once each, so a backup stays small.
 export const docBackupName = (localPath: string): string => `doc-${localPath}.enc`;
 

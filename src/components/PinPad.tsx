@@ -41,7 +41,10 @@ function PinKey({ size, label, onPress, disabled, children, plain, testID }: { s
         accessibilityState={{ disabled: !!disabled }}
       >
         {plain ? (
-          children
+          <>
+            {children}
+            {press.touch /* measures the key, so the swell stays SWELL dp */}
+          </>
         ) : (
           <GlassFill radius={size / 2} sheen={false} style={styles.key}>
             {press.light}

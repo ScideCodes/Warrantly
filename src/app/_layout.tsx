@@ -12,7 +12,7 @@ import { useLocales } from 'expo-localization';
 import i18n, { appLanguage } from '@/i18n';
 import { LockScreen } from '@/components/LockScreen';
 import { DialogHost, showAlert } from '@/components/Dialog';
-import { shouldRelock } from '@/lock/pin.ts';
+import { shouldRelock, stampNow, type Stamp } from '@/lock/pin.ts';
 import { isLockEnabled, takeRelaunchPass } from '@/lock/store';
 import { getDb } from '@/db/client';
 import { updateWidget } from '@/widget';
@@ -71,18 +71,18 @@ export default function RootLayout() {
     return on;
   });
   const unlock = useCallback(() => setLocked(false), []); // stable, so the lock screen's fingerprint prompt starts once
-  const hiddenAt = useRef<number | null>(null);
+  const hiddenAt = useRef<Stamp | null>(null);
   // Covers the app while it is in the background; inside the 3-minute grace it is lifted without the PIN.
   const [covered, setCovered] = useState(false);
   useEffect(() => {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
-        hiddenAt.current = Date.now();
+        hiddenAt.current = stampNow();
         if (isLockEnabled()) setCovered(true);
         void getDb().then(updateWidget).catch((e) => console.warn('widget', e)); // the home screen shows it next
       }
       if (state === 'active') {
-        if (isLockEnabled() && shouldRelock(hiddenAt.current, Date.now())) setLocked(true);
+        if (isLockEnabled() && shouldRelock(hiddenAt.current, stampNow())) setLocked(true);
         setCovered(false);
         hiddenAt.current = null;
       }

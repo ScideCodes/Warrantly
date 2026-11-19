@@ -56,26 +56,30 @@ export const needsReconnect = (e: unknown): boolean => (e as { code?: string })?
 let cached: { token: string; at: number } | null = null;
 
 // Disconnect: take Warrantly off the account's "third-party access" list at Google. Revoking a token removes the
-// whole grant, Drive included, so a backup on this account is turned off. Returns true in that case.
-// Best effort: with no network or no grant left, the account is still disconnected on the phone.
-export async function revokeGoogleAccess(email: string): Promise<boolean> {
+// whole grant, Drive included, so a backup on this account is turned off: 'backupOff' in that case.
+// Best effort: with no network or an error from Google ('failed'), the account is still disconnected on the
+// phone, but the grant stays at Google and so does the backup.
+export type RevokeResult = 'revoked' | 'backupOff' | 'failed';
+export async function revokeGoogleAccess(email: string): Promise<RevokeResult> {
   let token: string;
   try {
     token = await GoogleAccountToken.getToken(email, [GMAIL_READONLY]);
-  } catch {
-    return false; // already revoked, or never granted
+  } catch (e) {
+    return needsReconnect(e) ? 'revoked' : 'failed'; // no grant left at Google, or Google not reachable
   }
   try {
-    await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `token=${encodeURIComponent(token)}` });
+    const res = await fetch('https://oauth2.googleapis.com/revoke', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: `token=${encodeURIComponent(token)}` });
+    // 400 invalid_token: the token is already revoked or expired, so the access is gone anyway.
+    if (!res.ok && (res.status !== 400 || (await res.json().catch(() => null))?.error !== 'invalid_token')) return 'failed';
     await GoogleOneTapSignIn.clearCachedAccessToken(token).catch(() => {});
   } catch {
-    return false;
+    return 'failed';
   }
-  if (getSetting('backup_account') !== email) return false;
+  if (getSetting('backup_account') !== email) return 'revoked';
   setSetting('backup_account', '');
   setSetting('backup_enabled', '0');
   cached = null;
-  return true;
+  return 'backupOff';
 }
 
 // Backups go to Google Drive (section 17). `interactive: false` (automatic backups) never shows a dialog.

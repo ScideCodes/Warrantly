@@ -384,6 +384,7 @@
     "needPassword": "Disconnecting makes an encrypted backup of the account first. Set a backup password to continue.",
     "setPassword": "Set password",
     "done": "{{email}} is disconnected. A backup was saved on this phone, and Google access was removed.",
+    "doneAccessKept": "{{email}} is disconnected and a backup was saved on this phone, but Google access could not be removed. Remove it at myaccount.google.com/permissions.",
     "backupOff": "Drive backup was on for this account, so it is now off. Turn it on again in Settings.",
     "syncing": "Syncing…",
     "restoreTitle": "Restore {{email}}?",

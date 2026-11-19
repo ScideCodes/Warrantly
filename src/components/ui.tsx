@@ -193,7 +193,10 @@ export function Button({
           </GlassFill>
         </>
       ) : (
-        content
+        <>
+          {content}
+          {press.touch /* measures the button, so the swell stays SWELL dp at any width */}
+        </>
       )}
     </Pressable>
   );

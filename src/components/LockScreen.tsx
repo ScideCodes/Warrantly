@@ -52,21 +52,25 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
   });
   useEffect(() => {
     if (!isBiometricEnabled()) return;
-    let run = { alive: true };
+    type Run = { alive: boolean; stop?: () => void };
+    let run: Run = { alive: true };
     let away = false;
     let lockedOut = false;
     const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
     const ready = () => AppState.currentState === 'active' && windowFocused;
-    const inFront = () =>
+    // A cancelled run calls `stop`, so its listeners never outlive it; the loop then sees `alive` false and returns.
+    const inFront = (me: Run) =>
       new Promise<void>((resolve) => {
         if (ready()) return resolve();
-        const check = () => ready() && (subs.forEach((s) => s.remove()), resolve());
+        const done = () => (subs.forEach((s) => s.remove()), (me.stop = undefined), resolve());
+        const check = () => ready() && done();
         const subs = [AppState.addEventListener('change', check), ...(Platform.OS === 'android' ? [AppState.addEventListener('focus', check)] : [])];
+        me.stop = done;
       });
     const DELAYS = [300, 700, 1200, 2000];
-    const ask = async (me: { alive: boolean }) => {
+    const ask = async (me: Run) => {
       for (let attempt = 0; attempt < DELAYS.length && me.alive; attempt++) {
-        await inFront();
+        await inFront(me);
         await sleep(DELAYS[attempt]);
         if (!me.alive) return;
         const usePin = tRef.current('lock.usePin');
@@ -90,6 +94,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     const sub = AppState.addEventListener('change', (state) => {
       if (state === 'background') {
         run.alive = false;
+        run.stop?.();
         away = true;
       } else if (state === 'active' && away) {
         away = false;
@@ -98,6 +103,7 @@ export function LockScreen({ onUnlock }: { onUnlock: () => void }) {
     });
     return () => {
       run.alive = false;
+      run.stop?.();
       sub.remove();
     };
   }, [onUnlock]);
