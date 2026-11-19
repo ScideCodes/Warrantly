@@ -9,7 +9,8 @@ import { isSheetOpen } from '@/components/Sheet';
 import { isLocked, useLocked } from '@/lock/gate';
 
 // The reference's alert (`.link-alert`, ios.css lines 567-583): centred title and message, capsule actions,
-// opening with opacity 0 -> 1 and scale .96 -> 1 over .2 s. `showAlert` takes the same arguments as
+// opening with opacity 0 -> 1 and scale .96 -> 1 over .2 s, and leaving the same way in .15 s (iOS fades an
+// answered alert out rather than cutting it). `showAlert` takes the same arguments as
 // React Native's Alert.alert, so every existing call keeps its buttons and callbacks.
 // `locked`: asked for while the lock showed, so by the lock screen; the app's own alerts wait behind the lock.
 type Request = { title: string; message?: string; buttons: AlertButton[]; cancelable: boolean; locked: boolean };
@@ -28,6 +29,8 @@ export function DialogHost() {
   const anim = useState(() => new Animated.Value(0))[0];
   const locked = useLocked();
   const current = queue.find((r) => !locked || r.locked) ?? null;
+  // The answered alert, drawn while it fades out; inert. Keeps the window it was answered in.
+  const [leaving, setLeaving] = useState<{ request: Request; overSheet: boolean } | null>(null);
   useEffect(() => {
     notify = () => setVersion((n) => n + 1);
     return () => {
@@ -41,8 +44,14 @@ export function DialogHost() {
   }, [current, anim]);
 
   const finish = (b?: AlertButton) => {
+    const request = current;
     queue = queue.filter((r) => r !== current);
     setVersion((n) => n + 1);
+    if (request && !reduceMotion()) {
+      const ghost = { request, overSheet: isSheetOpen() && !locked };
+      setLeaving(ghost);
+      Animated.timing(anim, { toValue: 0, duration: 150, easing: Easing.bezier(...EASE), useNativeDriver: true }).start(() => setLeaving((l) => (l === ghost ? null : l)));
+    }
     b?.onPress?.();
   };
   const cancel = () => {
@@ -57,15 +66,16 @@ export function DialogHost() {
     });
     return () => sub.remove();
   });
-  if (!current) return null;
+  const shown = current ?? leaving?.request;
+  if (!shown) return null;
   // Cancel first, the action last: the reference puts the prominent action on the trailing side.
-  const buttons = [...current.buttons].sort((a, b) => (a.style === 'cancel' ? -1 : b.style === 'cancel' ? 1 : 0));
+  const buttons = [...shown.buttons].sort((a, b) => (a.style === 'cancel' ? -1 : b.style === 'cancel' ? 1 : 0));
   // The glass lens only sees views in its own window, so the alert is an in-window overlay (DialogHost is the
   // last child of the root). Over a sheet, which is its own Modal window, it must be a Modal too: solid there.
   // While locked the sheets are hidden and a Modal would float over the lock screen: in-window, like its own alerts.
-  const overSheet = isSheetOpen() && !locked;
+  const overSheet = current ? isSheetOpen() && !locked : !!leaving?.overSheet;
   const body = (
-    <>
+    <View style={StyleSheet.absoluteFill} pointerEvents={current ? 'auto' : 'none'} importantForAccessibility={current ? 'auto' : 'no-hide-descendants'}>
       <Animated.View style={[styles.scrim, { opacity: anim }]}>
         <Pressable style={StyleSheet.absoluteFill} onPress={cancel} accessible={false} />
       </Animated.View>
@@ -79,9 +89,9 @@ export function DialogHost() {
             <ScrollView bounces={false} contentContainerStyle={styles.content}>
               <View style={styles.copy}>
                 <Text style={styles.title} accessibilityRole="header">
-                  {current.title}
+                  {shown.title}
                 </Text>
-                {current.message ? <Text style={styles.message}>{current.message}</Text> : null}
+                {shown.message ? <Text style={styles.message}>{shown.message}</Text> : null}
               </View>
               <View style={styles.actions}>
                 {buttons.map((b, i) => {
@@ -108,14 +118,14 @@ export function DialogHost() {
           </GlassFill>
         </Animated.View>
       </View>
-    </>
+    </View>
   );
   return overSheet ? (
     <Modal visible transparent animationType="none" statusBarTranslucent onRequestClose={cancel}>
       {body}
     </Modal>
   ) : (
-    <View style={styles.overlay}>{body}</View>
+    <View style={styles.overlay} pointerEvents={current ? 'auto' : 'none'}>{body}</View>
   );
 }
 

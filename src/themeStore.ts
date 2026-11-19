@@ -38,6 +38,8 @@ export interface Palette {
   glassTint: string; // lens tint (LiquidGlassView glassTintColor) and its strength
   glassTintOpacity: number;
   glassSheen: number;
+  glassGlow: string; // interactive glass: the light that wells up under a finger (centre of a radial glow)
+  glassWash: string; // ...and the faint brightening that spreads over the whole element
   tabbarEdge: string;
   sheetBg: string;
   sheetGroup: string;
@@ -84,6 +86,8 @@ export const light: Palette = {
   glassTint: '#ffffff',
   glassTintOpacity: 0.18,
   glassSheen: 0.55,
+  glassGlow: 'rgba(255,255,255,0.7)',
+  glassWash: 'rgba(255,255,255,0.22)',
   tabbarEdge: 'inset 0 1px 0 rgba(255,255,255,0.9), inset 0 -0.5px 0 rgba(255,255,255,0.4), inset 0 0 0 0.5px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.06)',
   sheetBg: '#f2f2f7',
   sheetGroup: '#ffffff',
@@ -130,6 +134,8 @@ export const dark: Palette = {
   glassTint: '#1c1c1e',
   glassTintOpacity: 0.32,
   glassSheen: 0.08,
+  glassGlow: 'rgba(255,255,255,0.26)',
+  glassWash: 'rgba(255,255,255,0.08)',
   tabbarEdge: 'inset 0 1px 0 rgba(255,255,255,0.12), inset 0 0 0 0.5px rgba(255,255,255,0.14), 0 4px 20px rgba(0,0,0,0.50)',
   sheetBg: '#1c1c1e',
   sheetGroup: '#2c2c2e',

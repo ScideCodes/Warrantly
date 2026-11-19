@@ -1,11 +1,11 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
-import { useEffect, useImperativeHandle, useMemo, useRef, useState, type ReactNode, type Ref } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import AppIcon from '@/components/Icon';
-import { Animated, Keyboard, Modal, PanResponder, Platform, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, Keyboard, Modal, PanResponder, Platform, ScrollView, StyleSheet, useWindowDimensions, type LayoutChangeEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import { colors, MAX_WIDTH, ROW_X, SHEET_SPRING, TYPE, themed } from '@/theme';
-import { GlassButton, Group, reduceMotion, Row, type IconName } from '@/components/ui';
+import { GlassButton, Group, reduceMotion, Row, SolidGlass, springTo, stopSpring, type IconName } from '@/components/ui';
 import { useLocked } from '@/lock/gate';
 
 export type { IconName };
@@ -26,9 +26,13 @@ export interface SheetSection {
 
 // The reference's phone sheet (ios.css lines 506-563, chrome.js makeSheet): floats 6dp from the sides and
 // bottom with 38/58 corners, a 60 x 4 grabber, a 54dp toolbar with a glass close button and a centred title.
-// One damped spring (stiffness 520, damping 46) opens, closes and follows the grabber.
+// One damped spring (stiffness 520, damping 46) opens, closes and follows the grabber. It is retargeted with its
+// velocity (springTo), so closing a sheet that is still rising, or reopening one on its way down, turns it round
+// smoothly, as an interrupted iOS spring does.
 // How many sheet Modals are on screen. A dialog opened over one must be a Modal too, or it would draw under it.
 let sheetsOpen = 0;
+const PARKED = 10000; // y while closed: below any screen, so a panel that grows is never seen before its spring
+const W0 = Math.sqrt(SHEET_SPRING.stiffness / SHEET_SPRING.mass);
 export const isSheetOpen = (): boolean => sheetsOpen > 0;
 
 export function SheetFrame({ open, onClose, title, children }: { open: boolean; onClose: () => void; title: string; children: ReactNode }) {
@@ -49,19 +53,28 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
     return () => { shown.remove(); hidden.remove(); };
   }, []);
   const height = useRef(600); // for the drag handlers
-  const [panelH, setPanelH] = useState(600); // for the scrim
-  const y = useState(() => new Animated.Value(screenH))[0];
+  const [panelH] = useState(() => new Animated.Value(600)); // for the scrim, set beside y so the two never disagree
+  const [y] = useState(() => new Animated.Value(PARKED));
   // Tracked by the drag handlers: a y.addListener would stream every native spring frame to JS on each open.
-  const yNow = useRef(screenH);
+  const yNow = useRef(PARKED);
+  const fling = useRef<number | undefined>(undefined); // release velocity of the drag that closed the sheet
+  // Opening takes three commits so no frame does everything: the Modal window with an empty panel, then the content
+  // (a frame later), then, once that content has laid out, the spring, from the panel's real height. Starting the
+  // spring with the window, as before, let the content's mount eat its first frames, and starting it before the
+  // content would grow the panel upwards mid-spring. iOS also lays a sheet out before it animates it.
+  const [filled, setFilled] = useState(false);
+  const opening = useRef(false); // content mounted, spring not started yet
 
-  const settle = (to: number, velocity = 0, done?: () => void) => {
+  const settle = (to: number, done?: () => void, velocity?: number) => {
+    const from = yNow.current;
     yNow.current = to; // a drag released before its first move reads this, not the stale start
     if (reduceMotion()) {
+      stopSpring(y);
       y.setValue(to);
       done?.();
       return;
     }
-    Animated.spring(y, { toValue: to, velocity, useNativeDriver: true, restDisplacementThreshold: 0.25, restSpeedThreshold: 3, ...SHEET_SPRING }).start(({ finished }) => finished && done?.());
+    springTo(y, to, SHEET_SPRING, { from, velocity, done, rest: { restDisplacementThreshold: 0.25, restSpeedThreshold: 3 } });
   };
   if (open && !shown) setShown(true); // mount before the spring starts; it unmounts once closed
   useEffect(() => {
@@ -70,11 +83,45 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
     return () => void sheetsOpen--;
   }, [shown]);
   useEffect(() => {
+    if (!shown || filled) return;
+    const id = requestAnimationFrame(() => {
+      opening.current = true;
+      setFilled(true);
+    });
+    return () => cancelAnimationFrame(id);
+  }, [shown, filled]);
+  useEffect(() => {
     if (open) {
-      y.setValue(height.current);
-      settle(0);
-    } else settle(height.current + 32, 0, () => setShown(false));
+      if (filled && !opening.current) settle(0); // reopened on its way down: turns round where it is
+      return; // a fresh open starts in startOpening
+    }
+    if (!shown) return;
+    const gone = () => {
+      stopSpring(y);
+      y.setValue((yNow.current = PARKED));
+      setShown(false);
+      setFilled(false);
+    };
+    if (opening.current || !filled) {
+      opening.current = false; // closed before it started to rise: nothing on screen to animate
+      gone();
+      return;
+    }
+    settle(height.current + 32, gone, fling.current);
+    fling.current = undefined;
   }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+  const paddingBottom = keyboardHeight ? 8 : Math.max(0, insets.bottom - 6);
+  // The content's first layout: the panel's height is where it ends plus the panel's bottom padding.
+  const startOpening = (e: LayoutChangeEvent) => {
+    if (!opening.current) return;
+    opening.current = false;
+    const full = e.nativeEvent.layout.y + e.nativeEvent.layout.height + paddingBottom;
+    height.current = full;
+    panelH.setValue(Math.max(full, 1));
+    stopSpring(y);
+    y.setValue((yNow.current = full));
+    settle(0);
+  };
 
   // The grabber and toolbar drag; content keeps scrolling. Above the resting point it rubber-bands at .15.
   // Dismiss on distance or a flick: the projected resting point decides (chrome.js).
@@ -86,46 +133,60 @@ export function SheetFrame({ open, onClose, title, children }: { open: boolean; 
   const [drag] = useState(() =>
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dy) > 6 && Math.abs(g.dy) > Math.abs(g.dx),
-      onPanResponderGrant: () => y.stopAnimation((value) => (yNow.current = value)),
+      onPanResponderGrant: () => stopSpring(y, (value) => (yNow.current = value)),
       onPanResponderMove: (_, g) => y.setValue((yNow.current = g.dy < 0 ? g.dy * 0.15 : g.dy)),
+      // The spring picks up the finger's velocity (px/ms to px/s). Back to rest it is capped at the speed the
+      // critically damped spring can stop from without passing the resting edge (|v| <= w0 * distance).
       onPanResponderRelease: (_, g) => {
-        if (yNow.current + g.vy * 1000 * 0.18 > Math.min(130, height.current * 0.35)) onCloseRef.current();
-        else settle(0, g.vy);
+        const v = g.vy * 1000;
+        if (yNow.current + v * 0.18 > Math.min(130, height.current * 0.35)) {
+          fling.current = v;
+          onCloseRef.current();
+        } else {
+          const cap = -W0 * yNow.current;
+          settle(0, undefined, yNow.current > 0 ? Math.max(v, cap) : Math.min(v, cap));
+        }
       },
       onPanResponderTerminate: () => settle(0),
     }),
   );
 
-  // A new interpolation node per render would re-link the native animation graph mid-spring.
-  const dim = useMemo(() => y.interpolate({ inputRange: [0, Math.max(panelH, 1)], outputRange: [1, 0], extrapolate: 'clamp' }), [y, panelH]);
+  // Made once: a new node per render would re-link the native animation graph mid-spring.
+  const [dim] = useState(() => Animated.divide(y, panelH).interpolate({ inputRange: [0, 1], outputRange: [1, 0], extrapolate: 'clamp' }));
   if (!shown) return null;
   return (
     <Modal visible={!locked} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent navigationBarTranslucent>
-      <Animated.View style={[styles.backdrop, { opacity: dim }]} onLayout={e => setModalHeight(e.nativeEvent.layout.height)}>
-        <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('sheet.close')} />
-      </Animated.View>
-      <Animated.View
-        onLayout={(e) => {
-          height.current = e.nativeEvent.layout.height;
-          setPanelH(e.nativeEvent.layout.height);
-        }}
-        style={[styles.panel, { width: Math.min(screenW - 12, MAX_WIDTH), left: (screenW - Math.min(screenW - 12, MAX_WIDTH)) / 2, right: undefined, bottom: keyboardHeight + 6, maxHeight: Math.max(150, modalHeight - insets.top - keyboardHeight - 12), paddingBottom: keyboardHeight ? 8 : Math.max(0, insets.bottom - 6), transform: [{ translateY: y }] }]}
-        accessibilityViewIsModal
-      >
-        <View {...drag.panHandlers}>
-          <View style={styles.grab}>
-            <View style={styles.grabber} />
+      <SolidGlass.Provider value>
+        <Animated.View style={[styles.backdrop, { opacity: dim }]} onLayout={e => setModalHeight(e.nativeEvent.layout.height)}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} accessibilityRole="button" accessibilityLabel={t('sheet.close')} />
+        </Animated.View>
+        <Animated.View
+          onLayout={(e) => {
+            height.current = e.nativeEvent.layout.height;
+            panelH.setValue(Math.max(e.nativeEvent.layout.height, 1));
+          }}
+          style={[styles.panel, { width: Math.min(screenW - 12, MAX_WIDTH), left: (screenW - Math.min(screenW - 12, MAX_WIDTH)) / 2, right: undefined, bottom: keyboardHeight + 6, maxHeight: Math.max(150, modalHeight - insets.top - keyboardHeight - 12), paddingBottom, transform: [{ translateY: y }] }]}
+          accessibilityViewIsModal
+        >
+          <View {...drag.panHandlers}>
+            <View style={styles.grab}>
+              <View style={styles.grabber} />
+            </View>
+            <View style={styles.toolbar}>
+              <GlassButton testID="sheet-close" icon="close" size={18} label={t('sheet.close')} onPress={onClose} />
+              <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
+                {title}
+              </Text>
+              <View style={styles.toolbarEnd} />
+            </View>
           </View>
-          <View style={styles.toolbar}>
-            <GlassButton testID="sheet-close" icon="close" size={18} label={t('sheet.close')} onPress={onClose} />
-            <Text style={styles.title} numberOfLines={1} accessibilityRole="header">
-              {title}
-            </Text>
-            <View style={styles.toolbarEnd} />
-          </View>
-        </View>
-        {children}
-      </Animated.View>
+          {filled && (
+            <View style={styles.body} onLayout={startOpening}>
+              {children}
+            </View>
+          )}
+        </Animated.View>
+      </SolidGlass.Provider>
     </Modal>
   );
 }
@@ -219,6 +280,7 @@ const useStyles = themed(() => StyleSheet.create({
   toolbar: { minHeight: 50, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingBottom: 4 },
   title: { ...TYPE.bar, flex: 1, color: colors.ink, textAlign: 'center', paddingHorizontal: 4 },
   toolbarEnd: { width: 44 },
+  body: { flexShrink: 1, minHeight: 0 }, // passes the panel's height limit on to scrolling content
   scroll: { flexGrow: 0, flexShrink: 1, minHeight: 0 },
   content: { paddingTop: 4, paddingHorizontal: 16, paddingBottom: 24 },
   note: { ...TYPE.sub, color: colors.ink2, paddingHorizontal: ROW_X, paddingBottom: 12 },

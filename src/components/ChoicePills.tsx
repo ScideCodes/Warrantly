@@ -1,8 +1,8 @@
-import { useState } from 'react';
-import { StyleSheet, useWindowDimensions } from 'react-native';
+import { useContext, useState } from 'react';
+import { StyleSheet, useWindowDimensions, type ViewStyle } from 'react-native';
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { GlassFill } from '@/components/GlassFill';
-import { glass } from '@/components/ui';
+import { glass, SolidGlass, useGlassPress } from '@/components/ui';
 import { pillColumns } from '@/pillColumns';
 import { colors, TYPE } from '@/theme';
 
@@ -29,14 +29,25 @@ export default function ChoicePills({ options, disabled }: { options: { key: str
         ))}
       </View>
       {options.map((o) => (
-        <Pressable key={o.key} onPress={o.onPress} disabled={disabled} pressScale={0.97} accessibilityRole="radio" accessibilityState={{ selected: o.selected, disabled }}
-          style={[glass(), { width: cellWidth, minWidth: width ? undefined : '100%', height, borderRadius: height / 2 }]}>
-          <GlassFill radius={height / 2} highlight={o.selected ? colors.tintSoft : undefined} style={styles.cell}>
-            <Text style={[styles.text, o.selected && styles.bold, { color: o.selected ? colors.tintInk : colors.ink }]} numberOfLines={1}>{o.label}</Text>
-          </GlassFill>
-        </Pressable>
+        <Pill key={o.key} option={o} disabled={disabled} style={{ width: cellWidth, minWidth: width ? undefined : '100%', height, borderRadius: height / 2 }} />
       ))}
     </View>
+  );
+}
+
+// One pill: interactive glass (useGlassPress).
+function Pill({ option: o, disabled, style }: { option: { label: string; selected: boolean; onPress: () => void }; disabled: boolean; style: ViewStyle & { height: number } }) {
+  const press = useGlassPress();
+  const solid = useContext(SolidGlass);
+  return (
+    <Pressable onPress={o.onPress} onPressIn={press.onPressIn} onPressOut={press.onPressOut} disabled={disabled} accessibilityRole="radio" accessibilityState={{ selected: o.selected, disabled }}
+      style={[glass(), style, { transform: [{ scale: press.scale }] }]}>
+      <GlassFill radius={style.height / 2} highlight={o.selected ? colors.tintSoft : undefined} style={styles.cell} solid={solid}>
+        {press.light}
+        <Text style={[styles.text, o.selected && styles.bold, { color: o.selected ? colors.tintInk : colors.ink }]} numberOfLines={1}>{o.label}</Text>
+        {press.touch}
+      </GlassFill>
+    </Pressable>
   );
 }
 

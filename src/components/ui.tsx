@@ -1,5 +1,5 @@
 import { Pressable, Text, TextInput, View, reduceMotion, useThemeTransition } from '@/components/themeMotion';
-import { useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import AppIcon, { type IconName } from '@/components/Icon';
 import {
   ActivityIndicator,
@@ -8,6 +8,7 @@ import {
   Pressable as NativePressable,
   StyleSheet,
   useWindowDimensions,
+  type GestureResponderEvent,
   type PressableProps,
   type StyleProp,
   type TextInputProps,
@@ -20,6 +21,7 @@ import Reanimated from 'react-native-reanimated';
 import { GlassFill } from '@/components/GlassFill';
 import { colors, CONTROL_H, EASE, FIELD_RADIUS, RADIUS, ROW_H, ROW_PAD, ROW_X, PRESS_DELAY, SEP_ICON, SPRING, SPRING_BOUNCE, TYPE, themed } from '@/theme';
 import { segmentedLayout } from '@/segmentedLayout';
+import { springAt, type SpringConfig } from '@/spring';
 
 // The bencepc.hu controls as React Native components. Values and their sources: docs/visual-reference.md.
 export type { IconName } from '@/components/Icon';
@@ -31,6 +33,94 @@ export { reduceMotion } from '@/components/themeMotion';
 // The host side of a glass element: transparent, with the outer edge and drop shadow. The material and the
 // element's content go in a <GlassFill> child (see there for why the content must be inside it).
 export const glass = (): ViewStyle => ({ backgroundColor: 'transparent', boxShadow: colors.glassEdge });
+
+// True inside a Modal window (a sheet): the lens there has no backdrop to sample, so glass controls draw the solid
+// material with the same rim and sheen. That is also what iOS shows: glass over a sheet's flat background refracts
+// only that flat colour, so its close button reads as a plain light-grey (dark: graphite) disc with a bright rim.
+export const SolidGlass = createContext(false);
+
+// A native-driver spring that keeps the velocity of the spring it interrupts. React Native restarts a retargeted
+// spring from rest, so a sheet closed while still rising stopped dead and fell back; Apple's springs carry their
+// velocity into the new target (WWDC23 "Animate with springs"), so it curves round instead. The velocity comes from
+// the same closed form the UI thread runs (src/spring.ts); JS only touches the value when a target changes.
+// `from` and `velocity` describe the start when no spring of ours is running (first use, after stopSpring).
+type Run = { from: number; to: number; v: number; at: number; c: SpringConfig };
+const runs = new WeakMap<Animated.Value, Run>();
+export function springTo(value: Animated.Value, to: number, c: SpringConfig, o: { from?: number; velocity?: number; done?: () => void; rest?: { restDisplacementThreshold: number; restSpeedThreshold: number } } = {}): void {
+  const run = runs.get(value);
+  const now = Date.now();
+  const s = run ? springAt(run.c, run.from, run.to, run.v, (now - run.at) / 1000) : { x: o.from ?? to, v: o.velocity ?? 0 };
+  runs.set(value, { from: s.x, to, v: s.v, at: now, c });
+  value.stopAnimation(); // otherwise React Native seeds the new spring with the old one's starting velocity
+  Animated.spring(value, { toValue: to, velocity: s.v, useNativeDriver: true, ...c, ...o.rest }).start(({ finished }) => finished && o.done?.());
+}
+// Stops the value where it is and forgets its spring: for a drag or setValue taking over.
+export function stopSpring(value: Animated.Value, done?: (at: number) => void): void {
+  runs.delete(value);
+  value.stopAnimation(done);
+}
+
+// Interactive Liquid Glass (SwiftUI `.glassEffect(.regular.interactive())` and the glass button styles): a touch
+// swells the element a few dp and lights it from within, starting under the finger and spreading over the surface,
+// the light following the finger; release settles it on the bouncy spring, so it dips just under its size once.
+// Apple: "Glass reacts to user interaction by scaling, bouncing, and shimmering" (WWDC25 "Build a SwiftUI app with
+// the new design"); "the material illuminates from within ... starting right under your fingertips" ("Meet Liquid
+// Glass"). All of it runs on the native driver. Reduce Motion keeps the light and drops the swell and the bounce
+// (Apple: it "disables any elastic properties"). Put `light` first inside the GlassFill, under the content, and
+// `touch` last, over it, so touches report positions in the element's own frame.
+const PRESS_SPRING = { stiffness: 1153, damping: 42.1, mass: 1 }; // the bounce spring compressed into .22 s
+const SWELL = 4.4; // dp a pressed element grows by (1.1 on a 44dp button), at most 10 %
+const GLOW = 48; // radius of the light under the finger
+export function useGlassPress() {
+  const [g] = useState(() => {
+    const p = new Animated.Value(0);
+    const swell = new Animated.Value(0);
+    return {
+      p,
+      swell,
+      x: new Animated.Value(0),
+      y: new Animated.Value(0),
+      scale: Animated.add(1, Animated.multiply(p, swell)),
+      light: p.interpolate({ inputRange: [0, 1], outputRange: [0, 1], extrapolate: 'clamp' }),
+      spread: p.interpolate({ inputRange: [0, 1], outputRange: [0.5, 1], extrapolate: 'clamp' }),
+    };
+  });
+  const size = useRef(CONTROL_H);
+  const follow = (e: GestureResponderEvent) => {
+    g.x.setValue(e.nativeEvent.locationX);
+    g.y.setValue(e.nativeEvent.locationY);
+  };
+  return {
+    scale: g.scale,
+    onPressIn: (e: GestureResponderEvent) => {
+      follow(e);
+      g.swell.setValue(reduceMotion() ? 0 : Math.min(0.1, SWELL / size.current));
+      springTo(g.p, 1, PRESS_SPRING, { from: 0 });
+    },
+    onPressOut: () => springTo(g.p, 0, SPRING_BOUNCE),
+    light: (
+      <Animated.View pointerEvents="none" style={[StyleSheet.absoluteFill, { backgroundColor: colors.glassWash, opacity: g.light }]}>
+        <Animated.View
+          style={{
+            position: 'absolute', left: -GLOW, top: -GLOW, width: 2 * GLOW, height: 2 * GLOW,
+            backgroundImage: `radial-gradient(circle, ${colors.glassGlow}, transparent 70%)`,
+            transform: [{ translateX: g.x }, { translateY: g.y }, { scale: g.spread }],
+          }}
+        />
+      </Animated.View>
+    ),
+    touch: (
+      <View
+        style={StyleSheet.absoluteFill}
+        collapsable={false} // a real view, so it is the touch target and locations are in its (the element's) frame
+        accessible={false}
+        importantForAccessibility="no"
+        onLayout={(e) => (size.current = Math.max(1, e.nativeEvent.layout.width, e.nativeEvent.layout.height))}
+        onTouchMove={follow}
+      />
+    ),
+  };
+}
 
 type ButtonKind = 'prominent' | 'glass' | 'destructive';
 // Capsule buttons: Glass Prominent (accent) and Glass (material, label colour). 44 tall; the hit area reaches 48.
@@ -59,6 +149,8 @@ export function Button({
   const prominent = kind === 'prominent';
   const ink = disabled ? colors.ink2 : prominent ? colors.onAccent : kind === 'destructive' ? colors.bad : colors.ink;
   const glassy = kind === 'glass' && !disabled;
+  const press = useGlassPress();
+  const solid = useContext(SolidGlass);
   const content = (
     <>
       {busy ? <ActivityIndicator size="small" color={ink} /> : icon ? <AppIcon name={icon} size={20} color={ink} /> : null}
@@ -67,10 +159,11 @@ export function Button({
   );
   return (
     <Pressable
-      pressScale={0.97}
       unstable_pressDelay={PRESS_DELAY}
       testID={testID}
       onPress={onPress}
+      onPressIn={press.onPressIn}
+      onPressOut={press.onPressOut}
       disabled={disabled || busy}
       hitSlop={4}
       style={({ pressed }) => [
@@ -81,6 +174,7 @@ export function Button({
         (disabled || kind === 'destructive') && { backgroundColor: colors.fill, boxShadow: undefined, backgroundImage: undefined, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.line },
         busy && styles.disabled,
         style,
+        { transform: [{ scale: press.scale }] },
       ]}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
@@ -92,8 +186,10 @@ export function Button({
           <View style={[styles.button, styles.sizer]} pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
             {content}
           </View>
-          <GlassFill radius={CONTROL_H / 2} style={styles.button}>
+          <GlassFill radius={CONTROL_H / 2} style={styles.button} solid={solid}>
+            {press.light}
             {content}
+            {press.touch}
           </GlassFill>
         </>
       ) : (
@@ -103,23 +199,18 @@ export function Button({
   );
 }
 
-// Round 44dp glass button for bars and sheet toolbars: label-coloured glyph, swells to 1.1 on press and
-// settles back on the bouncier spring.
+// Round 44dp glass button for bars and sheet toolbars: label-coloured glyph, interactive glass (swells to 1.1).
 export function GlassButton({ icon, label, onPress, size = 20, color = colors.ink, testID, disabled, selected }: { icon: IconName; label: string; onPress: () => void; size?: number; color?: string; testID?: string; disabled?: boolean; selected?: boolean }) {
   const styles = useStyles();
-  const scale = useState(() => new Animated.Value(1))[0];
-  const to = (v: number, fast: boolean) => {
-    if (reduceMotion()) return;
-    // press: the bounce spring compressed into .22 s; release: the reference's .5 s bounce
-    Animated.spring(scale, { toValue: v, useNativeDriver: true, ...(fast ? { stiffness: 1153, damping: 42.1, mass: 1 } : SPRING_BOUNCE) }).start();
-  };
+  const press = useGlassPress();
+  const solid = useContext(SolidGlass);
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, disabled && { opacity: 0.4 }]}>
+    <Animated.View style={[{ transform: [{ scale: press.scale }] }, disabled && { opacity: 0.4 }]}>
       <Pressable
         testID={testID}
         onPress={onPress}
-        onPressIn={() => to(1.1, true)}
-        onPressOut={() => to(1, false)}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
         disabled={disabled}
         hitSlop={4}
         style={[styles.round, glass()]}
@@ -127,8 +218,10 @@ export function GlassButton({ icon, label, onPress, size = 20, color = colors.in
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled, selected }}
       >
-        <GlassFill radius={CONTROL_H / 2} style={styles.center}>
+        <GlassFill radius={CONTROL_H / 2} style={styles.center} solid={solid}>
+          {press.light}
           <AppIcon name={icon} size={size} color={color} />
+          {press.touch}
         </GlassFill>
       </Pressable>
     </Animated.View>

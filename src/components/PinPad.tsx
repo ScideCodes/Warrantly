@@ -1,12 +1,12 @@
 import { Pressable, Text, View } from '@/components/themeMotion';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Animated, Easing, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
+import { Animated, ScrollView, StyleSheet, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTranslation } from 'react-i18next';
 import AppIcon, { type IconName } from '@/components/Icon';
-import { glass, reduceMotion } from '@/components/ui';
+import { glass, reduceMotion, useGlassPress } from '@/components/ui';
 import { GlassFill } from '@/components/GlassFill';
-import { colors, CONTROL_H, EASE, isDarkNow, TYPE, themed } from '@/theme';
+import { colors, CONTROL_H, isDarkNow, TYPE, themed } from '@/theme';
 
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
@@ -20,13 +20,10 @@ export function usePinKeySize() {
 
 function PinKey({ size, label, onPress, disabled, children, plain, testID }: { size: number; label: string; onPress: () => void; disabled?: boolean; children: ReactNode; plain?: boolean; testID?: string }) {
   const styles = useStyles();
-  const scale = useState(() => new Animated.Value(1))[0];
-  const to = (v: number) => {
-    if (reduceMotion()) return;
-    Animated.timing(scale, { toValue: v, duration: 110, easing: Easing.bezier(...EASE), useNativeDriver: true }).start();
-  };
+  // Interactive glass: swells, lights up under the finger and settles on the bouncy spring (useGlassPress).
+  const press = useGlassPress();
   return (
-    <Animated.View style={[{ transform: [{ scale }] }, disabled && styles.disabled]}>
+    <Animated.View style={[{ transform: [{ scale: press.scale }] }, disabled && styles.disabled]}>
       <Pressable
         testID={testID}
         style={({ pressed }) => [
@@ -36,22 +33,22 @@ function PinKey({ size, label, onPress, disabled, children, plain, testID }: { s
           plain && pressed && { backgroundColor: colors.select },
         ]}
         onPress={onPress}
-        onPressIn={() => to(0.96)}
-        onPressOut={() => to(1)}
+        onPressIn={press.onPressIn}
+        onPressOut={press.onPressOut}
         disabled={disabled}
         accessibilityRole="button"
         accessibilityLabel={label}
         accessibilityState={{ disabled: !!disabled }}
       >
-        {({ pressed }) =>
-          plain ? (
-            children
-          ) : (
-            <GlassFill radius={size / 2} sheen={false} highlight={pressed && colors.select} style={styles.key}>
-              {children}
-            </GlassFill>
-          )
-        }
+        {plain ? (
+          children
+        ) : (
+          <GlassFill radius={size / 2} sheen={false} style={styles.key}>
+            {press.light}
+            {children}
+            {press.touch}
+          </GlassFill>
+        )}
       </Pressable>
     </Animated.View>
   );
