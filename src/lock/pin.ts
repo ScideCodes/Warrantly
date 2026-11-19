@@ -66,3 +66,17 @@ export function lockoutSeconds(failures: number): number {
 // Section 19: back from the background after more than 3 minutes locks again.
 export const RELOCK_AFTER_MS = 3 * 60_000;
 export const shouldRelock = (hiddenAt: number | null, now: number): boolean => hiddenAt !== null && now - hiddenAt > RELOCK_AFTER_MS;
+
+// Who closed the fingerprint prompt that opened by itself. Android 15/16 closes it as USER_CANCEL when the app stops
+// being the top task, on CLOSE_SYSTEM_DIALOGS or on device lock (AOSP AuthController.closeDialog); Android 14 when the
+// window focus moves. expo-local-authentication reports all of these as 'user_cancel', the same as Back. Only "Use PIN"
+// says who it was: androidx passes the button's label as the message. A close sooner than a person can react to the
+// prompt is the system. (A close by leaving the app is followed by AppState 'background'; the lock screen checks that.)
+export const QUICK_CANCEL_MS = 500;
+const PERSON_ANSWERS = ['user_fallback', 'lockout', 'not_enrolled', 'not_available', 'passcode_not_set'];
+export function promptClosedBy(res: { error?: string; warning?: string }, cancelLabel: string, openMs: number): 'person' | 'system' {
+  if (!res.error || PERSON_ANSWERS.includes(res.error)) return 'person';
+  if (res.error !== 'user_cancel') return 'system'; // 'system_cancel', 'app_cancel' (a prompt still closing), 'unknown'
+  if (res.warning === cancelLabel) return 'person';
+  return openMs < QUICK_CANCEL_MS ? 'system' : 'person';
+}

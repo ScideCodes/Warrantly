@@ -76,15 +76,16 @@ export const setBiometricEnabled = (on: boolean): void => SecureStore.setItem(BI
 
 // Biometrics only; the PIN pad is the fallback, so the device passcode is not offered here.
 // `error`: 'user_cancel' is the person or Android (Android 14 reports a prompt closed by focus loss the same way);
-// 'system_cancel'/'app_cancel' are other closes by Android or a second prompt.
-export async function unlockWithBiometrics(prompt: string, cancel: string): Promise<{ success: boolean; error?: string }> {
+// 'system_cancel'/'app_cancel' are other closes by Android or a second prompt. `warning` is Android's message: the
+// `cancel` label when "Use PIN" was tapped (see promptClosedBy).
+export async function unlockWithBiometrics(prompt: string, cancel: string): Promise<{ success: boolean; error?: string; warning?: string }> {
   const res = await LocalAuthentication.authenticateAsync({
     promptMessage: prompt,
     cancelLabel: cancel,
     disableDeviceFallback: true,
     biometricsSecurityLevel: 'strong',
   });
-  return res.success ? { success: true } : { success: false, error: res.error };
+  return res.success ? { success: true } : { success: false, error: res.error, warning: res.warning };
 }
 
 // "Forgot PIN": the phone's own screen lock (passcode, fingerprint or face) proves the owner.
